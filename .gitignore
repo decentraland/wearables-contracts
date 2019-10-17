@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+build
+.DS_Store
+node_modules
+artifacts
+cache 
+.zos.session
