@@ -24,6 +24,7 @@ describe('ExclusiveMasks', function() {
   // tokens
   const mask1 = 0
   const mask2 = 1
+  const mask3 = 2
 
   // Accounts
   let accounts
@@ -260,6 +261,16 @@ describe('ExclusiveMasks', function() {
           anotherHolder,
           [mask1, mask2],
           fromHacker
+        ),
+        'ERC721: transfer caller is not owner nor approved'
+      )
+
+      await assertRevert(
+        exclusiveMasksContract.batchTransferFrom(
+          holder,
+          anotherHolder,
+          [mask1, mask2, mask3],
+          fromHolder
         ),
         'ERC721: transfer caller is not owner nor approved'
       )
