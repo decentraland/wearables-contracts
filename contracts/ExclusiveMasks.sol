@@ -37,13 +37,13 @@ contract ExclusiveMasks is Ownable, ERC721Full {
 
 
     /**
-     * @dev Mint a new kind token.
+     * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
      * @param _kind - token kind
      */
-    function getToken(address _beneficiary, string calldata _kind) external {
-        require(msg.sender == allowed, "Only allowed can create tokens");
+    function issueToken(address _beneficiary, string calldata _kind) external {
+        require(msg.sender == allowed, "Only the `allowed` address can create tokens");
         bytes32 key = keccak256(abi.encodePacked(_kind));
         if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
             issued[key] = issued[key] + 1;
@@ -84,7 +84,7 @@ contract ExclusiveMasks is Ownable, ERC721Full {
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: URI query for nonexistent token");
+        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
         return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
     }
 
@@ -143,7 +143,7 @@ contract ExclusiveMasks is Ownable, ERC721Full {
      * @param _uri - string URI to assign
      */
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-        require(_exists(_tokenId), "ERC721Metadata: URI set of nonexistent token");
+        require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
         _tokenPaths[_tokenId] = _uri;
     }
 
