@@ -68,9 +68,9 @@ describe('ExclusiveMasks', function() {
       BASE_URI,
       creationParams
     )
-    await exclusiveMasksContract.getToken(holder, birdMask, fromUser)
-    await exclusiveMasksContract.getToken(holder, birdMask, fromUser)
-    await exclusiveMasksContract.getToken(anotherHolder, asianFox, fromUser)
+    await exclusiveMasksContract.issueToken(holder, birdMask, fromUser)
+    await exclusiveMasksContract.issueToken(holder, birdMask, fromUser)
+    await exclusiveMasksContract.issueToken(anotherHolder, asianFox, fromUser)
   })
 
   describe('Constructor', function() {
@@ -89,7 +89,7 @@ describe('ExclusiveMasks', function() {
 
   describe('Create', function() {
     it('should create a token', async function() {
-      await exclusiveMasksContract.getToken(
+      await exclusiveMasksContract.issueToken(
         anotherHolder,
         classicMask,
         fromUser
@@ -117,8 +117,12 @@ describe('ExclusiveMasks', function() {
 
     it('reverts when creating a token by not allowed user', async function() {
       await assertRevert(
-        exclusiveMasksContract.getToken(anotherHolder, classicMask, fromHacker),
-        'Only allowed can create tokens'
+        exclusiveMasksContract.issueToken(
+          anotherHolder,
+          classicMask,
+          fromHacker
+        ),
+        'Only the `allowed` address can create tokens'
       )
     })
   })
@@ -348,7 +352,7 @@ describe('ExclusiveMasks', function() {
       const maxKind = await exclusiveMasksContract.maxIssuance(classicMaskHash)
 
       for (let i = 0; i < maxKind.toNumber(); i++) {
-        await exclusiveMasksContract.getToken(holder, classicMask, fromUser)
+        await exclusiveMasksContract.issueToken(holder, classicMask, fromUser)
       }
 
       const issued = await exclusiveMasksContract.issued(classicMaskHash)
@@ -356,14 +360,14 @@ describe('ExclusiveMasks', function() {
       expect(issued).to.eq.BN(maxKind)
 
       await assertRevert(
-        exclusiveMasksContract.getToken(holder, classicMask, fromUser),
+        exclusiveMasksContract.issueToken(holder, classicMask, fromUser),
         'invalid: trying to issue an exhausted kind of nft'
       )
     })
 
     it('reverts when create an invalid kind', async function() {
       await assertRevert(
-        exclusiveMasksContract.getToken(holder, classicMask + 'a', fromUser),
+        exclusiveMasksContract.issueToken(holder, classicMask + 'a', fromUser),
         'invalid: trying to issue an exhausted kind of nft'
       )
     })
