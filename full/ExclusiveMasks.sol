@@ -1061,14 +1061,14 @@ contract ERC721Full is ERC721, ERC721Enumerable, ERC721Metadata {
     }
 }
 
-// File: contracts/ExclusiveMasks.sol
+// File: contracts/commons/ExclusiveERC721.sol
 
 pragma solidity ^0.5.11;
 
 
 
 
-contract ExclusiveMasks is Ownable, ERC721Full {
+contract ExclusiveERC721 is Ownable, ERC721Full {
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
     mapping(uint256 => string) internal _tokenPaths;
@@ -1078,26 +1078,15 @@ contract ExclusiveMasks is Ownable, ERC721Full {
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, string _kind, uint256 _kindId);
 
 
     /**
      * @dev Create the contract.
-     * @param _allowed - Address allowed to mint tokens
-     * @param _baseURI - base URI for token URIs
+     * @param _name - name of the contract
+     * @param _symbol - symbol of the contract
      */
-    constructor(address _allowed, string memory _baseURI) public ERC721Full("dcl://exclusive-masks", "DCLXM") {
-        allowed = _allowed;
-        baseURI = _baseURI;
-
-        maxIssuance[keccak256("bird_mask")] = 100;
-        maxIssuance[keccak256("classic_mask")] = 100;
-        maxIssuance[keccak256("clown_nose")] = 100;
-        maxIssuance[keccak256("asian_fox")] = 100;
-        maxIssuance[keccak256("killer_mask")] = 100;
-        maxIssuance[keccak256("serial_killer_mask")] = 100;
-        maxIssuance[keccak256("theater_mask")] = 100;
-        maxIssuance[keccak256("tropical_mask")] = 100;
-    }
+    constructor(string memory _name, string memory _symbol) public ERC721Full(_name, _symbol) { }
 
 
     /**
@@ -1117,6 +1106,7 @@ contract ExclusiveMasks is Ownable, ERC721Full {
                 tokenId,
                 string(abi.encodePacked(_kind, "/", uint2str(issued[key])))
             );
+            emit Issue(_beneficiary, tokenId, _kind, issued[key]);
         } else {
             revert("invalid: trying to issue an exhausted kind of nft");
         }
@@ -1234,5 +1224,32 @@ contract ExclusiveMasks is Ownable, ERC721Full {
             _i /= 10;
         }
         return string(bstr);
+    }
+}
+
+// File: contracts/ExclusiveMasks.sol
+
+pragma solidity ^0.5.11;
+
+
+
+contract ExclusiveMasks is ExclusiveERC721 {
+     /**
+     * @dev Create the contract.
+     * @param _allowed - Address allowed to mint tokens
+     * @param _baseURI - base URI for token URIs
+     */
+    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("dcl://exclusive-masks", "DCLXM") {
+        allowed = _allowed;
+        baseURI = _baseURI;
+
+        maxIssuance[keccak256("bird_mask")] = 100;
+        maxIssuance[keccak256("classic_mask")] = 100;
+        maxIssuance[keccak256("clown_nose")] = 100;
+        maxIssuance[keccak256("asian_fox")] = 100;
+        maxIssuance[keccak256("killer_mask")] = 100;
+        maxIssuance[keccak256("serial_killer_mask")] = 100;
+        maxIssuance[keccak256("theater_mask")] = 100;
+        maxIssuance[keccak256("tropical_mask")] = 100;
     }
 }
