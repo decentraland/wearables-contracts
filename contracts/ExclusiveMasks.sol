@@ -9,7 +9,7 @@ contract ExclusiveMasks is ExclusiveERC721 {
      * @param _allowed - Address allowed to mint tokens
      * @param _baseURI - base URI for token URIs
      */
-    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("dcl://exclusive-masks", "DCLXM") {
+    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("exclusive-masks", "DCLXM") {
         allowed = _allowed;
         baseURI = _baseURI;
 

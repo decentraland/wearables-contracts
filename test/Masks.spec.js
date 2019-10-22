@@ -14,5 +14,5 @@ const MASKS = [
 ]
 
 describe('ExclusiveTokens', function() {
-  testContract(ExclusiveMasks, 'dcl://exclusive-masks', 'DCLXM', MASKS)
+  testContract(ExclusiveMasks, 'exclusive-masks', 'DCLXM', MASKS)
 })

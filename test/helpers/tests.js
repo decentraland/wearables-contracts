@@ -3,8 +3,7 @@ import assertRevert from './assertRevert'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const BASE_URI =
-  'https://api-wearables.decentraland.org/v1/sets/exclusive-tokens/'
+let BASE_URI = 'https://api-wearables.decentraland.org/v1/collections/'
 
 export function testContract(Contract, contractName, contractSymbol, kinds) {
   describe('ExclusiveTokens', function() {
@@ -40,6 +39,8 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
 
     // Contracts
     let contractInstance
+
+    BASE_URI += `${contractName}/wearables/`
 
     beforeEach(async function() {
       // Create Listing environment
@@ -105,8 +106,8 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         expect(logs[1].event).to.be.equal('Issue')
         expect(logs[1].args._beneficiary).to.be.equal(anotherHolder)
         expect(logs[1].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
-        expect(logs[1].args._kind).to.be.equal(kind3)
-        expect(logs[1].args._kindId).to.eq.BN(issued)
+        expect(logs[1].args._wearableId).to.be.equal(kind3Hash)
+        expect(logs[1].args._issuedId).to.eq.BN(issued)
 
         // match owner
         const owner = await contractInstance.ownerOf(totalSupply.toNumber() - 1)
