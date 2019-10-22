@@ -1078,7 +1078,7 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
-    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, string _kind, uint256 _kindId);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, string indexed _wearableId, uint256 _issuedId);
 
 
     /**
@@ -1093,20 +1093,20 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
      * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
-     * @param _kind - token kind
+     * @param _wearableId - token kind
      */
-    function issueToken(address _beneficiary, string calldata _kind) external {
+    function issueToken(address _beneficiary, string calldata _wearableId) external {
         require(msg.sender == allowed, "Only the `allowed` address can create tokens");
-        bytes32 key = keccak256(abi.encodePacked(_kind));
+        bytes32 key = keccak256(abi.encodePacked(_wearableId));
         if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
             issued[key] = issued[key] + 1;
             uint tokenId = this.totalSupply();
             _mint(_beneficiary, tokenId);
             _setTokenURI(
                 tokenId,
-                string(abi.encodePacked(_kind, "/", uint2str(issued[key])))
+                string(abi.encodePacked(_wearableId, "/", uint2str(issued[key])))
             );
-            emit Issue(_beneficiary, tokenId, _kind, issued[key]);
+            emit Issue(_beneficiary, tokenId, _wearableId, issued[key]);
         } else {
             revert("invalid: trying to issue an exhausted kind of nft");
         }
@@ -1239,7 +1239,7 @@ contract ExclusiveMasks is ExclusiveERC721 {
      * @param _allowed - Address allowed to mint tokens
      * @param _baseURI - base URI for token URIs
      */
-    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("dcl://exclusive-masks", "DCLXM") {
+    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("exclusive-masks", "DCLXM") {
         allowed = _allowed;
         baseURI = _baseURI;
 
