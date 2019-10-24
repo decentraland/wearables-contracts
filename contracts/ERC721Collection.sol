@@ -58,8 +58,9 @@ contract ERC721Collection is Ownable, ERC721Full {
 
     /**
      * @dev Add a new wearable to the collection.
+     * @notice that this method should only allow wearableIds less than or equal to 32 bytes
      * @param _wearableIds - wearable ids
-     * @param _maxIssuances - total suppliy for the wearables
+     * @param _maxIssuances - total supply for the wearables
      */
     function addWearables(bytes32[] calldata _wearableIds, uint256[] calldata _maxIssuances) external onlyOwner {
         require(_wearableIds.length == _maxIssuances.length, "Parameters should have the same length");
@@ -81,8 +82,10 @@ contract ERC721Collection is Ownable, ERC721Full {
 
     /**
      * @dev Add a new wearable to the collection.
+     * @notice that this method allows wearableIds of any size. It should be used
+     * if a wearableId is greater than 32 bytes
      * @param _wearableId - wearable id
-     * @param _maxIssuance - total suppliy for the wearable
+     * @param _maxIssuance - total supply for the wearable
      */
     function addWearable(string calldata _wearableId, uint256 _maxIssuance) external onlyOwner {
         bytes32 key = keccak256(abi.encodePacked(_wearableId));
