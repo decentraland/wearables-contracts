@@ -27,6 +27,7 @@ export function testContract(
     const newWearable1 = 'new_exclusive_wearable_1'
     const issuance2 = 10
     const newWearable2 = 'new_exclusive_wearable_2'
+    const newLongWearable1 = 'new_exclusive_wearable_1_super_super_long'
 
     // tokens
     const token1 = 0
@@ -172,6 +173,68 @@ export function testContract(
       })
     })
 
+    describe('AddWearable', function() {
+      it('should add wearable', async function() {
+        const { logs } = await contractInstance.addWearable(
+          newWearable1,
+          issuance1
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('AddWearable')
+        expect(logs[0].args._wearableIdKey).to.be.equal(
+          web3.utils.soliditySha3(newWearable1)
+        )
+        expect(logs[0].args._wearableId).to.be.equal(newWearable1)
+        expect(logs[0].args._maxIssuance).to.be.eq.BN(issuance1)
+
+        const totalWearables = await contractInstance.wearablesCount()
+
+        const wearableId = await contractInstance.wearables(totalWearables - 1)
+        const max = await contractInstance.maxIssuance(
+          web3.utils.soliditySha3(wearableId)
+        )
+        expect(newWearable1).to.be.equal(wearableId)
+        expect(issuance1).to.be.eq.BN(max)
+      })
+
+      it('should add a long wearable id', async function() {
+        const { logs } = await contractInstance.addWearable(
+          newLongWearable1,
+          issuance1
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('AddWearable')
+        expect(logs[0].args._wearableIdKey).to.be.equal(
+          web3.utils.soliditySha3(newLongWearable1)
+        )
+        expect(logs[0].args._wearableId).to.be.equal(newLongWearable1)
+        expect(logs[0].args._maxIssuance).to.be.eq.BN(issuance1)
+      })
+
+      it('reverts if trying to modify an existing wearable', async function() {
+        await assertRevert(
+          contractInstance.addWearable(wearables[0].name, 10),
+          'Can not modify an existing wearable'
+        )
+      })
+
+      it('reverts if trying to add wearables with issuance of 0', async function() {
+        await assertRevert(
+          contractInstance.addWearable(newWearable1, 0),
+          'Max issuance should be greater than 0'
+        )
+      })
+
+      it('reverts if trying to add wearables by hacker', async function() {
+        await assertRevert(
+          contractInstance.addWearable(newWearable1, issuance1, fromHacker),
+          'Ownable: caller is not the owner'
+        )
+      })
+    })
+
     describe('AddWearables', function() {
       it('should add wearables', async function() {
         const { logs } = await contractInstance.addWearables(
@@ -196,6 +259,22 @@ export function testContract(
         )
         expect(logs[1].args._wearableId).to.be.equal(newWearable2)
         expect(logs[1].args._maxIssuance).to.be.eq.BN(issuance2)
+
+        const totalWearables = await contractInstance.wearablesCount()
+
+        let wearableId = await contractInstance.wearables(totalWearables - 2)
+        let max = await contractInstance.maxIssuance(
+          web3.utils.soliditySha3(wearableId)
+        )
+        expect(newWearable1).to.be.equal(wearableId)
+        expect(issuance1).to.be.eq.BN(max)
+
+        wearableId = await contractInstance.wearables(totalWearables - 1)
+        max = await contractInstance.maxIssuance(
+          web3.utils.soliditySha3(wearableId)
+        )
+        expect(newWearable2).to.be.equal(wearableId)
+        expect(issuance2).to.be.eq.BN(max)
       })
 
       it('reverts if trying to modify an existing wearable', async function() {

@@ -79,6 +79,23 @@ contract ERC721Collection is Ownable, ERC721Full {
         }
     }
 
+    /**
+     * @dev Add a new wearable to the collection.
+     * @param _wearableId - wearable id
+     * @param _maxIssuance - total suppliy for the wearable
+     */
+    function addWearable(string calldata _wearableId, uint256 _maxIssuance) external onlyOwner {
+        bytes32 key = keccak256(abi.encodePacked(_wearableId));
+
+        require(maxIssuance[key] == 0, "Can not modify an existing wearable");
+        require(_maxIssuance > 0, "Max issuance should be greater than 0");
+
+        maxIssuance[key] = _maxIssuance;
+        wearables.push(_wearableId);
+
+        emit AddWearable(key, _wearableId, _maxIssuance);
+    }
+
 
     /**
      * @dev Set Base URI.
