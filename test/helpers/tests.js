@@ -5,19 +5,28 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 let BASE_URI = 'https://api-wearables.decentraland.org/v1/collections/'
 
-export function testContract(Contract, contractName, contractSymbol, kinds) {
+export function testContract(
+  Contract,
+  contractName,
+  contractSymbol,
+  wearables
+) {
   describe('ExclusiveTokens', function() {
     this.timeout(100000)
 
     let creationParams
 
-    //kind
-    const kind1 = kinds[0].name
-    const kind2 = kinds[1].name
-    const kind3 = kinds[2].name
-    const kind1Hash = web3.utils.soliditySha3(kind1)
-    const kind2Hash = web3.utils.soliditySha3(kind2)
-    const kind3Hash = web3.utils.soliditySha3(kind3)
+    //wearable
+    const wearable1 = wearables[0].name
+    const wearable2 = wearables[1].name
+    const wearable3 = wearables[2].name
+    const wearable1Hash = web3.utils.soliditySha3(wearable1)
+    const wearable2Hash = web3.utils.soliditySha3(wearable2)
+    const wearable3Hash = web3.utils.soliditySha3(wearable3)
+    const issuance1 = 10
+    const newWearable1 = 'new_exclusive_wearable_1'
+    const issuance2 = 10
+    const newWearable2 = 'new_exclusive_wearable_2'
 
     // tokens
     const token1 = 0
@@ -42,6 +51,13 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
 
     BASE_URI += `${contractName}/wearables/`
 
+    async function setupWearables(contract) {
+      return contract.addWearables(
+        wearables.map(w => web3.utils.fromAscii(w.name)),
+        wearables.map(w => w.max)
+      )
+    }
+
     beforeEach(async function() {
       // Create Listing environment
       accounts = await web3.eth.getAccounts()
@@ -63,16 +79,30 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         gasPrice: 21e9
       }
 
-      contractInstance = await Contract.new(user, BASE_URI, creationParams)
+      contractInstance = await Contract.new(
+        contractName,
+        contractSymbol,
+        user,
+        BASE_URI,
+        creationParams
+      )
 
-      await contractInstance.issueToken(holder, kind1, fromUser)
-      await contractInstance.issueToken(holder, kind1, fromUser)
-      await contractInstance.issueToken(anotherHolder, kind2, fromUser)
+      await setupWearables(contractInstance)
+
+      await contractInstance.issueToken(holder, wearable1, fromUser)
+      await contractInstance.issueToken(holder, wearable1, fromUser)
+      await contractInstance.issueToken(anotherHolder, wearable2, fromUser)
     })
 
     describe('Constructor', function() {
       it('should be depoyed with valid arguments', async function() {
-        const contract = await Contract.new(user, BASE_URI, creationParams)
+        const contract = await Contract.new(
+          contractName,
+          contractSymbol,
+          user,
+          BASE_URI,
+          creationParams
+        )
 
         const baseURI = await contract.baseURI()
         const allowed = await contract.allowed()
@@ -85,6 +115,20 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         expect(owner).to.be.equal(deployer)
         expect(name).to.be.equal(contractName)
         expect(symbol).to.be.equal(contractSymbol)
+
+        await setupWearables(contract)
+        const wearableLength = await contract.wearablesCount()
+
+        expect(wearables.length).to.be.eq.BN(wearableLength)
+
+        for (let i = 0; i < wearableLength; i++) {
+          const wearableId = await contract.wearables(i)
+          const max = await contract.maxIssuance(
+            web3.utils.soliditySha3(wearableId)
+          )
+          expect(wearables[i].name).to.be.equal(wearableId)
+          expect(wearables[i].max).to.be.eq.BN(max)
+        }
       })
     })
 
@@ -92,12 +136,12 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
       it('should create a token', async function() {
         const { logs } = await contractInstance.issueToken(
           anotherHolder,
-          kind3,
+          wearable3,
           fromUser
         )
 
         // match issued
-        const issued = await contractInstance.issued(kind3Hash)
+        const issued = await contractInstance.issued(wearable3Hash)
         expect(issued).to.eq.BN(1)
 
         const totalSupply = await contractInstance.totalSupply()
@@ -106,7 +150,8 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         expect(logs[1].event).to.be.equal('Issue')
         expect(logs[1].args._beneficiary).to.be.equal(anotherHolder)
         expect(logs[1].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
-        expect(logs[1].args._wearableId).to.be.equal(kind3Hash)
+        expect(logs[1].args._wearableIdKey).to.be.equal(wearable3Hash)
+        expect(logs[1].args._wearableId).to.be.equal(wearable3)
         expect(logs[1].args._issuedId).to.eq.BN(issued)
 
         // match owner
@@ -114,15 +159,111 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
 
         expect(owner).to.be.equal(anotherHolder)
 
-        // match kind id
+        // match wearable id
         const uri = await contractInstance.tokenURI(totalSupply.toNumber() - 1)
         expect(issued).to.eq.BN(uri.split('/').pop())
       })
 
       it('reverts when creating a token by not allowed user', async function() {
         await assertRevert(
-          contractInstance.issueToken(anotherHolder, kind3, fromHacker),
+          contractInstance.issueToken(anotherHolder, wearable3, fromHacker),
           'Only the `allowed` address can create tokens'
+        )
+      })
+    })
+
+    describe('AddWearables', function() {
+      it('should add wearables', async function() {
+        const { logs } = await contractInstance.addWearables(
+          [
+            web3.utils.fromAscii(newWearable1),
+            web3.utils.fromAscii(newWearable2)
+          ],
+          [issuance1, issuance2]
+        )
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('AddWearable')
+        expect(logs[0].args._wearableIdKey).to.be.equal(
+          web3.utils.soliditySha3(newWearable1)
+        )
+        expect(logs[0].args._wearableId).to.be.equal(newWearable1)
+        expect(logs[0].args._maxIssuance).to.be.eq.BN(issuance1)
+
+        expect(logs[1].event).to.be.equal('AddWearable')
+        expect(logs[1].args._wearableIdKey).to.be.equal(
+          web3.utils.soliditySha3(newWearable2)
+        )
+        expect(logs[1].args._wearableId).to.be.equal(newWearable2)
+        expect(logs[1].args._maxIssuance).to.be.eq.BN(issuance2)
+      })
+
+      it('reverts if trying to modify an existing wearable', async function() {
+        await assertRevert(
+          contractInstance.addWearables(
+            [web3.utils.fromAscii(wearables[0].name)],
+            [10]
+          ),
+          'Can not modify an existing wearable'
+        )
+      })
+
+      it('reverts if trying to add wearables with invalid argument length', async function() {
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(wearables[0].name),
+              web3.utils.fromAscii(wearables[1].name)
+            ],
+            [10]
+          ),
+          'Parameters should have the same length'
+        )
+
+        await assertRevert(
+          contractInstance.addWearables(
+            [web3.utils.fromAscii(wearables[0].name)],
+            [10, 20]
+          ),
+          'Parameters should have the same length'
+        )
+      })
+
+      it('reverts if trying to add wearables with issuance of 0', async function() {
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(newWearable1),
+              web3.utils.fromAscii(newWearable2)
+            ],
+            [0, 10]
+          ),
+          'Max issuance should be greater than 0'
+        )
+
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(newWearable1),
+              web3.utils.fromAscii(newWearable2)
+            ],
+            [10, 0]
+          ),
+          'Max issuance should be greater than 0'
+        )
+      })
+
+      it('reverts if trying to add wearables by hacker', async function() {
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(newWearable1),
+              web3.utils.fromAscii(newWearable2)
+            ],
+            [issuance1, issuance2],
+            fromHacker
+          ),
+          'Ownable: caller is not the owner'
         )
       })
     })
@@ -321,9 +462,9 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
 
         const uri = await contractInstance.tokenURI(token1)
 
-        const kindId = uri.split('/').pop()
+        const wearableId = uri.split('/').pop()
 
-        expect(uri).to.be.equal(`${newBaseURI}${kind1}/${kindId}`)
+        expect(uri).to.be.equal(`${newBaseURI}${wearable1}/${wearableId}`)
       })
 
       it('reverts when not the owner try to change values', async function() {
@@ -340,33 +481,33 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
     })
 
     describe('Kinds', function() {
-      it('should manage kind', async function() {
-        let issued = await contractInstance.issued(kind1Hash)
+      it('should manage wearable', async function() {
+        let issued = await contractInstance.issued(wearable1Hash)
         expect(issued).to.eq.BN(2)
 
-        issued = await contractInstance.issued(kind2Hash)
+        issued = await contractInstance.issued(wearable2Hash)
         expect(issued).to.eq.BN(1)
       })
 
-      it('should reach kind limit', async function() {
-        const maxKind = await contractInstance.maxIssuance(kind3Hash)
+      it('should reach wearable limit', async function() {
+        const maxKind = await contractInstance.maxIssuance(wearable3Hash)
 
         for (let i = 0; i < maxKind.toNumber(); i++) {
-          await contractInstance.issueToken(holder, kind3, fromUser)
+          await contractInstance.issueToken(holder, wearable3, fromUser)
         }
 
-        const issued = await contractInstance.issued(kind3Hash)
+        const issued = await contractInstance.issued(wearable3Hash)
 
         expect(issued).to.eq.BN(maxKind)
 
         await assertRevert(
-          contractInstance.issueToken(holder, kind3, fromUser),
-          'invalid: trying to issue an exhausted kind of nft'
+          contractInstance.issueToken(holder, wearable3, fromUser),
+          'invalid: trying to issue an exhausted wearable of nft'
         )
       })
 
-      it('should be created with correct kinds and maximum', async function() {
-        for (let { name, max } of kinds) {
+      it('should be created with correct wearables and maximum', async function() {
+        for (let { name, max } of wearables) {
           const maxKind = await contractInstance.maxIssuance(
             web3.utils.soliditySha3(name)
           )
@@ -375,10 +516,10 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         }
       })
 
-      it('reverts when create an invalid kind', async function() {
+      it('reverts when create an invalid wearable', async function() {
         await assertRevert(
-          contractInstance.issueToken(holder, kind3 + 'a', fromUser),
-          'invalid: trying to issue an exhausted kind of nft'
+          contractInstance.issueToken(holder, wearable3 + 'a', fromUser),
+          'invalid: trying to issue an exhausted wearable of nft'
         )
       })
     })
@@ -388,9 +529,9 @@ export function testContract(Contract, contractName, contractSymbol, kinds) {
         const uri = await contractInstance.tokenURI(token1)
         const owner = await contractInstance.ownerOf(token1)
 
-        const kindId = uri.split('/').pop()
+        const wearableId = uri.split('/').pop()
 
-        expect(uri).to.be.equal(`${BASE_URI}${kind1}/${kindId}`)
+        expect(uri).to.be.equal(`${BASE_URI}${wearable1}/${wearableId}`)
         expect(owner).to.be.equal(holder)
       })
     })

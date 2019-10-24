@@ -1061,39 +1061,47 @@ contract ERC721Full is ERC721, ERC721Enumerable, ERC721Metadata {
     }
 }
 
-// File: contracts/commons/ExclusiveERC721.sol
+// File: contracts/ERC721Collection.sol
 
 pragma solidity ^0.5.11;
 
 
 
 
-contract ExclusiveERC721 is Ownable, ERC721Full {
+contract ERC721Collection is Ownable, ERC721Full {
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
     mapping(uint256 => string) internal _tokenPaths;
+
+    string[] public wearables;
 
     string public baseURI;
     address public allowed;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
-    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, string indexed _wearableId, uint256 _issuedId);
+    event AddWearable(bytes32 indexed _wearableIdKey, string _wearableId, uint256 _maxIssuance);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId, uint256 _issuedId);
 
 
     /**
      * @dev Create the contract.
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
+     * @param _allowed - Address allowed to mint tokens
+     * @param _baseURI - base URI for token URIs
      */
-    constructor(string memory _name, string memory _symbol) public ERC721Full(_name, _symbol) { }
+    constructor(string memory _name, string memory _symbol, address _allowed, string memory _baseURI) public ERC721Full(_name, _symbol) {
+        allowed = _allowed;
+        baseURI = _baseURI;
+    }
 
 
     /**
      * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
-     * @param _wearableId - token kind
+     * @param _wearableId - token wearable
      */
     function issueToken(address _beneficiary, string calldata _wearableId) external {
         require(msg.sender == allowed, "Only the `allowed` address can create tokens");
@@ -1106,11 +1114,35 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
                 tokenId,
                 string(abi.encodePacked(_wearableId, "/", uint2str(issued[key])))
             );
-            emit Issue(_beneficiary, tokenId, _wearableId, issued[key]);
+            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
         } else {
-            revert("invalid: trying to issue an exhausted kind of nft");
+            revert("invalid: trying to issue an exhausted wearable of nft");
         }
     }
+
+    /**
+     * @dev Add a new wearable to the collection.
+     * @param _wearableIds - wearable ids
+     * @param _maxIssuances - total suppliy for the wearables
+     */
+    function addWearables(bytes32[] calldata _wearableIds, uint256[] calldata _maxIssuances) external onlyOwner {
+        require(_wearableIds.length == _maxIssuances.length, "Parameters should have the same length");
+
+        for (uint256 i = 0; i < _wearableIds.length; i++) {
+            string memory wearableId = _bytes32ToString(_wearableIds[i]);
+            uint256 maximum = _maxIssuances[i];
+            bytes32 key = keccak256(abi.encodePacked(wearableId));
+
+            require(maxIssuance[key] == 0, "Can not modify an existing wearable");
+            require(maximum > 0, "Max issuance should be greater than 0");
+
+            maxIssuance[key] = maximum;
+            wearables.push(wearableId);
+
+            emit AddWearable(key, wearableId, maximum);
+        }
+    }
+
 
     /**
      * @dev Set Base URI.
@@ -1158,6 +1190,14 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
     }
 
     /**
+     * @dev Returns the wearables length.
+     * @return wearable length
+     */
+    function wearablesCount() external view returns (uint256) {
+        return wearables.length;
+    }
+
+    /**
      * @dev Safely transfers the ownership of given token IDs to another address
      * If the target address is a contract, it must implement {IERC721Receiver-onERC721Received},
      * which is called upon a safe transfer, and return the magic value
@@ -1190,7 +1230,7 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
         }
     }
 
-     /**
+    /**
      * @dev Internal function to set the token URI for a given token.
      * Reverts if the token ID does not exist.
      * @param _tokenId - uint256 ID of the token to set its URI
@@ -1199,6 +1239,28 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
         require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
         _tokenPaths[_tokenId] = _uri;
+    }
+
+    /**
+     * @dev Convert bytes32 to string.
+     * @param _x - to be converted to string.
+     * @return string
+     */
+    function _bytes32ToString(bytes32 _x) internal pure returns (string memory) {
+        bytes memory bytesString = new bytes(32);
+        uint charCount = 0;
+        for (uint j = 0; j < 32; j++) {
+            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
+            if (char != 0) {
+                bytesString[charCount] = char;
+                charCount++;
+            }
+        }
+        bytes memory bytesStringTrimmed = new bytes(charCount);
+        for (uint j = 0; j < charCount; j++) {
+            bytesStringTrimmed[j] = bytesString[j];
+        }
+        return string(bytesStringTrimmed);
     }
 
 
@@ -1224,32 +1286,5 @@ contract ExclusiveERC721 is Ownable, ERC721Full {
             _i /= 10;
         }
         return string(bstr);
-    }
-}
-
-// File: contracts/ExclusiveMasks.sol
-
-pragma solidity ^0.5.11;
-
-
-
-contract ExclusiveMasks is ExclusiveERC721 {
-     /**
-     * @dev Create the contract.
-     * @param _allowed - Address allowed to mint tokens
-     * @param _baseURI - base URI for token URIs
-     */
-    constructor(address _allowed, string memory _baseURI) public ExclusiveERC721("exclusive-masks", "DCLXM") {
-        allowed = _allowed;
-        baseURI = _baseURI;
-
-        maxIssuance[keccak256("bird_mask")] = 100;
-        maxIssuance[keccak256("classic_mask")] = 100;
-        maxIssuance[keccak256("clown_nose")] = 100;
-        maxIssuance[keccak256("asian_fox")] = 100;
-        maxIssuance[keccak256("killer_mask")] = 100;
-        maxIssuance[keccak256("serial_killer_mask")] = 100;
-        maxIssuance[keccak256("theater_mask")] = 100;
-        maxIssuance[keccak256("tropical_mask")] = 100;
     }
 }

@@ -1,6 +1,6 @@
 import { testContract } from './helpers/tests'
 
-const ExclusiveMasks = artifacts.require('ExclusiveMasks')
+const ERC721Collection = artifacts.require('ERC721Collection')
 
 const MASKS = [
   { name: 'bird_mask', max: 100 },
@@ -13,6 +13,6 @@ const MASKS = [
   { name: 'tropical_mask', max: 100 }
 ]
 
-describe('ExclusiveTokens', function() {
-  testContract(ExclusiveMasks, 'exclusive-masks', 'DCLXM', MASKS)
+describe('ExclusiveMasks', function() {
+  testContract(ERC721Collection, 'exclusive-masks', 'DCLXM', MASKS)
 })
