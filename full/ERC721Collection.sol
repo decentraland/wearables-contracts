@@ -1092,8 +1092,8 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _baseURI - base URI for token URIs
      */
     constructor(string memory _name, string memory _symbol, address _operator, string memory _baseURI) public ERC721Full(_name, _symbol) {
-        allowed[_operator] = true;
-        baseURI = _baseURI;
+        setAllowed(_operator, true);
+        setBaseURI(_baseURI);
     }
 
     modifier onlyAllowed() {
@@ -1131,7 +1131,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @dev Set Base URI.
      * @param _baseURI - base URI for token URIs
      */
-    function setBaseURI(string calldata _baseURI) external onlyOwner {
+    function setBaseURI(string memory _baseURI) public onlyOwner {
         emit BaseURI(baseURI, _baseURI);
         baseURI = _baseURI;
     }
@@ -1141,7 +1141,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _operator - Address allowed to issue tokens
      * @param _allowed - Whether is allowed or not
      */
-    function setAllowed(address _operator, bool _allowed) external onlyOwner {
+    function setAllowed(address _operator, bool _allowed) public onlyOwner {
         require(_operator != address(0), "Invalid address");
         require(allowed[_operator] != _allowed, "You should set a different value");
 
