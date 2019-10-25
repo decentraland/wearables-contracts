@@ -108,13 +108,13 @@ export function testContract(
         )
 
         const baseURI = await contract.baseURI()
-        const allowed = await contract.allowed()
+        const allowed = await contract.allowed(user)
         const owner = await contract.owner()
         const name = await contract.name()
         const symbol = await contract.symbol()
 
         expect(BASE_URI).to.be.equal(baseURI)
-        expect(user).to.be.equal(allowed)
+        expect(allowed).to.be.equal(true)
         expect(owner).to.be.equal(deployer)
         expect(name).to.be.equal(contractName)
         expect(symbol).to.be.equal(contractSymbol)
@@ -170,7 +170,7 @@ export function testContract(
       it('reverts when issuing a token by not allowed user', async function() {
         await assertRevert(
           contractInstance.issueToken(anotherHolder, wearable3, fromHacker),
-          'Only the `allowed` address can create tokens'
+          'Only an `allowed` address can issue tokens'
         )
       })
 
@@ -181,7 +181,7 @@ export function testContract(
         )
       })
 
-      it('reverts when issuing am invalid wearable', async function() {
+      it('reverts when issuing an invalid wearable', async function() {
         await assertRevert(
           contractInstance.issueToken(anotherHolder, invalidWearable, fromUser),
           'invalid: trying to issue an exhausted wearable of nft'
@@ -250,7 +250,7 @@ export function testContract(
             [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
             fromHacker
           ),
-          'Only the `allowed` address can create tokens'
+          'Only an `allowed` address can issue tokens'
         )
       })
 
@@ -288,7 +288,7 @@ export function testContract(
         )
       })
 
-      it('reverts when issuing am invalid wearable', async function() {
+      it('reverts when issuing an invalid wearable', async function() {
         await assertRevert(
           contractInstance.issueTokens(
             [anotherHolder, anotherHolder],
@@ -645,21 +645,41 @@ export function testContract(
 
     describe('Owner', function() {
       it('should set Allowed user', async function() {
-        let allowed = await contractInstance.allowed()
-        expect(user).to.be.equal(allowed)
+        let allowed = await contractInstance.allowed(user)
+        expect(allowed).to.be.equal(true)
 
         const { logs } = await contractInstance.setAllowed(
           anotherUser,
+          true,
           fromDeployer
         )
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('Allowed')
-        expect(logs[0].args._oldAllowed).to.be.equal(user)
-        expect(logs[0].args._newAllowed).to.be.equal(anotherUser)
+        expect(logs[0].args._operator).to.be.equal(anotherUser)
+        expect(logs[0].args._allowed).to.be.equal(true)
 
-        allowed = await contractInstance.allowed()
-        expect(anotherUser).to.be.equal(allowed)
+        allowed = await contractInstance.allowed(anotherUser)
+        expect(allowed).to.be.equal(true)
+      })
+
+      it('should remove Allowed user', async function() {
+        let allowed = await contractInstance.allowed(user)
+        expect(allowed).to.be.equal(true)
+
+        const { logs } = await contractInstance.setAllowed(
+          user,
+          false,
+          fromDeployer
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('Allowed')
+        expect(logs[0].args._operator).to.be.equal(user)
+        expect(logs[0].args._allowed).to.be.equal(false)
+
+        allowed = await contractInstance.allowed(user)
+        expect(allowed).to.be.equal(false)
       })
 
       it('should set Base Uri user', async function() {
@@ -688,15 +708,34 @@ export function testContract(
         expect(uri).to.be.equal(`${newBaseURI}${wearable1}/${wearableId}`)
       })
 
-      it('reverts when not the owner try to change values', async function() {
+      it('reverts when trying to change values by hacker', async function() {
         await assertRevert(
-          contractInstance.setAllowed(user, fromHacker),
+          contractInstance.setAllowed(user, true, fromHacker),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contractInstance.setBaseURI('', fromHacker),
           'Ownable: caller is not the owner'
+        )
+      })
+
+      it('reverts when trying to set an already allowed or not allowed user', async function() {
+        await assertRevert(
+          contractInstance.setAllowed(user, true, fromDeployer),
+          'You should set a different value'
+        )
+
+        await assertRevert(
+          contractInstance.setAllowed(anotherUser, false, fromDeployer),
+          'You should set a different value'
+        )
+      })
+
+      it('reverts when trying to set an already allowed or not allowed user', async function() {
+        await assertRevert(
+          contractInstance.setAllowed(ZERO_ADDRESS, true, fromDeployer),
+          'Invalid address'
         )
       })
     })
@@ -722,7 +761,7 @@ export function testContract(
         expect(issued).to.eq.BN(maxKind)
       })
 
-      it('should be created with correct wearables and maximum', async function() {
+      it('should be issued with correct wearables and maximum', async function() {
         for (let { name, max } of wearables) {
           const maxKind = await contractInstance.maxIssuance(
             web3.utils.soliditySha3(name)
@@ -732,7 +771,7 @@ export function testContract(
         }
       })
 
-      it('reverts when trying to create a full wearable', async function() {
+      it('reverts when trying to issue a full wearable', async function() {
         const maxKind = await contractInstance.maxIssuance(wearable3Hash)
 
         for (let i = 0; i < maxKind.toNumber(); i++) {
@@ -751,7 +790,7 @@ export function testContract(
     })
 
     describe('URI', function() {
-      it('should create tokens with correct URI', async function() {
+      it('should issue tokens with correct URI', async function() {
         const uri = await contractInstance.tokenURI(token1)
         const owner = await contractInstance.ownerOf(token1)
 

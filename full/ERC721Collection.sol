@@ -1072,14 +1072,14 @@ contract ERC721Collection is Ownable, ERC721Full {
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
     mapping(uint256 => string) internal _tokenPaths;
+    mapping(address => bool) public allowed;
 
     string[] public wearables;
 
     string public baseURI;
-    address public allowed;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
-    event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
+    event Allowed(address indexed _operator, bool _allowed);
     event AddWearable(bytes32 indexed _wearableIdKey, string _wearableId, uint256 _maxIssuance);
     event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId, uint256 _issuedId);
 
@@ -1088,12 +1088,17 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @dev Create the contract.
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
-     * @param _allowed - Address allowed to mint tokens
+     * @param _operator - Address allowed to mint tokens
      * @param _baseURI - base URI for token URIs
      */
-    constructor(string memory _name, string memory _symbol, address _allowed, string memory _baseURI) public ERC721Full(_name, _symbol) {
-        allowed = _allowed;
+    constructor(string memory _name, string memory _symbol, address _operator, string memory _baseURI) public ERC721Full(_name, _symbol) {
+        allowed[_operator] = true;
         baseURI = _baseURI;
+    }
+
+    modifier onlyAllowed() {
+        require(allowed[msg.sender], "Only an `allowed` address can issue tokens");
+        _;
     }
 
 
@@ -1103,8 +1108,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _beneficiary - owner of the token
      * @param _wearableId - token wearable
      */
-    function issueToken(address _beneficiary, string calldata _wearableId) external {
-        require(msg.sender == allowed, "Only the `allowed` address can create tokens");
+    function issueToken(address _beneficiary, string calldata _wearableId) external onlyAllowed {
         _issueToken(_beneficiary, _wearableId);
     }
 
@@ -1114,8 +1118,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _beneficiaries - owner of the tokens
      * @param _wearableIds - token wearables
      */
-    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external {
-        require(msg.sender == allowed, "Only the `allowed` address can create tokens");
+    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external onlyAllowed {
         require(_beneficiaries.length == _wearableIds.length, "Parameters should have the same length");
 
         for(uint256 i = 0; i < _wearableIds.length; i++) {
@@ -1135,11 +1138,15 @@ contract ERC721Collection is Ownable, ERC721Full {
 
     /**
      * @dev Set allowed account to issue tokens.
-     * @param _allowed - Address allowed to issue tokens
+     * @param _operator - Address allowed to issue tokens
+     * @param _allowed - Whether is allowed or not
      */
-    function setAllowed(address _allowed) external onlyOwner {
-        emit Allowed(allowed, _allowed);
-        allowed = _allowed;
+    function setAllowed(address _operator, bool _allowed) external onlyOwner {
+        require(_operator != address(0), "Invalid address");
+        require(allowed[_operator] != _allowed, "You should set a different value");
+
+        allowed[_operator] = _allowed;
+        emit Allowed(_operator, _allowed);
     }
 
 
