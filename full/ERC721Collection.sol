@@ -1105,41 +1105,21 @@ contract ERC721Collection is Ownable, ERC721Full {
      */
     function issueToken(address _beneficiary, string calldata _wearableId) external {
         require(msg.sender == allowed, "Only the `allowed` address can create tokens");
-        bytes32 key = keccak256(abi.encodePacked(_wearableId));
-        if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
-            issued[key] = issued[key] + 1;
-            uint tokenId = this.totalSupply();
-            _mint(_beneficiary, tokenId);
-            _setTokenURI(
-                tokenId,
-                string(abi.encodePacked(_wearableId, "/", uint2str(issued[key])))
-            );
-            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
-        } else {
-            revert("invalid: trying to issue an exhausted wearable of nft");
-        }
+        _issueToken(_beneficiary, _wearableId);
     }
 
     /**
-     * @dev Add a new wearable to the collection.
-     * @param _wearableIds - wearable ids
-     * @param _maxIssuances - total suppliy for the wearables
+     * @dev Issue NFTs.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiaries - owner of the tokens
+     * @param _wearableIds - token wearables
      */
-    function addWearables(bytes32[] calldata _wearableIds, uint256[] calldata _maxIssuances) external onlyOwner {
-        require(_wearableIds.length == _maxIssuances.length, "Parameters should have the same length");
+    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external {
+        require(msg.sender == allowed, "Only the `allowed` address can create tokens");
+        require(_beneficiaries.length == _wearableIds.length, "Parameters should have the same length");
 
-        for (uint256 i = 0; i < _wearableIds.length; i++) {
-            string memory wearableId = _bytes32ToString(_wearableIds[i]);
-            uint256 maximum = _maxIssuances[i];
-            bytes32 key = keccak256(abi.encodePacked(wearableId));
-
-            require(maxIssuance[key] == 0, "Can not modify an existing wearable");
-            require(maximum > 0, "Max issuance should be greater than 0");
-
-            maxIssuance[key] = maximum;
-            wearables.push(wearableId);
-
-            emit AddWearable(key, wearableId, maximum);
+        for(uint256 i = 0; i < _wearableIds.length; i++) {
+            _issueToken(_beneficiaries[i], _bytes32ToString(_wearableIds[i]));
         }
     }
 
@@ -1197,6 +1177,39 @@ contract ERC721Collection is Ownable, ERC721Full {
         return wearables.length;
     }
 
+     /**
+     * @dev Add a new wearable to the collection.
+     * @notice that this method should only allow wearableIds less than or equal to 32 bytes
+     * @param _wearableIds - wearable ids
+     * @param _maxIssuances - total supply for the wearables
+     */
+    function addWearables(bytes32[] calldata _wearableIds, uint256[] calldata _maxIssuances) external onlyOwner {
+        require(_wearableIds.length == _maxIssuances.length, "Parameters should have the same length");
+
+        for (uint256 i = 0; i < _wearableIds.length; i++) {
+            addWearable(_bytes32ToString(_wearableIds[i]), _maxIssuances[i]);
+        }
+    }
+
+    /**
+     * @dev Add a new wearable to the collection.
+     * @notice that this method allows wearableIds of any size. It should be used
+     * if a wearableId is greater than 32 bytes
+     * @param _wearableId - wearable id
+     * @param _maxIssuance - total supply for the wearable
+     */
+    function addWearable(string memory _wearableId, uint256 _maxIssuance) public onlyOwner {
+        bytes32 key = getWearableKey(_wearableId);
+
+        require(maxIssuance[key] == 0, "Can not modify an existing wearable");
+        require(_maxIssuance > 0, "Max issuance should be greater than 0");
+
+        maxIssuance[key] = _maxIssuance;
+        wearables.push(_wearableId);
+
+        emit AddWearable(key, _wearableId, _maxIssuance);
+    }
+
     /**
      * @dev Safely transfers the ownership of given token IDs to another address
      * If the target address is a contract, it must implement {IERC721Receiver-onERC721Received},
@@ -1227,6 +1240,41 @@ contract ERC721Collection is Ownable, ERC721Full {
     function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) public {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             safeTransferFrom(_from, _to, _tokenIds[i], _data);
+        }
+    }
+
+    /**
+     * @dev Get keccak256 of a wearableId.
+     * @param _wearableId - token wearable
+     * @return bytes32 keccak256 of the wearableId
+     */
+    function getWearableKey(string memory _wearableId) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_wearableId));
+    }
+
+    /**
+     * @dev Issue a new NFT of the specified kind.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _wearableId - token wearable
+     */
+    function _issueToken(address _beneficiary, string memory _wearableId) internal {
+        require(_beneficiary != address(0), "Invalid beneficiary");
+
+        bytes32 key = getWearableKey(_wearableId);
+        if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
+            issued[key] = issued[key] + 1;
+            uint tokenId = this.totalSupply();
+
+            _mint(_beneficiary, tokenId);
+            _setTokenURI(
+                tokenId,
+                string(abi.encodePacked(_wearableId, "/", _uintToString(issued[key])))
+            );
+
+            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
+        } else {
+            revert("invalid: trying to issue an exhausted wearable of nft");
         }
     }
 
@@ -1269,7 +1317,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _i - uint256 to be converted to string.
      * @return uint in string
      */
-    function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
+    function _uintToString(uint _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
             return "0";
         }

@@ -29,6 +29,7 @@ export function testContract(
     const issuance2 = 10
     const newWearable2 = 'new_exclusive_wearable_2'
     const newLongWearable1 = 'new_exclusive_wearable_1_super_super_long'
+    const invalidWearable = 'invalid_wearable'
 
     // tokens
     const token1 = 0
@@ -179,6 +180,13 @@ export function testContract(
           'Invalid beneficiary'
         )
       })
+
+      it('reverts when issuing am invalid wearable', async function() {
+        await assertRevert(
+          contractInstance.issueToken(anotherHolder, invalidWearable, fromUser),
+          'invalid: trying to issue an exhausted wearable of nft'
+        )
+      })
     })
 
     describe('issueTokens', function() {
@@ -277,6 +285,20 @@ export function testContract(
             fromUser
           ),
           'Invalid beneficiary'
+        )
+      })
+
+      it('reverts when issuing am invalid wearable', async function() {
+        await assertRevert(
+          contractInstance.issueTokens(
+            [anotherHolder, anotherHolder],
+            [
+              web3.utils.fromAscii(invalidWearable),
+              web3.utils.fromAscii(wearable3)
+            ],
+            fromUser
+          ),
+          'invalid: trying to issue an exhausted wearable of nft'
         )
       })
     })
@@ -679,7 +701,7 @@ export function testContract(
       })
     })
 
-    describe('Kinds', function() {
+    describe('Issuances', function() {
       it('should manage wearable', async function() {
         let issued = await contractInstance.issued(wearable1Hash)
         expect(issued).to.eq.BN(2)
@@ -698,11 +720,6 @@ export function testContract(
         const issued = await contractInstance.issued(wearable3Hash)
 
         expect(issued).to.eq.BN(maxKind)
-
-        await assertRevert(
-          contractInstance.issueToken(holder, wearable3, fromUser),
-          'invalid: trying to issue an exhausted wearable of nft'
-        )
       })
 
       it('should be created with correct wearables and maximum', async function() {
@@ -715,9 +732,19 @@ export function testContract(
         }
       })
 
-      it('reverts when create an invalid wearable', async function() {
+      it('reverts when trying to create a full wearable', async function() {
+        const maxKind = await contractInstance.maxIssuance(wearable3Hash)
+
+        for (let i = 0; i < maxKind.toNumber(); i++) {
+          await contractInstance.issueToken(holder, wearable3, fromUser)
+        }
+
+        const issued = await contractInstance.issued(wearable3Hash)
+
+        expect(issued).to.eq.BN(maxKind)
+
         await assertRevert(
-          contractInstance.issueToken(holder, wearable3 + 'a', fromUser),
+          contractInstance.issueToken(holder, wearable3, fromUser),
           'invalid: trying to issue an exhausted wearable of nft'
         )
       })
