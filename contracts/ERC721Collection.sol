@@ -202,8 +202,6 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _wearableId - token wearable
      */
     function _issueToken(address _beneficiary, string memory _wearableId) internal {
-        require(_beneficiary != address(0), "Invalid beneficiary");
-
         bytes32 key = getWearableKey(_wearableId);
         if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
             issued[key] = issued[key] + 1;

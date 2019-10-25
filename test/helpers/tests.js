@@ -177,7 +177,7 @@ export function testContract(
       it('reverts when issuing a token to an invalid address', async function() {
         await assertRevert(
           contractInstance.issueToken(ZERO_ADDRESS, wearable3, fromUser),
-          'Invalid beneficiary'
+          'ERC721: mint to the zero address'
         )
       })
 
@@ -284,7 +284,7 @@ export function testContract(
             [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
             fromUser
           ),
-          'Invalid beneficiary'
+          'ERC721: mint to the zero address'
         )
       })
 
