@@ -70,8 +70,8 @@ contract ERC721Collection is Ownable, ERC721Full {
     }
 
     /**
-     * @dev Set Base URI.
-     * @param _allowed - Address allowed to mint tokens
+     * @dev Set allowed account to issue tokens.
+     * @param _allowed - Address allowed to issue tokens
      */
     function setAllowed(address _allowed) external onlyOwner {
         emit Allowed(allowed, _allowed);
@@ -82,7 +82,7 @@ contract ERC721Collection is Ownable, ERC721Full {
     /**
      * @dev Returns an URI for a given token ID.
      * Throws if the token ID does not exist. May return an empty string.
-     * @param _tokenId - uint256 ID of the token to query
+     * @param _tokenId - uint256 ID of the token queried
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
@@ -217,7 +217,7 @@ contract ERC721Collection is Ownable, ERC721Full {
     /**
      * @dev Internal function to set the token URI for a given token.
      * Reverts if the token ID does not exist.
-     * @param _tokenId - uint256 ID of the token to set its URI
+     * @param _tokenId - uint256 ID of the token to set as its URI
      * @param _uri - string URI to assign
      */
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
