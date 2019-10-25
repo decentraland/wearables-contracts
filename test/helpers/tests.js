@@ -3,6 +3,7 @@ import assertRevert from './assertRevert'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 let BASE_URI = 'https://api-wearables.decentraland.org/v1/collections/'
 
 export function testContract(
@@ -124,17 +125,17 @@ export function testContract(
 
         for (let i = 0; i < wearableLength; i++) {
           const wearableId = await contract.wearables(i)
-          const max = await contract.maxIssuance(
-            web3.utils.soliditySha3(wearableId)
-          )
+          const hash = await contract.getWearableKey(wearableId)
+          const max = await contract.maxIssuance(hash)
+
           expect(wearables[i].name).to.be.equal(wearableId)
           expect(wearables[i].max).to.be.eq.BN(max)
         }
       })
     })
 
-    describe('Create', function() {
-      it('should create a token', async function() {
+    describe('issueToken', function() {
+      it('should issue a token', async function() {
         const { logs } = await contractInstance.issueToken(
           anotherHolder,
           wearable3,
@@ -165,10 +166,117 @@ export function testContract(
         expect(issued).to.eq.BN(uri.split('/').pop())
       })
 
-      it('reverts when creating a token by not allowed user', async function() {
+      it('reverts when issuing a token by not allowed user', async function() {
         await assertRevert(
           contractInstance.issueToken(anotherHolder, wearable3, fromHacker),
           'Only the `allowed` address can create tokens'
+        )
+      })
+
+      it('reverts when issuing a token to an invalid address', async function() {
+        await assertRevert(
+          contractInstance.issueToken(ZERO_ADDRESS, wearable3, fromUser),
+          'Invalid beneficiary'
+        )
+      })
+    })
+
+    describe('issueTokens', function() {
+      it('should issue multiple token', async function() {
+        const { logs } = await contractInstance.issueTokens(
+          [holder, anotherHolder],
+          [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
+          fromUser
+        )
+
+        // Wearable3
+        // match issued
+        let issued = await contractInstance.issued(wearable2Hash)
+        expect(issued).to.eq.BN(2) // first one at  contract set up::beforeeach
+
+        const totalSupply = await contractInstance.totalSupply()
+
+        expect(logs.length).to.be.equal(4)
+        expect(logs[1].event).to.be.equal('Issue')
+        expect(logs[1].args._beneficiary).to.be.equal(holder)
+        expect(logs[1].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 2)
+        expect(logs[1].args._wearableIdKey).to.be.equal(wearable2Hash)
+        expect(logs[1].args._wearableId).to.be.equal(wearable2)
+        expect(logs[1].args._issuedId).to.eq.BN(issued)
+
+        // match owner
+        let owner = await contractInstance.ownerOf(totalSupply.toNumber() - 2)
+
+        expect(owner).to.be.equal(holder)
+
+        // match wearable id
+        let uri = await contractInstance.tokenURI(totalSupply.toNumber() - 2)
+        expect(issued).to.eq.BN(uri.split('/').pop())
+
+        // Wearable3
+        // match issued
+        issued = await contractInstance.issued(wearable3Hash)
+        expect(issued).to.eq.BN(1) // first one at  contract set up::beforeeach
+
+        expect(logs[3].event).to.be.equal('Issue')
+        expect(logs[3].args._beneficiary).to.be.equal(anotherHolder)
+        expect(logs[3].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
+        expect(logs[3].args._wearableIdKey).to.be.equal(wearable3Hash)
+        expect(logs[3].args._wearableId).to.be.equal(wearable3)
+        expect(logs[3].args._issuedId).to.eq.BN(issued)
+
+        // match owner
+        owner = await contractInstance.ownerOf(totalSupply.toNumber() - 1)
+
+        expect(owner).to.be.equal(anotherHolder)
+
+        // match wearable id
+        uri = await contractInstance.tokenURI(totalSupply.toNumber() - 1)
+        expect(issued).to.eq.BN(uri.split('/').pop())
+      })
+
+      it('reverts when issuing a token by not allowed user', async function() {
+        await assertRevert(
+          contractInstance.issueTokens(
+            [holder, anotherHolder],
+            [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
+            fromHacker
+          ),
+          'Only the `allowed` address can create tokens'
+        )
+      })
+
+      it('reverts if trying to issue tokens with invalid argument length', async function() {
+        await assertRevert(
+          contractInstance.issueTokens(
+            [user],
+            [
+              web3.utils.fromAscii(wearables[0].name),
+              web3.utils.fromAscii(wearables[1].name)
+            ],
+            fromUser
+          ),
+          'Parameters should have the same length'
+        )
+
+        await assertRevert(
+          contractInstance.issueTokens(
+            [user, anotherUser],
+            [web3.utils.fromAscii(wearables[0].name)],
+            fromUser
+          ),
+          'Parameters should have the same length'
+        )
+      })
+
+      it('reverts when issuing a token to an invalid address', async function() {
+        await assertRevert(
+          contractInstance.issueTokens(
+            [anotherHolder, ZERO_ADDRESS],
+            [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
+            fromUser
+          ),
+          'Invalid beneficiary'
         )
       })
     })
@@ -497,6 +605,18 @@ export function testContract(
             fromHolder
           ),
           'ERC721: transfer caller is not owner nor approved'
+        )
+      })
+
+      it('reverts when beneficiary is 0 address', async function() {
+        await assertRevert(
+          contractInstance.batchTransferFrom(
+            holder,
+            ZERO_ADDRESS,
+            [token1, token2],
+            fromHolder
+          ),
+          'ERC721: transfer to the zero address'
         )
       })
     })
