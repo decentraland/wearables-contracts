@@ -4,5 +4,7 @@ build
 .DS_Store
 node_modules
 artifacts
-cache 
+cache
 .zos.session
+.coverage_env
+.solidity_coverage
