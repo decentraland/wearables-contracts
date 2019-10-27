@@ -839,6 +839,17 @@ export function testContract(
           contractInstance.addWearable(newWearable2, issuance2),
           'The collection is complete'
         )
+
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(newWearable1),
+              web3.utils.fromAscii(newWearable2)
+            ],
+            [issuance1, issuance2]
+          ),
+          'The collection is complete'
+        )
       })
 
       it('reverts when completing collection twice', async function() {
