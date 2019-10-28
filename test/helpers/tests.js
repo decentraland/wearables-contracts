@@ -816,10 +816,16 @@ export function testContract(
 
     describe('completeCollection', function() {
       it('should complete collection', async function() {
+        let isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(false)
+
         const { logs } = await contractInstance.completeCollection()
 
         expect(logs.length).to.equal(1)
         expect(logs[0].event).to.equal('Complete')
+
+        isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(true)
       })
 
       it('should issue tokens after complete the collection', async function() {
@@ -831,9 +837,15 @@ export function testContract(
       })
 
       it('reverts when trying to add a wearable after the collection is completed', async function() {
+        let isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(false)
+
         await contractInstance.addWearable(newWearable1, issuance1)
 
         await contractInstance.completeCollection()
+
+        isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(true)
 
         await assertRevert(
           contractInstance.addWearable(newWearable2, issuance2),

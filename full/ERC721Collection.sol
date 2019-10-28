@@ -1077,7 +1077,7 @@ contract ERC721Collection is Ownable, ERC721Full {
     string[] public wearables;
 
     string public baseURI;
-    bool public complete;
+    bool public isComplete;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _operator, bool _allowed);
@@ -1190,8 +1190,8 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @dev Complete the collection.
      */
     function completeCollection() external onlyOwner {
-        require(!complete, "The collection is already completed");
-        complete = true;
+        require(!isComplete, "The collection is already completed");
+        isComplete = true;
         emit Complete();
     }
 
@@ -1217,7 +1217,7 @@ contract ERC721Collection is Ownable, ERC721Full {
      * @param _maxIssuance - total supply for the wearable
      */
     function addWearable(string memory _wearableId, uint256 _maxIssuance) public onlyOwner {
-        require(!complete, "The collection is complete");
+        require(!isComplete, "The collection is complete");
         bytes32 key = getWearableKey(_wearableId);
 
         require(maxIssuance[key] == 0, "Can not modify an existing wearable");
