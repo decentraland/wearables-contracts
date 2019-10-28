@@ -1188,6 +1188,8 @@ contract ERC721Collection is Ownable, ERC721Full {
 
     /**
      * @dev Complete the collection.
+     * @notice that it will only prevent for adding more wearables.
+     * The issuance is still allowed.
      */
     function completeCollection() external onlyOwner {
         require(!isComplete, "The collection is already completed");
