@@ -172,6 +172,11 @@ export function testContract(
           contractInstance.issueToken(anotherHolder, wearable3, fromHacker),
           'Only an `allowed` address can issue tokens'
         )
+
+        await assertRevert(
+          contractInstance.issueToken(anotherHolder, wearable3),
+          'Only an `allowed` address can issue tokens'
+        )
       })
 
       it('reverts when issuing a token to an invalid address', async function() {
@@ -249,6 +254,14 @@ export function testContract(
             [holder, anotherHolder],
             [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)],
             fromHacker
+          ),
+          'Only an `allowed` address can issue tokens'
+        )
+
+        await assertRevert(
+          contractInstance.issueTokens(
+            [holder, anotherHolder],
+            [web3.utils.fromAscii(wearable2), web3.utils.fromAscii(wearable3)]
           ),
           'Only an `allowed` address can issue tokens'
         )
@@ -798,6 +811,80 @@ export function testContract(
 
         expect(uri).to.be.equal(`${BASE_URI}${wearable1}/${wearableId}`)
         expect(owner).to.be.equal(holder)
+      })
+    })
+
+    describe('completeCollection', function() {
+      it('should complete collection', async function() {
+        let isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(false)
+
+        const { logs } = await contractInstance.completeCollection()
+
+        expect(logs.length).to.equal(1)
+        expect(logs[0].event).to.equal('Complete')
+
+        isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(true)
+      })
+
+      it('should issue tokens after complete the collection', async function() {
+        await contractInstance.completeCollection()
+
+        await contractInstance.issueToken(holder, wearable1, fromUser)
+        await contractInstance.issueToken(anotherHolder, wearable1, fromUser)
+        await contractInstance.issueToken(anotherHolder, wearable2, fromUser)
+      })
+
+      it('reverts when trying to add a wearable after the collection is completed', async function() {
+        let isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(false)
+
+        await contractInstance.addWearable(newWearable1, issuance1)
+
+        await contractInstance.completeCollection()
+
+        isComplete = await contractInstance.isComplete()
+        expect(isComplete).to.be.equal(true)
+
+        await assertRevert(
+          contractInstance.addWearable(newWearable2, issuance2),
+          'The collection is complete'
+        )
+
+        await assertRevert(
+          contractInstance.addWearables(
+            [
+              web3.utils.fromAscii(newWearable1),
+              web3.utils.fromAscii(newWearable2)
+            ],
+            [issuance1, issuance2]
+          ),
+          'The collection is complete'
+        )
+      })
+
+      it('reverts when completing collection twice', async function() {
+        await contractInstance.completeCollection()
+
+        await assertRevert(
+          contractInstance.completeCollection(),
+          'The collection is already completed'
+        )
+      })
+
+      it('reverts when completing collection by hacker', async function() {
+        await contractInstance.completeCollection()
+
+        await assertRevert(
+          contractInstance.completeCollection(fromUser),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          contractInstance.completeCollection(fromHacker),
+          'Ownable: caller is not the owner'
+        )
       })
     })
   })
