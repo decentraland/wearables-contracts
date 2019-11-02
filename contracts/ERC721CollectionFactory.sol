@@ -146,7 +146,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * to allow OpenSea to mint tokens.
      * OpenSea uses the Wyvern Protocol https://docs.opensea.io/docs/opensea-partners-program
      * @param _operator - Address allowed to issue tokens
-     * @param _allowed - Whether is allowed or not
      */
      // Should be used to return the address to be set as setAllowed
     function proxies(address _operator) public view returns (address) {
