@@ -13,14 +13,12 @@ contract DummyERC721CollectionFactory is ERC721CollectionFactory, EventsInterfac
         string memory _name,
         string memory _symbol,
         string memory _baseURI,
-        address _allowed,
         ProxyRegistry _proxyRegistry,
         ERC721Collection _erc721Collection
     )  ERC721CollectionFactory (
           _name,
           _symbol,
           _baseURI,
-          _allowed,
           _proxyRegistry,
           _erc721Collection
     ) public {}

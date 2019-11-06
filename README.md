@@ -25,18 +25,3 @@ OpenSea uses the Wyvern Protocol https://docs.opensea.io/docs/opensea-partners-p
 A proxy to this address will be created once the address first interacts with OpenSea.
 
 The contracts for the ProxyRegistry can be seen [here](https://github.com/ProjectOpenSea/opensea-creatures/blob/master/migrations/2_deploy_contracts.js). Calling `proxies` on the Mainnet contract, the user can check if a proxy address was created for her address.
-
-Only the owner of the contract can set the address allowed to create option orders by calling:
-
-```javascript
-// I want to allow the address 0x1234 to create orders for the factory options
-await Factory.setAllowed('0x1234', { from: owner })
-```
-
-If you want to remove the allowed address you can do:
-
-```javascript
-await Factory.setAllowed('0x00...0', { from: owner })
-```
-
-It is recommended that the owner of the factory be a Multisig contract.

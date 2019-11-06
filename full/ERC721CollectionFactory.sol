@@ -1429,8 +1429,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
     string public symbol;
     string public baseURI;
 
-    address public allowed;
-
     ProxyRegistry public proxyRegistry;
     ERC721Collection public erc721Collection;
 
@@ -1443,7 +1441,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
      * @param _baseURI - base URI for token URIs
-     * @param _allowed - Address allowed to mint tokens
      * @param _proxyRegistry - Address of the ProxyRegistry using at OpenSea
      * @param _erc721Collection - Address of the collection
      */
@@ -1451,7 +1448,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
         string memory _name,
         string memory _symbol,
         string memory _baseURI,
-        address _allowed,
         ProxyRegistry _proxyRegistry,
         ERC721Collection _erc721Collection
       )
@@ -1460,13 +1456,12 @@ contract ERC721CollectionFactory is Ownable, Factory {
         symbol = _symbol;
         proxyRegistry = _proxyRegistry;
         erc721Collection = _erc721Collection;
-        setAllowed(_allowed);
         setBaseURI(_baseURI);
 
     }
 
     modifier onlyAllowed() {
-        require(address(proxyRegistry.proxies(allowed)) == msg.sender, "Only `allowed` proxy can issue tokens");
+        require(address(proxyRegistry.proxies(owner())) == msg.sender, "Only `allowed` proxy can issue tokens");
         _;
     }
 
@@ -1536,18 +1531,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
     }
 
     /**
-     * @dev Set allowed account to issue tokens.
-     * @param _allowed - Address allowed to issue tokens
-     */
-    function setAllowed(address _allowed) public onlyOwner {
-        emit Allowed(allowed, _allowed);
-
-        require(allowed != _allowed, "You should set a different value");
-
-        allowed = _allowed;
-    }
-
-    /**
      * @dev Get the proxy address used at OpenSea.
      * @notice that this address should be used at setAllowed method
      * to allow OpenSea to mint tokens.
@@ -1572,18 +1555,18 @@ contract ERC721CollectionFactory is Ownable, Factory {
     * Use isApprovedForAll so the frontend doesn't have to worry about different method names.
     */
     function isApprovedForAll(
-        address _allowed,
+        address _owner,
         address _operator
     )
       public
       view
       returns (bool)
     {
-        if (allowed == _allowed && _allowed == _operator) {
+        if (owner() == _owner && _owner == _operator) {
             return true;
         }
 
-        if (allowed == _allowed && address(proxyRegistry.proxies(_allowed)) == _operator) {
+        if (owner() == _owner && address(proxyRegistry.proxies(_owner)) == _operator) {
             return true;
         }
 
@@ -1595,7 +1578,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
     * Use isApprovedForAll so the frontend doesn't have to worry about different method names.
     */
     function ownerOf(uint256 /*_tokenId*/) public view returns (address _owner) {
-        return allowed;
+        return owner();
     }
 
     function _wearableByOptionId(uint256 _optionId) internal view returns (string memory){

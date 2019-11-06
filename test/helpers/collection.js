@@ -3,7 +3,8 @@ const ERC721Collection = artifacts.require('ERC721Collection')
 export const name = 'DummyCollection'
 export const symbol = 'SymbolCollection'
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-export const BASE_URI = 'https://api-wearables.decentraland.org/v1/collections/'
+export const BASE_URI =
+  'https://api-wearables.decentraland.org/v1/standards/erc721-metadata/collections/'
 
 export const WEARABLES = [
   { name: 'bird_mask', max: 100 },
@@ -30,7 +31,7 @@ export async function createDummyCollection(options) {
   return contract
 }
 
-export async function setupWearables(contract, wearables) {
+export async function setupWearables(contract, wearables = WEARABLES) {
   return contract.addWearables(
     wearables.map(w => web3.utils.fromAscii(w.name)),
     wearables.map(w => w.max)

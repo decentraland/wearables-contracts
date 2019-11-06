@@ -2,8 +2,7 @@ import assertRevert from './helpers/assertRevert'
 import {
   createDummyCollection,
   WEARABLES,
-  BASE_URI,
-  ZERO_ADDRESS
+  BASE_URI
 } from './helpers/collection'
 
 const ProxyRegistry = artifacts.require('ProxyRegistry')
@@ -11,7 +10,7 @@ const ERC721CollectionFactory = artifacts.require(
   'DummyERC721CollectionFactory'
 )
 
-describe.only('Factory', function() {
+describe('Factory', function() {
   // Contract
   const name = 'Factory'
   const symbol = 'FCTR'
@@ -27,14 +26,14 @@ describe.only('Factory', function() {
   let accounts
   let deployer
   let user
-  let factoryAllowed
-  let factoryAllowedProxy
+  let factoryOwner
+  let factoryOwnerProxy
   let hacker
   let holder
   let fromUser
   let fromHacker
-  let fromFactoryAllowed
-  let fromFactoryAllowedProxy
+  let fromFactoryOwner
+  let fromFactoryOwnerProxy
   let fromDeployer
 
   let creationParams
@@ -44,15 +43,14 @@ describe.only('Factory', function() {
     deployer = accounts[0]
     user = accounts[1]
     holder = accounts[2]
-    factoryAllowed = accounts[4]
-    hacker = accounts[5]
-    factoryAllowed = accounts[6]
-    factoryAllowedProxy = accounts[7]
+    factoryOwner = accounts[3]
+    hacker = accounts[4]
+    factoryOwnerProxy = accounts[5]
 
-    fromFactoryAllowed = { from: factoryAllowed }
+    fromFactoryOwner = { from: factoryOwner }
     fromUser = { from: user }
     fromHacker = { from: hacker }
-    fromFactoryAllowedProxy = { from: factoryAllowedProxy }
+    fromFactoryOwnerProxy = { from: factoryOwnerProxy }
 
     fromDeployer = { from: deployer }
 
@@ -63,7 +61,7 @@ describe.only('Factory', function() {
     }
 
     proxyRegistry = await ProxyRegistry.new()
-    proxyRegistry.setProxy(factoryAllowedProxy, fromFactoryAllowed)
+    proxyRegistry.setProxy(factoryOwnerProxy, fromFactoryOwner)
 
     erc721Contract = await createDummyCollection({
       allowed: user,
@@ -74,9 +72,9 @@ describe.only('Factory', function() {
       name,
       symbol,
       BASE_URI,
-      factoryAllowed,
       proxyRegistry.address,
-      erc721Contract.address
+      erc721Contract.address,
+      fromFactoryOwner
     )
 
     await erc721Contract.setAllowed(factoryContract.address, true)
@@ -88,15 +86,15 @@ describe.only('Factory', function() {
         name,
         symbol,
         BASE_URI,
-        factoryAllowed,
         proxyRegistry.address,
-        erc721Contract.address
+        erc721Contract.address,
+        fromFactoryOwner
       )
 
       const _name = await contract.name()
       const _symbol = await contract.symbol()
       const _baseURI = await contract.baseURI()
-      const allowed = await contract.allowed()
+      const owner = await contract.owner()
       const proxyRegistryContract = await contract.proxyRegistry()
       const collectionContract = await contract.erc721Collection()
       const optionsCount = await contract.numOptions()
@@ -104,7 +102,7 @@ describe.only('Factory', function() {
       expect(_name).to.be.equal(name)
       expect(_symbol).to.be.equal(symbol)
       expect(_baseURI).to.be.equal(BASE_URI)
-      expect(allowed).to.be.equal(factoryAllowed)
+      expect(owner).to.be.equal(factoryOwner)
       expect(proxyRegistryContract).to.be.equal(proxyRegistry.address)
       expect(collectionContract).to.be.equal(erc721Contract.address)
       expect(optionsCount).to.be.eq.BN(WEARABLES.length)
@@ -126,7 +124,7 @@ describe.only('Factory', function() {
       const { logs } = await factoryContract.mint(
         optionId0,
         holder,
-        fromFactoryAllowedProxy
+        fromFactoryOwnerProxy
       )
 
       const totalSupply = await erc721Contract.totalSupply()
@@ -153,7 +151,7 @@ describe.only('Factory', function() {
       )
 
       await assertRevert(
-        factoryContract.mint(optionId0, holder, fromFactoryAllowed),
+        factoryContract.mint(optionId0, holder, fromFactoryOwner),
         'Only `allowed` proxy can issue tokens'
       )
     })
@@ -161,7 +159,7 @@ describe.only('Factory', function() {
     it('reverts when minting an invalid option', async function() {
       const optionsCount = await factoryContract.numOptions()
       await assertRevert(
-        factoryContract.mint(optionsCount, holder, fromFactoryAllowedProxy),
+        factoryContract.mint(optionsCount, holder, fromFactoryOwnerProxy),
         'Invalid wearable'
       )
     })
@@ -180,7 +178,7 @@ describe.only('Factory', function() {
       }
 
       await assertRevert(
-        factoryContract.mint(optionId0, holder, fromFactoryAllowedProxy),
+        factoryContract.mint(optionId0, holder, fromFactoryOwnerProxy),
         'Exhausted wearable'
       )
 
@@ -209,7 +207,7 @@ describe.only('Factory', function() {
         hacker,
         holder,
         optionId0,
-        fromFactoryAllowedProxy
+        fromFactoryOwnerProxy
       )
 
       const totalSupply = await erc721Contract.totalSupply()
@@ -240,7 +238,7 @@ describe.only('Factory', function() {
           hacker,
           holder,
           optionId0,
-          fromFactoryAllowed
+          fromFactoryOwner
         ),
         'Only `allowed` proxy can issue tokens'
       )
@@ -253,7 +251,7 @@ describe.only('Factory', function() {
           hacker,
           holder,
           optionsCount,
-          fromFactoryAllowedProxy
+          fromFactoryOwnerProxy
         ),
         'Invalid wearable'
       )
@@ -277,7 +275,7 @@ describe.only('Factory', function() {
           hacker,
           holder,
           optionId0,
-          fromFactoryAllowedProxy
+          fromFactoryOwnerProxy
         ),
         'Exhausted wearable'
       )
@@ -292,31 +290,6 @@ describe.only('Factory', function() {
   })
 
   describe('Owner', function() {
-    it('should set Allowed user', async function() {
-      let allowed = await factoryContract.allowed()
-      expect(allowed).to.be.equal(factoryAllowed)
-
-      const { logs } = await factoryContract.setAllowed(hacker, fromDeployer)
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('Allowed')
-      expect(logs[0].args._oldAllowed).to.be.equal(factoryAllowed)
-      expect(logs[0].args._newAllowed).to.be.equal(hacker)
-
-      allowed = await factoryContract.allowed()
-      expect(allowed).to.be.equal(hacker)
-    })
-
-    it('should clean allowed user', async function() {
-      let allowed = await factoryContract.allowed()
-      expect(allowed).to.be.equal(factoryAllowed)
-
-      await factoryContract.setAllowed(ZERO_ADDRESS, fromDeployer)
-
-      allowed = await factoryContract.allowed()
-      expect(allowed).to.be.equal(ZERO_ADDRESS)
-    })
-
     it('should set Base URI', async function() {
       const newBaseURI = 'https'
 
@@ -325,7 +298,7 @@ describe.only('Factory', function() {
 
       const { logs } = await factoryContract.setBaseURI(
         newBaseURI,
-        fromDeployer
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(1)
@@ -345,20 +318,8 @@ describe.only('Factory', function() {
 
     it('reverts when trying to change values by hacker', async function() {
       await assertRevert(
-        factoryContract.setAllowed(hacker, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-
-      await assertRevert(
         factoryContract.setBaseURI('', fromHacker),
         'Ownable: caller is not the owner'
-      )
-    })
-
-    it('reverts when trying to set an already allowed', async function() {
-      await assertRevert(
-        factoryContract.setAllowed(factoryAllowed, fromDeployer),
-        'You should set a different value'
       )
     })
   })
@@ -366,20 +327,20 @@ describe.only('Factory', function() {
   describe('approval', function() {
     it('should return valid isApprovedForAll', async function() {
       let isApprovedForAll = await factoryContract.isApprovedForAll(
-        factoryAllowed,
-        factoryAllowed
+        factoryOwner,
+        factoryOwner
       )
       expect(isApprovedForAll).to.be.equal(true)
 
       isApprovedForAll = await factoryContract.isApprovedForAll(
-        factoryAllowed,
-        factoryAllowedProxy
+        factoryOwner,
+        factoryOwnerProxy
       )
       expect(isApprovedForAll).to.be.equal(true)
 
       isApprovedForAll = await factoryContract.isApprovedForAll(
         user,
-        factoryAllowed
+        factoryOwner
       )
       expect(isApprovedForAll).to.be.equal(false)
 
@@ -390,8 +351,8 @@ describe.only('Factory', function() {
 
   describe('proxies', function() {
     it('should return proxy count', async function() {
-      const proxy = await factoryContract.proxies(factoryAllowed)
-      expect(proxy).to.be.equal(factoryAllowedProxy)
+      const proxy = await factoryContract.proxies(factoryOwner)
+      expect(proxy).to.be.equal(factoryOwnerProxy)
     })
   })
 
@@ -414,13 +375,13 @@ describe.only('Factory', function() {
       const wearablesCount = await erc721Contract.wearablesCount()
       for (let i = 0; i < wearablesCount.toNumber(); i++) {
         const owner = await factoryContract.ownerOf(i)
-        expect(owner).to.be.equal(factoryAllowed)
+        expect(owner).to.be.equal(factoryOwner)
       }
     })
 
     it('should return the owner event if the option is invalid', async function() {
       const owner = await factoryContract.ownerOf(-1)
-      expect(owner).to.be.equal(factoryAllowed)
+      expect(owner).to.be.equal(factoryOwner)
     })
   })
 })
