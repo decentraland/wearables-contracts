@@ -18,16 +18,15 @@ contract ERC721CollectionFactory is Ownable, Factory {
     string public symbol;
     string public baseURI;
 
-    ProxyRegistry public proxyRegistryAddress;
-    ERC721Collection public erc721Collection;
-
     uint256 public optionsCount;
 
-    mapping(uint256 => bool) options;
-    mapping(address => bool) public allowed;
+    address public allowed;
+
+    ProxyRegistry public proxyRegistry;
+    ERC721Collection public erc721Collection;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
-    event Allowed(address indexed _operator, bool _allowed);
+    event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
 
     /**
      * @dev Constructor of the contract.
@@ -35,29 +34,30 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
      * @param _baseURI - base URI for token URIs
-     * @param _operator - Address allowed to mint tokens
-     * @param _proxyRegistryAddress - Address of the ProxyRegistry using at OpenSea
+     * @param _allowed - Address allowed to mint tokens
+     * @param _proxyRegistry - Address of the ProxyRegistry using at OpenSea
      * @param _erc721Collection - Address of the collection
      */
     constructor(
-      string memory _name,
-      string memory _symbol,
-      string memory _baseURI,
-      address _operator,
-      ProxyRegistry _proxyRegistryAddress,
-      ERC721Collection _erc721Collection
+        string memory _name,
+        string memory _symbol,
+        string memory _baseURI,
+        address _allowed,
+        ProxyRegistry _proxyRegistry,
+        ERC721Collection _erc721Collection
       )
       public {
         name = _name;
         symbol = _symbol;
-        proxyRegistryAddress = _proxyRegistryAddress;
+        proxyRegistry = _proxyRegistry;
         erc721Collection = _erc721Collection;
-        setAllowed(_operator, true);
+        setAllowed(_allowed);
         setBaseURI(_baseURI);
+
     }
 
     modifier onlyAllowed() {
-        require(allowed[msg.sender], "Only an `allowed` address can issue tokens");
+        require(address(proxyRegistry.proxies(allowed)) == msg.sender, "Only `allowed` proxy can issue tokens");
         _;
     }
 
@@ -84,8 +84,9 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @param _optionId the option id
      * @param _toAddress address of the future owner of the asset(s)
      */
-    function mint(uint256 _optionId, address _toAddress) public onlyAllowed  {
-        require(canMint(_optionId), "Invalid option");
+    function mint(uint256 _optionId, address _toAddress) public onlyAllowed {
+        require(canMint(_optionId), "Exhausted wearable");
+
         string memory wearable = _wearableByOptionId(_optionId);
         erc721Collection.issueToken(_toAddress, wearable);
     }
@@ -102,9 +103,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
 
         uint256 issued = erc721Collection.issued(wearableKey);
         uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
-        if (issued >= maxIssuance) {
-            return false;
-        }
+        return issued < maxIssuance;
     }
 
     /**
@@ -118,7 +117,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
         return string(abi.encodePacked(baseURI, wearable));
     }
 
-    /**
+     /**
     * @dev Set Base URI.
     * @param _baseURI - base URI for token URIs
     */
@@ -129,15 +128,14 @@ contract ERC721CollectionFactory is Ownable, Factory {
 
     /**
      * @dev Set allowed account to issue tokens.
-     * @param _operator - Address allowed to issue tokens
-     * @param _allowed - Whether is allowed or not
+     * @param _allowed - Address allowed to issue tokens
      */
-    function setAllowed(address _operator, bool _allowed) public onlyOwner {
-        require(_operator != address(0), "Invalid address");
-        require(allowed[_operator] != _allowed, "You should set a different value");
+    function setAllowed(address _allowed) public onlyOwner {
+        emit Allowed(allowed, _allowed);
 
-        allowed[_operator] = _allowed;
-        emit Allowed(_operator, _allowed);
+        require(allowed != _allowed, "You should set a different value");
+
+        allowed = _allowed;
     }
 
     /**
@@ -149,7 +147,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
      */
      // Should be used to return the address to be set as setAllowed
     function proxies(address _operator) public view returns (address) {
-        return address(proxyRegistryAddress.proxies(_operator));
+        return address(proxyRegistry.proxies(_operator));
     }
 
     /**
@@ -165,18 +163,18 @@ contract ERC721CollectionFactory is Ownable, Factory {
     * Use isApprovedForAll so the frontend doesn't have to worry about different method names.
     */
     function isApprovedForAll(
-        address _owner,
+        address _allowed,
         address _operator
     )
       public
       view
       returns (bool)
     {
-        if (owner() == _owner && _owner == _operator) {
+        if (allowed == _allowed && _allowed == _operator) {
             return true;
         }
 
-        if (owner() == _owner && allowed[_operator]) {
+        if (allowed == _allowed && address(proxyRegistry.proxies(_allowed)) == _operator) {
             return true;
         }
 
@@ -188,7 +186,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
     * Use isApprovedForAll so the frontend doesn't have to worry about different method names.
     */
     function ownerOf(uint256 /*_tokenId*/) public view returns (address _owner) {
-        return owner();
+        return allowed;
     }
 
     function _wearableByOptionId(uint256 _optionId) internal view returns (string memory){
