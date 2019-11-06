@@ -18,8 +18,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
     string public symbol;
     string public baseURI;
 
-    uint256 public optionsCount;
-
     address public allowed;
 
     ProxyRegistry public proxyRegistry;
