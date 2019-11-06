@@ -21,19 +21,22 @@ function _wearableByOptionId(uint256 _optionId) internal view returns (string me
 }
 ```
 
-OpenSea uses the Wyvern Protocol https://docs.opensea.io/docs/opensea-partners-program. So, to allow an address create option orders the owner of the factory should:
+OpenSea uses the Wyvern Protocol https://docs.opensea.io/docs/opensea-partners-program. Only one address will be allowed to create option orders.
+A proxy to this address will be created once the address first interacts with OpenSea.
 
-1. Call the factory `proxies` method with the address that will create the order
-2. Call the factory `setAllowed` method with the address returned above.
+The contracts for the ProxyRegistry can be seen [here](https://github.com/ProjectOpenSea/opensea-creatures/blob/master/migrations/2_deploy_contracts.js). Calling `proxies` on the Mainnet contract, the user can check if a proxy address was created for her address.
+
+Only the owner of the contract can set the address allowed to create option orders by calling:
 
 ```javascript
 // I want to allow the address 0x1234 to create orders for the factory options
-const proxyAddress = await Factory.proxies('0x1234')
-await Factory.setAllowed(proxyAddress, true, { from: owner })
+await Factory.setAllowed('0x1234', { from: owner })
 ```
 
-If you want to remove an existing allowed address you can do:
+If you want to remove the allowed address you can do:
 
 ```javascript
-await Factory.setAllowed(proxyAddress, false, { from: owner })
+await Factory.setAllowed('0x00...0', { from: owner })
 ```
+
+It is recommended that the owner of the factory be a Multisig contract.
