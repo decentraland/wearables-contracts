@@ -1,9 +1,9 @@
 import assertRevert from './assertRevert'
+import { setupWearables, ZERO_ADDRESS } from './collection'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 let BASE_URI = 'https://api-wearables.decentraland.org/v1/collections/'
 
 export function testContract(
@@ -54,13 +54,6 @@ export function testContract(
 
     BASE_URI += `${contractName}/wearables/`
 
-    async function setupWearables(contract) {
-      return contract.addWearables(
-        wearables.map(w => web3.utils.fromAscii(w.name)),
-        wearables.map(w => w.max)
-      )
-    }
-
     beforeEach(async function() {
       // Create Listing environment
       accounts = await web3.eth.getAccounts()
@@ -90,7 +83,7 @@ export function testContract(
         creationParams
       )
 
-      await setupWearables(contractInstance)
+      await setupWearables(contractInstance, wearables)
 
       await contractInstance.issueToken(holder, wearable1, fromUser)
       await contractInstance.issueToken(holder, wearable1, fromUser)
