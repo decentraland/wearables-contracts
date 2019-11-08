@@ -54,6 +54,43 @@ contract ERC721CollectionFactory is Ownable, Factory {
         _;
     }
 
+     /**
+     * @dev Mints asset(s) in accordance to a specific address with a particular "option". This should be
+     * callable only by the contract owner or the owner's Wyvern Proxy (later universal login will solve this).
+     * Options should also be delineated 0 - (numOptions() - 1) for convenient indexing.
+     * @param _optionId the option id
+     * @param _toAddress address of the future owner of the asset(s)
+     */
+    function mint(uint256 _optionId, address _toAddress) public onlyAllowed {
+        require(canMint(_optionId), "Exhausted wearable");
+
+        string memory wearable = _wearableByOptionId(_optionId);
+        erc721Collection.issueToken(_toAddress, wearable);
+    }
+
+    /**
+    * @dev Set Base URI.
+    * @param _baseURI - base URI for token URIs
+    */
+    function setBaseURI(string memory _baseURI) public onlyOwner {
+        emit BaseURI(baseURI, _baseURI);
+        baseURI = _baseURI;
+    }
+
+    function factorySchemaName() external pure returns (string memory) {
+        return "ERC1155";
+    }
+
+    /**
+    * @dev Returns whether the option ID can be minted. Can return false if the developer wishes to
+    * restrict a total supply per option ID (or overall).
+    * @param _optionId the option id
+    * @return whether an option can be minted
+    */
+    function canMint(uint256 _optionId) public view returns (bool) {
+        return balanceOf(_optionId) > 0;
+    }
+
     /**
      * @dev Check if support factory interface.
      * @return always true
@@ -71,52 +108,29 @@ contract ERC721CollectionFactory is Ownable, Factory {
     }
 
     /**
-     * @dev Mints asset(s) in accordance to a specific address with a particular "option". This should be
-     * callable only by the contract owner or the owner's Wyvern Proxy (later universal login will solve this).
-     * Options should also be delineated 0 - (numOptions() - 1) for convenient indexing.
-     * @param _optionId the option id
-     * @param _toAddress address of the future owner of the asset(s)
-     */
-    function mint(uint256 _optionId, address _toAddress) public onlyAllowed {
-        require(canMint(_optionId), "Exhausted wearable");
-
-        string memory wearable = _wearableByOptionId(_optionId);
-        erc721Collection.issueToken(_toAddress, wearable);
-    }
-
-    /**
-    * @dev Returns whether the option ID can be minted. Can return false if the developer wishes to
-    * restrict a total supply per option ID (or overall).
-    * @param _optionId the option id
-    * @return whether an option can be minted
-    */
-    function canMint(uint256 _optionId) public view returns (bool) {
-        string memory wearable = _wearableByOptionId(_optionId);
-        bytes32 wearableKey = erc721Collection.getWearableKey(wearable);
-
-        uint256 issued = erc721Collection.issued(wearableKey);
-        uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
-        return issued < maxIssuance;
-    }
-
-    /**
      * @dev Returns an URI for a given option ID.
      * Throws if the option ID does not exist. May return an empty string.
      * @param _optionId - uint256 ID of the token queried
      * @return token URI
      */
-    function tokenURI(uint256 _optionId) external view returns (string memory) {
+    function balanceOf(uint256 _optionId) public view returns (uint256) {
         string memory wearable = _wearableByOptionId(_optionId);
-        return string(abi.encodePacked(baseURI, wearable));
+        bytes32 wearableKey = erc721Collection.getWearableKey(wearable);
+
+        uint256 issued = erc721Collection.issued(wearableKey);
+        uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
+        return maxIssuance.sub(issued);
     }
 
      /**
-    * @dev Set Base URI.
-    * @param _baseURI - base URI for token URIs
-    */
-    function setBaseURI(string memory _baseURI) public onlyOwner {
-        emit BaseURI(baseURI, _baseURI);
-        baseURI = _baseURI;
+     * @dev Returns an URI for a given option ID.
+     * Throws if the option ID does not exist. May return an empty string.
+     * @param _optionId - uint256 ID of the token queried
+     * @return token URI
+     */
+    function tokenURI(uint256 _optionId) public view returns (string memory) {
+        string memory wearable = _wearableByOptionId(_optionId);
+        return string(abi.encodePacked(baseURI, wearable));
     }
 
     /**
@@ -137,6 +151,22 @@ contract ERC721CollectionFactory is Ownable, Factory {
     */
     function transferFrom(address /*_from*/, address _to, uint256 _tokenId) public {
         mint(_tokenId, _to);
+    }
+
+    /**
+   * Hack to get things to work automatically on OpenSea.
+   * Use safeTransferFrom so the frontend doesn't have to worry about different method names.
+   */
+    function safeTransferFrom(
+        address /* _from */,
+        address _to,
+        uint256 _optionId,
+        uint256 _amount,
+        bytes calldata /* _data */
+    ) external {
+        for(uint256 i = 0; i < _amount; i++) {
+            mint(_optionId, _to);
+        }
     }
 
     /**
