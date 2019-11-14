@@ -1488,10 +1488,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
         baseURI = _baseURI;
     }
 
-    function factorySchemaName() external pure returns (string memory) {
-        return "ERC1155";
-    }
-
     /**
     * @dev Returns whether the option ID can be minted. Can return false if the developer wishes to
     * restrict a total supply per option ID (or overall).
@@ -1564,21 +1560,6 @@ contract ERC721CollectionFactory is Ownable, Factory {
         mint(_tokenId, _to);
     }
 
-    /**
-   * Hack to get things to work automatically on OpenSea.
-   * Use safeTransferFrom so the frontend doesn't have to worry about different method names.
-   */
-    function safeTransferFrom(
-        address /* _from */,
-        address _to,
-        uint256 _optionId,
-        uint256 _amount,
-        bytes calldata /* _data */
-    ) external {
-        for(uint256 i = 0; i < _amount; i++) {
-            mint(_optionId, _to);
-        }
-    }
 
     /**
     * Hack to get things to work automatically on OpenSea.
