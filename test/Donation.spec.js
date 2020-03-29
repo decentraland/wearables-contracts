@@ -92,7 +92,6 @@ describe.only('Donation', function () {
         fromDonationOwner
       )
 
-      const owner = await contract.owner()
       const recipient = await contract.fundsRecipient()
       const collectionContract = await contract.erc721Collection()
       const minDonationAcceptable = await contract.minDonation()
@@ -100,7 +99,6 @@ describe.only('Donation', function () {
       const maxIssuance = await contract.maxIssuance()
       const issued = await contract.issued()
 
-      expect(owner).to.be.equal(donationOwner)
       expect(recipient).to.be.equal(fundsRecipient)
       expect(collectionContract).to.be.equal(erc721Contract.address)
       expect(minDonationAcceptable).to.be.eq.BN(minDonation)

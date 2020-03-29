@@ -1,9 +1,12 @@
 pragma solidity ^0.5.11;
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "./ERC721Collection.sol";
+interface ERC721Collection {
+    function wearables(uint256 _index) external view returns (string memory);
+    function issueToken(address _beneficiary, string calldata _wearableId) external;
+    function wearablesCount() external view returns (uint256);
+}
 
-contract Donation is Ownable {
+contract Donation {
     ERC721Collection public erc721Collection;
 
     address payable public fundsRecipient;
