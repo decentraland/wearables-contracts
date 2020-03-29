@@ -56,7 +56,7 @@ contract Donation {
     }
 
      /**
-     * @dev Donate in exchange of a random NFT.
+     * @dev Donate in exchange for a random NFT.
      */
     function donateForNFT() external payable {
         require(msg.value >= minDonation, "The donation should be higher or equal than the minimum donation ETH");
