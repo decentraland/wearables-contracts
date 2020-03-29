@@ -14,8 +14,8 @@ describe.only('Donation', function () {
   const optionId0 = 0
 
   // Donation
+  const minDonation = web3.utils.toBN(web3.utils.toWei('0.025', 'ether'))
   const donation = web3.utils.toBN(web3.utils.toWei('10', 'ether'))
-  const donationForNFT = web3.utils.toBN(web3.utils.toWei('0.025', 'ether'))
 
   // Accounts
   let accounts
@@ -63,6 +63,7 @@ describe.only('Donation', function () {
     donationContract = await Donation.new(
       fundsRecipient,
       erc721Contract.address,
+      minDonation,
       WEARABLES[0].max,
       fromDonationOwner
     )
@@ -86,6 +87,7 @@ describe.only('Donation', function () {
       const contract = await Donation.new(
         fundsRecipient,
         erc721Contract.address,
+        minDonation,
         WEARABLES[0].max,
         fromDonationOwner
       )
@@ -93,6 +95,7 @@ describe.only('Donation', function () {
       const owner = await contract.owner()
       const recipient = await contract.fundsRecipient()
       const collectionContract = await contract.erc721Collection()
+      const minDonationAcceptable = await contract.minDonation()
       const maxOptions = await contract.maxOptions()
       const maxIssuance = await contract.maxIssuance()
       const issued = await contract.issued()
@@ -100,6 +103,7 @@ describe.only('Donation', function () {
       expect(owner).to.be.equal(donationOwner)
       expect(recipient).to.be.equal(fundsRecipient)
       expect(collectionContract).to.be.equal(erc721Contract.address)
+      expect(minDonationAcceptable).to.be.eq.BN(minDonation)
       expect(maxOptions).to.be.eq.BN(WEARABLES.length)
       expect(maxIssuance).to.be.eq.BN(WEARABLES.length * WEARABLES[0].max)
       expect(issued).to.be.eq.BN(0)
@@ -131,7 +135,7 @@ describe.only('Donation', function () {
       expect(recipientBalance).to.be.eq.BN(donation)
     })
 
-    it('reverts when donating  donate', async function () {
+    it('reverts when donating 0', async function () {
       await assertRevert(
         donationContract.donate({
           ...fromUser,
@@ -157,6 +161,14 @@ describe.only('Donation', function () {
 
       let recipientBalance = await web3.eth.getBalance(fundsRecipient)
       expect(recipientBalance).to.be.eq.BN(0)
+
+      let balanceOfContract = await web3.eth.getBalance(
+        donationContract.address
+      )
+      expect(balanceOfUser).to.be.eq.BN(0)
+
+      let donatedIssued = await donationContract.issued()
+      expect(donatedIssued).to.be.eq.BN(0)
 
       const { logs } = await donationContract.donateForNFT({
         ...fromUser,
@@ -187,43 +199,110 @@ describe.only('Donation', function () {
 
       balanceOfUser = await erc721Contract.balanceOf(user)
       expect(balanceOfUser).to.be.eq.BN(1)
+
+      balanceOfContract = await web3.eth.getBalance(donationContract.address)
+      expect(balanceOfContract).to.be.eq.BN(0)
+
+      donatedIssued = await donationContract.issued()
+      expect(donatedIssued).to.be.eq.BN(1)
     })
 
-    // it('reverts when minting by an allowed address', async function () {
-    //   await assertRevert(
-    //     donationContract.mint(optionId0, holder, fromHacker),
-    //     'Only `allowed` proxy can issue tokens'
-    //   )
-    //   await assertRevert(
-    //     donationContract.mint(optionId0, holder, donationOwner),
-    //     'Only `allowed` proxy can issue tokens'
-    //   )
-    // })
-    // it('reverts when minting an invalid option', async function () {
-    //   const optionsCount = await donationContract.numOptions()
-    //   await assertRevert(
-    //     donationContract.mint(optionsCount, holder, fundsRecipient),
-    //     'Invalid wearable'
-    //   )
-    // })
-    // it('reverts when minting an exhausted option', async function () {
-    //   const wearableId = await erc721Contract.wearables(optionId0)
-    //   const hash = await erc721Contract.getWearableKey(wearableId)
-    //   const maxKind = await erc721Contract.maxIssuance(hash)
-    //   let canMint = await donationContract.canMint(optionId0)
-    //   expect(canMint).to.be.equal(true)
-    //   for (let i = 0; i < maxKind.toNumber(); i++) {
-    //     await erc721Contract.issueToken(holder, wearableId, fromUser)
-    //   }
-    //   await assertRevert(
-    //     donationContract.mint(optionId0, holder, fundsRecipient),
-    //     'Exhausted wearable'
-    //   )
-    //   canMint = await donationContract.canMint(optionId0)
-    //   expect(canMint).to.be.equal(false)
-    // })
-    // it('reverts when querying if an option can be minted', async function () {
-    //   await assertRevert(donationContract.canMint(optionId0 - 1))
-    // })
+    it('should increase last issued and reset', async function () {
+      let totalSupply = await erc721Contract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(0)
+
+      let recipientBalance = await web3.eth.getBalance(fundsRecipient)
+      expect(recipientBalance).to.be.eq.BN(0)
+
+      let donatedIssued = await donationContract.issued()
+      expect(donatedIssued).to.be.eq.BN(0)
+
+      for (let i = 0; i <= WEARABLES.length; i++) {
+        const { logs } = await donationContract.donateForNFT({
+          ...fromUser,
+          value: minDonation,
+        })
+
+        let optionId = i
+        let issued = 1
+        if (i === WEARABLES.length) {
+          optionId = 0
+          issued = 2
+        }
+
+        totalSupply = await erc721Contract.totalSupply()
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('Issue')
+        expect(logs[0].args._beneficiary).to.be.equal(user)
+        expect(logs[0].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
+        expect(logs[0].args._wearableId).to.be.equal(WEARABLES[optionId].name)
+        expect(logs[0].args._issuedId).to.eq.BN(issued)
+
+        expect(logs[1].event).to.be.equal('DonatedForNFT')
+        expect(logs[1].args._caller).to.be.equal(user)
+        expect(logs[1].args._value).to.be.eq.BN(minDonation)
+        expect(logs[1].args._optionId).to.be.eq.BN(optionId)
+        expect(logs[1].args._wearable).to.be.eq.BN(WEARABLES[optionId].name)
+      }
+
+      donatedIssued = await donationContract.issued()
+      expect(donatedIssued).to.be.eq.BN(WEARABLES.length + 1)
+
+      totalSupply = await erc721Contract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(WEARABLES.length + 1)
+
+      recipientBalance = await web3.eth.getBalance(fundsRecipient)
+      expect(recipientBalance).to.be.eq.BN(
+        minDonation.mul(web3.utils.toBN(WEARABLES.length + 1))
+      )
+    })
+
+    it('reverts when donating a value lower than the minimum acceptable', async function () {
+      await assertRevert(
+        donationContract.donateForNFT({
+          ...fromUser,
+          value: 0,
+        }),
+        'The donation should be higher or equal than the minimum donation ETH'
+      )
+
+      const value = minDonation.sub(web3.utils.toBN(1))
+      await assertRevert(
+        donationContract.donateForNFT({
+          ...fromUser,
+          value,
+        }),
+        'The donation should be higher or equal than the minimum donation ETH'
+      )
+    })
+
+    it('reverts when trying to mint a completed collection', async function () {
+      this.timeout(Infinity)
+      const maxIssuance = await donationContract.maxIssuance()
+
+      for (let i = 0; i < maxIssuance; i++) {
+        await donationContract.donateForNFT({
+          ...fromUser,
+          value: minDonation,
+        })
+      }
+
+      await assertRevert(
+        donationContract.donateForNFT({
+          ...fromUser,
+          value: minDonation,
+        }),
+        'All wearables have been minted'
+      )
+
+      // Check if the collection was exhausted too
+      for (let i = 0; i < WEARABLES.length; i++) {
+        await assertRevert(
+          erc721Contract.issueToken(holder, WEARABLES[i].name, fromUser),
+          'invalid: trying to issue an exhausted wearable of nft'
+        )
+      }
+    })
   })
 })

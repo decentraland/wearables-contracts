@@ -11,8 +11,8 @@ contract Donation is Ownable {
     uint256 public maxOptions;
     uint256 public maxIssuance;
     uint256 public lastOptionIssued;
-
     uint256 public issued;
+    uint256 public minDonation;
 
     event DonatedForNFT(address indexed _caller, uint256 indexed _value, uint256 indexed _optionId, string _wearable);
     event Donated(address indexed _caller, uint256 indexed _value);
@@ -21,16 +21,19 @@ contract Donation is Ownable {
      * @dev Constructor of the contract.
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
+     * @param _minDonation - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
      * @param _rarity - issuance for each wearable based on its unique rarity
      */
     constructor(
         address payable _fundsRecipient,
         ERC721Collection _erc721Collection,
+        uint256 _minDonation,
         uint256 _rarity
       )
       public {
         fundsRecipient = _fundsRecipient;
         erc721Collection = _erc721Collection;
+        minDonation = _minDonation;
         maxOptions = erc721Collection.wearablesCount();
         maxIssuance = maxOptions * _rarity;
     }
@@ -50,7 +53,7 @@ contract Donation is Ownable {
      * @dev Donate in exchange of a random NFT.
      */
     function donateForNFT() external payable {
-        require(msg.value >= 0.025 ether, "The donation should be higher or equal than 0.025 ETH");
+        require(msg.value >= minDonation, "The donation should be higher or equal than the minimum donation ETH");
         require(issued < maxIssuance, "All wearables have been minted");
 
         uint256 optionToMint;

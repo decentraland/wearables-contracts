@@ -12,10 +12,12 @@ contract DummyDonation is Donation, EventsInterface {
     constructor(
         address payable fundsRecipient,
         ERC721Collection _erc721Collection,
+         uint256 _minDonation,
         uint256 _rarity
     )  Donation (
           fundsRecipient,
           _erc721Collection,
+          _minDonation,
           _rarity
     ) public {}
 
