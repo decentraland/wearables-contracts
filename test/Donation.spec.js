@@ -98,6 +98,7 @@ describe('Donation', function () {
       const maxOptions = await contract.maxOptions()
       const maxIssuance = await contract.maxIssuance()
       const issued = await contract.issued()
+      const amount = await contract.donations()
 
       expect(recipient).to.be.equal(fundsRecipient)
       expect(collectionContract).to.be.equal(erc721Contract.address)
@@ -105,6 +106,7 @@ describe('Donation', function () {
       expect(maxOptions).to.be.eq.BN(WEARABLES.length)
       expect(maxIssuance).to.be.eq.BN(WEARABLES.length * WEARABLES[0].max)
       expect(issued).to.be.eq.BN(0)
+      expect(amount).to.be.eq.BN(0)
     })
   })
 
@@ -115,6 +117,9 @@ describe('Donation', function () {
 
       let recipientBalance = await web3.eth.getBalance(fundsRecipient)
       expect(recipientBalance).to.be.eq.BN(0)
+
+      let amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(0)
 
       const { logs } = await donationContract.donate({
         ...fromUser,
@@ -131,6 +136,9 @@ describe('Donation', function () {
 
       recipientBalance = await web3.eth.getBalance(fundsRecipient)
       expect(recipientBalance).to.be.eq.BN(donation)
+
+      amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(donation)
     })
 
     it('reverts when donating 0', async function () {
@@ -168,6 +176,9 @@ describe('Donation', function () {
       let donatedIssued = await donationContract.issued()
       expect(donatedIssued).to.be.eq.BN(0)
 
+      let amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(0)
+
       const { logs } = await donationContract.donateForNFT({
         ...fromUser,
         value: donation,
@@ -203,6 +214,9 @@ describe('Donation', function () {
 
       donatedIssued = await donationContract.issued()
       expect(donatedIssued).to.be.eq.BN(1)
+
+      amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(donation)
     })
 
     it('should increase last issued and reset', async function () {
@@ -214,6 +228,9 @@ describe('Donation', function () {
 
       let donatedIssued = await donationContract.issued()
       expect(donatedIssued).to.be.eq.BN(0)
+
+      let amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(0)
 
       for (let i = 0; i <= WEARABLES.length; i++) {
         const { logs } = await donationContract.donateForNFT({
@@ -252,6 +269,11 @@ describe('Donation', function () {
 
       recipientBalance = await web3.eth.getBalance(fundsRecipient)
       expect(recipientBalance).to.be.eq.BN(
+        minDonation.mul(web3.utils.toBN(WEARABLES.length + 1))
+      )
+
+      amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(
         minDonation.mul(web3.utils.toBN(WEARABLES.length + 1))
       )
     })
@@ -301,6 +323,29 @@ describe('Donation', function () {
           'invalid: trying to issue an exhausted wearable of nft'
         )
       }
+    })
+  })
+
+  describe('donations', function () {
+    it('should increase donations', async function () {
+      let amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(0)
+
+      await donationContract.donate({
+        ...fromUser,
+        value: donation,
+      })
+
+      amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(donation)
+
+      await donationContract.donateForNFT({
+        ...fromUser,
+        value: minDonation,
+      })
+
+      amount = await donationContract.donations()
+      expect(amount).to.be.eq.BN(donation.add(minDonation))
     })
   })
 })
