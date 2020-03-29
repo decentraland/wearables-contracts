@@ -19,6 +19,7 @@ contract Donation {
     uint256 public lastOptionIssued;
     uint256 public issued;
     uint256 public minDonation;
+    uint256 public donations;
 
     event DonatedForNFT(address indexed _caller, uint256 indexed _value, uint256 indexed _optionId, string _wearable);
     event Donated(address indexed _caller, uint256 indexed _value);
@@ -52,11 +53,13 @@ contract Donation {
 
         fundsRecipient.transfer(msg.value);
 
+        donations += msg.value;
+
         emit Donated(msg.sender, msg.value);
     }
 
      /**
-     * @dev Donate in exchange of a random NFT.
+     * @dev Donate in exchange for a random NFT.
      */
     function donateForNFT() external payable {
         require(msg.value >= minDonation, "The donation should be higher or equal than the minimum donation ETH");
@@ -75,6 +78,8 @@ contract Donation {
         issued++;
 
         fundsRecipient.transfer(msg.value);
+
+        donations += msg.value;
 
         emit DonatedForNFT(msg.sender, msg.value, optionToMint, wearable);
     }
