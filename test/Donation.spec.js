@@ -3,7 +3,7 @@ import { createDummyCollection, WEARABLES } from './helpers/collection'
 
 const Donation = artifacts.require('DummyDonation')
 
-describe.only('Donation', function () {
+describe('Donation', function () {
   const initialbalance = web3.utils.toBN(web3.utils.toWei('10000', 'ether'))
 
   // Contract
