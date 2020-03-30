@@ -5,6 +5,13 @@ import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
 
 
 contract ERC721DeterministicCollection is Ownable, ERC721Full {
+    uint8 constant public OPTIONS_BITS = 40;
+    uint8 constant public ISSUANCE_BITS = 216;
+
+    uint40 constant public MAX_OPTIONS = -1;
+    uint216 constant public MAX_ISSUANCE = -1;
+
+
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
     mapping(uint256 => string) internal _tokenPaths;
@@ -97,7 +104,10 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      */
     function tokenURI(uint256 _tokenId) external view returns (string memory) {
         require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
-        return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
+
+        (uint256 optionId, uint256 issuedId) = _decodeTokenId(_tokenId);
+
+        return string(abi.encodePacked(baseURI, wearables[_optionId], "/", _uintToString(issuedId)));
     }
 
 
@@ -214,34 +224,30 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
-     * @param _wearableId - token wearable
+     * @param _optionId - option id
+     * @param _issuedId - issued id
      */
     function _issueToken(address _beneficiary, uint256 _optionId, uint256 _issuedId) internal {
+        // Check option id
+        require(_optionId >= 0 && _optionId < wearables.length, "Invalid option id");
+
+        // Get wearable key
         bytes32 key = getWearableKey(wearables[_optionId]);
 
-        if (maxIssuance[key] > 0 && _issuedId <= maxIssuance[key]) {
-            uint tokenId = this.totalSupply(); // change its id to something predictable
-            _mint(_beneficiary, tokenId);
-            _setTokenURI(
-                tokenId,
-                string(abi.encodePacked(_wearableId, "/", _uintToString(issued[key])))
-            );
+        // Get max issuance
+        uint256 maxIssuance = maxIssuance[key];
 
-            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
-        } else {
-            revert("invalid: trying to issue an exhausted wearable of nft");
-        }
-    }
+        // Check issuance
+        require(_issuedId > 0 && _issuedId <= maxIssuance, "Invalid issued id");
 
-    /**
-     * @dev Internal function to set the token URI for a given token.
-     * Reverts if the token ID does not exist.
-     * @param _tokenId - uint256 ID of the token to set as its URI
-     * @param _uri - string URI to assign
-     */
-    function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-        require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
-        _tokenPaths[_tokenId] = _uri;
+        // Encode token id
+        uint tokenId = _encodeTokenId(_optionId, _issuedId);
+
+        // Mint token
+        _mint(_beneficiary, tokenId);
+
+        // Log
+        emit Issue(_beneficiary, tokenId, key, _optionId, _issuedId);
     }
 
     /**
@@ -266,6 +272,36 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
         return string(bytesStringTrimmed);
     }
 
+
+     /**
+     * @dev Encode token id
+     * @notice optionId (`optionBits` bits) + issuedId (`issuedIdBits` bits)
+     * @param _optionId - option id
+     * @param _issuedId - issued id
+     * @return uint256 of the encoded id
+     */
+    function _encodeTokenId(uint256 _optionId, uint256 _issuedId) internal view returns (uint256 id) {
+        require(_optionId <= MAX_OPTIONS, "The option Id should be lower or equal than the MAX_OPTIONS");
+        require(_issuedId <= MAX_ISSUANCE, "The issuance id should be lower or equal than the MAX_ISSUANCE");
+
+        assembly {
+            id := or(shl(ISSUANCE_BITS, _optionId), _issuedId)
+        }
+    }
+
+    /**
+     * @dev Decode token id
+     * @notice optionId (`optionBits` bits) + issuedId (`issuedIdBits` bits)
+     * @param _id - token id
+     * @return uint256 of the option id
+     * @return uint256 of the issued id
+     */
+    function _decodeTokenId(uint256 _id) internal view returns (uint256 optionId, uint256 issuedId) {
+         assembly {
+            optionId := shr(ISSUANCE_BITS, _id)
+            issuedId := and(MAX_ISSUANCE, _id)
+        }
+    }
 
      /**
      * @dev Convert uint to string.
