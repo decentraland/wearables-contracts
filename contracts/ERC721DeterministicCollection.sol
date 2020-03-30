@@ -8,8 +8,8 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
     uint8 constant public OPTIONS_BITS = 40;
     uint8 constant public ISSUANCE_BITS = 216;
 
-    uint40 constant public MAX_OPTIONS = -1;
-    uint216 constant public MAX_ISSUANCE = -1;
+    uint40 constant public MAX_OPTIONS = uint40(-1);
+    uint216 constant public MAX_ISSUANCE = uint216(-1);
 
 
     mapping(bytes32 => uint256) public maxIssuance;
@@ -25,7 +25,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _operator, bool _allowed);
     event AddWearable(bytes32 indexed _wearableIdKey, string _wearableId, uint256 _maxIssuance);
-    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId, uint256 _issuedId);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId);
     event Complete();
 
 
@@ -51,7 +51,8 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
-     * @param _wearableId - token wearable
+     * @param _optionId - option id
+     * @param _issuedId - issued id
      */
     function issueToken(address _beneficiary,  uint256 _optionId, uint256 _issuedId) external onlyAllowed {
         _issueToken(_beneficiary, _optionId, _issuedId);
@@ -61,7 +62,8 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      * @dev Issue NFTs.
      * @notice that will throw if kind has reached its maximum or is invalid
      * @param _beneficiaries - owner of the tokens
-     * @param _wearableIds - token wearables
+     * @param _optionIds - option ids
+     * @param _issuedIds - issued ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _optionIds, uint256[] calldata _issuedIds) external onlyAllowed {
         require(_beneficiaries.length == _optionIds.length, "Parameters should have the same length");
@@ -107,7 +109,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
 
         (uint256 optionId, uint256 issuedId) = _decodeTokenId(_tokenId);
 
-        return string(abi.encodePacked(baseURI, wearables[_optionId], "/", _uintToString(issuedId)));
+        return string(abi.encodePacked(baseURI, wearables[optionId], "/", _uintToString(issuedId)));
     }
 
 
@@ -231,14 +233,14 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
         // Check option id
         require(_optionId >= 0 && _optionId < wearables.length, "Invalid option id");
 
-        // Get wearable key
-        bytes32 key = getWearableKey(wearables[_optionId]);
+        // Get werable
+        string memory wearable = wearables[_optionId];
 
-        // Get max issuance
-        uint256 maxIssuance = maxIssuance[key];
+        // Get wearable key
+        bytes32 key = getWearableKey(wearable);
 
         // Check issuance
-        require(_issuedId > 0 && _issuedId <= maxIssuance, "Invalid issued id");
+        require(_issuedId > 0 && _issuedId <= maxIssuance[key], "Invalid issued id");
 
         // Encode token id
         uint tokenId = _encodeTokenId(_optionId, _issuedId);
@@ -247,7 +249,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
         _mint(_beneficiary, tokenId);
 
         // Log
-        emit Issue(_beneficiary, tokenId, key, _optionId, _issuedId);
+        emit Issue(_beneficiary, tokenId, key, wearable);
     }
 
     /**
@@ -280,7 +282,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      * @param _issuedId - issued id
      * @return uint256 of the encoded id
      */
-    function _encodeTokenId(uint256 _optionId, uint256 _issuedId) internal view returns (uint256 id) {
+    function _encodeTokenId(uint256 _optionId, uint256 _issuedId) internal pure returns (uint256 id) {
         require(_optionId <= MAX_OPTIONS, "The option Id should be lower or equal than the MAX_OPTIONS");
         require(_issuedId <= MAX_ISSUANCE, "The issuance id should be lower or equal than the MAX_ISSUANCE");
 
@@ -296,10 +298,12 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full {
      * @return uint256 of the option id
      * @return uint256 of the issued id
      */
-    function _decodeTokenId(uint256 _id) internal view returns (uint256 optionId, uint256 issuedId) {
+    function _decodeTokenId(uint256 _id) internal pure returns (uint256 optionId, uint256 issuedId) {
+        uint216 mask = MAX_ISSUANCE;
+
          assembly {
             optionId := shr(ISSUANCE_BITS, _id)
-            issuedId := and(MAX_ISSUANCE, _id)
+            issuedId := and(mask, _id)
         }
     }
 
