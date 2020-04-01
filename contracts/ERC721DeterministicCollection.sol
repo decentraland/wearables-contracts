@@ -28,6 +28,20 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
     ) public ERC721BaseCollection(_name, _symbol, _operator, _baseURI) {}
 
      /**
+     * @dev Add a new wearable to the collection.
+     * @notice that this method allows wearableIds of any size. It should be used
+     * if a wearableId is greater than 32 bytes
+     * @param _wearableId - wearable id
+     * @param _maxIssuance - total supply for the wearable
+     */
+    function addWearable(string memory _wearableId, uint256 _maxIssuance) public onlyOwner {
+        require(wearables.length < MAX_OPTIONS, "Wearables options have reached MAX_OPTIONS");
+        require(_maxIssuance <= MAX_ISSUANCE, "Max issuance should be lower or equal than MAX_ISSUANCE");
+
+        super.addWearable(_wearableId, _maxIssuance);
+    }
+
+     /**
      * @dev Returns an URI for a given token ID.
      * Throws if the token ID does not exist. May return an empty string.
      * @param _tokenId - uint256 ID of the token queried
@@ -80,10 +94,10 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
         require(_optionId >= 0 && _optionId < wearables.length, "Invalid option id");
 
         // Get werable
-        string memory wearable = wearables[_optionId];
+        string memory wearableId = wearables[_optionId];
 
         // Get wearable key
-        bytes32 key = getWearableKey(wearable);
+        bytes32 key = getWearableKey(wearableId);
 
         // Check issuance
         require(_issuedId > 0 && _issuedId <= maxIssuance[key], "Invalid issued id");
@@ -92,10 +106,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
         uint tokenId = _encodeTokenId(_optionId, _issuedId);
 
         // Mint token
-        _mint(_beneficiary, tokenId);
-
-        // Log
-        emit Issue(_beneficiary, tokenId, key, wearable, _issuedId);
+        _mint(_beneficiary, tokenId, key, wearableId, _issuedId);
     }
 
      /**
@@ -106,7 +117,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @return uint256 of the encoded id
      */
     function _encodeTokenId(uint256 _optionId, uint256 _issuedId) internal pure returns (uint256 id) {
-        require(_optionId <= MAX_OPTIONS, "The option Id should be lower or equal than the MAX_OPTIONS");
+        require(_optionId <= MAX_OPTIONS, "The option id should be lower or equal than the MAX_OPTIONS");
         require(_issuedId <= MAX_ISSUANCE, "The issuance id should be lower or equal than the MAX_ISSUANCE");
 
         // solium-disable-next-line security/no-inline-assembly
@@ -123,7 +134,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @return uint256 of the issued id
      */
     function _decodeTokenId(uint256 _id) internal pure returns (uint256 optionId, uint256 issuedId) {
-        uint216 mask = MAX_ISSUANCE;
+        uint256 mask = MAX_ISSUANCE;
         // solium-disable-next-line security/no-inline-assembly
         assembly {
             optionId := shr(ISSUANCE_BITS, _id)

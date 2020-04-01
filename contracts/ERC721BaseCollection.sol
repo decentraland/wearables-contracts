@@ -5,10 +5,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
 
 import "./libs/String.sol";
 
-/**
-* @dev ERC721 Base collection
-* @notice Issue event **MUST** be used when minting in order to keep the event signature and logs consistency.
-*/
 contract ERC721BaseCollection is Ownable, ERC721Full {
     using String for bytes32;
     using String for uint256;
@@ -190,5 +186,22 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
      */
     function getWearableKey(string memory _wearableId) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_wearableId));
+    }
+
+    function _mint(
+        address _beneficiary,
+        uint256 _tokenId,
+        bytes32 _wearableIdKey,
+        string memory _wearableId,
+        uint256 issuedId
+    ) internal {
+        // Mint erc721 token
+        super._mint(_beneficiary, _tokenId);
+
+        // Increase issuance
+        issued[_wearableIdKey] = issued[_wearableIdKey] + 1;
+
+        // Log
+        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, issuedId);
     }
 }

@@ -64,16 +64,14 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
     function _issueToken(address _beneficiary, string memory _wearableId) internal {
         bytes32 key = getWearableKey(_wearableId);
         if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
-            issued[key] = issued[key] + 1;
             uint tokenId = this.totalSupply();
 
-            _mint(_beneficiary, tokenId);
+            _mint(_beneficiary, tokenId, key, _wearableId, issued[key] + 1);
             _setTokenURI(
                 tokenId,
                 string(abi.encodePacked(_wearableId, "/", issued[key].uintToString()))
             );
 
-            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
         } else {
             revert("invalid: trying to issue an exhausted wearable of nft");
         }
