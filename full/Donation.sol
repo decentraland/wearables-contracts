@@ -183,17 +183,16 @@ contract Donation {
     }
 
     /**
-    * @dev Returns whether the option ID can be minted. Can return false if the developer wishes to
-    * restrict a total supply per option ID (or overall).
+    * @dev Returns whether the wearable can be minted.
     * @param _wearableId - wearable id
-    * @return whether an option can be minted
+    * @return whether a wearable can be minted
     */
     function canMint(string memory _wearableId) public view returns (bool) {
         return balanceOf(_wearableId) > 0;
     }
 
     /**
-     * @dev Returns an URI for a given option ID.
+     * @dev Returns the balance.
      * Throws if the option ID does not exist. May return an empty string.
      * @param _wearableId - wearable id
      * @return token URI

@@ -3,7 +3,7 @@ import { createDummyCollection, WEARABLES } from './helpers/collection'
 
 const Donation = artifacts.require('DummyDonation')
 
-describe.only('Donation', function () {
+describe('Donation', function () {
   // Contract
   let erc721Contract
   let donationContract
