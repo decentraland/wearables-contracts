@@ -1,27 +1,138 @@
 
+// File: @openzeppelin/contracts/math/SafeMath.sol
+
+pragma solidity ^0.5.0;
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations with added overflow
+ * checks.
+ *
+ * Arithmetic operations in Solidity wrap on overflow. This can easily result
+ * in bugs, because programmers usually assume that an overflow raises an
+ * error, which is the standard behavior in high level programming languages.
+ * `SafeMath` restores this intuition by reverting the transaction when an
+ * operation overflows.
+ *
+ * Using this library instead of the unchecked operations eliminates an entire
+ * class of bugs, so it's recommended to use it always.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a, "SafeMath: subtraction overflow");
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        require(b > 0, "SafeMath: division by zero");
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0, "SafeMath: modulo by zero");
+        return a % b;
+    }
+}
+
 // File: contracts/Donation.sol
 
 pragma solidity ^0.5.11;
 
+
+
 interface ERC721Collection {
-    function wearables(uint256 _index) external view returns (string memory);
     function issueToken(address _beneficiary, string calldata _wearableId) external;
-    function wearablesCount() external view returns (uint256);
+    function getWearableKey(string calldata _wearableId) external view returns (bytes32);
+    function issued(bytes32 _wearableKey) external view returns (uint256);
+    function maxIssuance(bytes32 _wearableKey) external view returns (uint256);
 }
 
 contract Donation {
+    using SafeMath for uint256;
+
     ERC721Collection public erc721Collection;
 
     address payable public fundsRecipient;
 
-    uint256 public maxOptions;
-    uint256 public maxIssuance;
-    uint256 public lastOptionIssued;
-    uint256 public issued;
     uint256 public minDonation;
     uint256 public donations;
 
-    event DonatedForNFT(address indexed _caller, uint256 indexed _value, uint256 indexed _optionId, string _wearable);
+    event DonatedForNFT(address indexed _caller, uint256 indexed _value, string _wearable);
     event Donated(address indexed _caller, uint256 indexed _value);
 
     /**
@@ -29,20 +140,16 @@ contract Donation {
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
      * @param _minDonation - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _rarity - issuance for each wearable based on its unique rarity
      */
     constructor(
         address payable _fundsRecipient,
         ERC721Collection _erc721Collection,
-        uint256 _minDonation,
-        uint256 _rarity
+        uint256 _minDonation
       )
       public {
         fundsRecipient = _fundsRecipient;
         erc721Collection = _erc721Collection;
         minDonation = _minDonation;
-        maxOptions = erc721Collection.wearablesCount();
-        maxIssuance = maxOptions * _rarity;
     }
 
     /**
@@ -60,45 +167,42 @@ contract Donation {
 
      /**
      * @dev Donate in exchange for a random NFT.
+     * @param _wearableId - wearable id
      */
-    function donateForNFT() external payable {
+    function donateForNFT(string calldata _wearableId) external payable {
         require(msg.value >= minDonation, "The donation should be higher or equal than the minimum donation ETH");
-        require(issued < maxIssuance, "All wearables have been minted");
-
-        uint256 optionToMint;
-        if (lastOptionIssued == 0 && issued == 0) {
-            optionToMint = 0;
-        } else {
-            optionToMint = (++lastOptionIssued % maxOptions);
-        }
-
-        string memory wearable = _wearableByOptionId(optionToMint);
-        erc721Collection.issueToken(msg.sender, wearable);
-
-        issued++;
+        require(canMint(_wearableId), "Exhausted wearable");
 
         fundsRecipient.transfer(msg.value);
 
         donations += msg.value;
 
-        emit DonatedForNFT(msg.sender, msg.value, optionToMint, wearable);
+        erc721Collection.issueToken(msg.sender, _wearableId);
+
+        emit DonatedForNFT(msg.sender, msg.value, _wearableId);
     }
 
     /**
-     * @dev Get a wearable string by its optionId
-     * @param _optionId - Option id
-     * @return wearable name
-     */
-    function _wearableByOptionId(uint256 _optionId) internal view returns (string memory){
-       /* solium-disable-next-line */
-        (bool success, bytes memory data) = address(erc721Collection).staticcall(
-            abi.encodeWithSelector(
-                erc721Collection.wearables.selector,
-                _optionId
-            )
-        );
+    * @dev Returns whether the option ID can be minted. Can return false if the developer wishes to
+    * restrict a total supply per option ID (or overall).
+    * @param _wearableId - wearable id
+    * @return whether an option can be minted
+    */
+    function canMint(string memory _wearableId) public view returns (bool) {
+        return balanceOf(_wearableId) > 0;
+    }
 
-        require(success, "Invalid wearable");
-        return abi.decode(data, (string));
+    /**
+     * @dev Returns an URI for a given option ID.
+     * Throws if the option ID does not exist. May return an empty string.
+     * @param _wearableId - wearable id
+     * @return token URI
+     */
+    function balanceOf(string memory _wearableId) public view returns (uint256) {
+        bytes32 wearableKey = erc721Collection.getWearableKey(_wearableId);
+
+        uint256 issued = erc721Collection.issued(wearableKey);
+        uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
+        return maxIssuance.sub(issued);
     }
 }

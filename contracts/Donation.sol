@@ -1,24 +1,26 @@
 pragma solidity ^0.5.11;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
+
 interface ERC721Collection {
-    function wearables(uint256 _index) external view returns (string memory);
     function issueToken(address _beneficiary, string calldata _wearableId) external;
-    function wearablesCount() external view returns (uint256);
+    function getWearableKey(string calldata _wearableId) external view returns (bytes32);
+    function issued(bytes32 _wearableKey) external view returns (uint256);
+    function maxIssuance(bytes32 _wearableKey) external view returns (uint256);
 }
 
 contract Donation {
+    using SafeMath for uint256;
+
     ERC721Collection public erc721Collection;
 
     address payable public fundsRecipient;
 
-    uint256 public maxOptions;
-    uint256 public maxIssuance;
-    uint256 public lastOptionIssued;
-    uint256 public issued;
     uint256 public minDonation;
     uint256 public donations;
 
-    event DonatedForNFT(address indexed _caller, uint256 indexed _value, uint256 indexed _optionId, string _wearable);
+    event DonatedForNFT(address indexed _caller, uint256 indexed _value, string _wearable);
     event Donated(address indexed _caller, uint256 indexed _value);
 
     /**
@@ -26,20 +28,16 @@ contract Donation {
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
      * @param _minDonation - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _rarity - issuance for each wearable based on its unique rarity
      */
     constructor(
         address payable _fundsRecipient,
         ERC721Collection _erc721Collection,
-        uint256 _minDonation,
-        uint256 _rarity
+        uint256 _minDonation
       )
       public {
         fundsRecipient = _fundsRecipient;
         erc721Collection = _erc721Collection;
         minDonation = _minDonation;
-        maxOptions = erc721Collection.wearablesCount();
-        maxIssuance = maxOptions * _rarity;
     }
 
     /**
@@ -57,45 +55,41 @@ contract Donation {
 
      /**
      * @dev Donate in exchange for a random NFT.
+     * @param _wearableId - wearable id
      */
-    function donateForNFT() external payable {
+    function donateForNFT(string calldata _wearableId) external payable {
         require(msg.value >= minDonation, "The donation should be higher or equal than the minimum donation ETH");
-        require(issued < maxIssuance, "All wearables have been minted");
-
-        uint256 optionToMint;
-        if (lastOptionIssued == 0 && issued == 0) {
-            optionToMint = 0;
-        } else {
-            optionToMint = (++lastOptionIssued % maxOptions);
-        }
-
-        string memory wearable = _wearableByOptionId(optionToMint);
-        erc721Collection.issueToken(msg.sender, wearable);
-
-        issued++;
+        require(canMint(_wearableId), "Exhausted wearable");
 
         fundsRecipient.transfer(msg.value);
 
         donations += msg.value;
 
-        emit DonatedForNFT(msg.sender, msg.value, optionToMint, wearable);
+        erc721Collection.issueToken(msg.sender, _wearableId);
+
+        emit DonatedForNFT(msg.sender, msg.value, _wearableId);
     }
 
     /**
-     * @dev Get a wearable string by its optionId
-     * @param _optionId - Option id
-     * @return wearable name
-     */
-    function _wearableByOptionId(uint256 _optionId) internal view returns (string memory){
-       /* solium-disable-next-line */
-        (bool success, bytes memory data) = address(erc721Collection).staticcall(
-            abi.encodeWithSelector(
-                erc721Collection.wearables.selector,
-                _optionId
-            )
-        );
+    * @dev Returns whether the wearable can be minted.
+    * @param _wearableId - wearable id
+    * @return whether a wearable can be minted
+    */
+    function canMint(string memory _wearableId) public view returns (bool) {
+        return balanceOf(_wearableId) > 0;
+    }
 
-        require(success, "Invalid wearable");
-        return abi.decode(data, (string));
+    /**
+     * @dev Returns the balance.
+     * Throws if the option ID does not exist. May return an empty string.
+     * @param _wearableId - wearable id
+     * @return token URI
+     */
+    function balanceOf(string memory _wearableId) public view returns (uint256) {
+        bytes32 wearableKey = erc721Collection.getWearableKey(_wearableId);
+
+        uint256 issued = erc721Collection.issued(wearableKey);
+        uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
+        return maxIssuance.sub(issued);
     }
 }
