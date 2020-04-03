@@ -28,7 +28,8 @@ function encodeTokenId(a, b) {
 }
 
 function decodeTokenId(id) {
-  const hexId = id.toString().replace('0x', '')
+  const hexId = web3.utils.padLeft(web3.utils.toHex(id), 64).replace('0x', '')
+
   return [
     web3.utils.toBN(hexId.substr(0, 10)),
     web3.utils.toBN(hexId.substr(10, hexId.length)),
@@ -40,7 +41,7 @@ async function issueWearable(contract, beneficiary, index, from) {
   wearables[index].issued++
 }
 
-describe.only('Deterministic Collection', function () {
+describe('Deterministic Collection', function () {
   // option id = 0
   // issued id = 1
   const token1 = encodeTokenId(0, 1)
@@ -67,10 +68,8 @@ describe.only('Deterministic Collection', function () {
     // Wearables
     const wearable0 = WEARABLES[0].name
     const wearable1 = WEARABLES[1].name
-    const wearable2 = WEARABLES[2].name
     const wearable0Hash = web3.utils.soliditySha3(wearable0)
     const wearable1Hash = web3.utils.soliditySha3(wearable1)
-    const wearable2Hash = web3.utils.soliditySha3(wearable2)
 
     const BASE_URI = URI + `${CONTRACT_NAME}/wearables/`
 
@@ -408,7 +407,26 @@ describe.only('Deterministic Collection', function () {
       })
     })
 
-    describe.only('addWearable', function () {
+    describe('tokenURI', function () {
+      it('should return the correct token URI', async function () {
+        await contractInstance.issueToken(holder, 3, 99, fromUser)
+
+        // match wearable id
+        let uri = await contractInstance.tokenURI(encodeTokenId(3, 99))
+        let uriArr = uri.split('/')
+        expect(99).to.eq.BN(uri.split('/')[uriArr.length - 1])
+        expect(wearables[3].name).to.be.equal(uri.split('/')[uriArr.length - 2])
+      })
+
+      it('reverts if the token does not exist', async function () {
+        await assertRevert(
+          contractInstance.tokenURI(encodeTokenId(0, 1)),
+          'ERC721Metadata: received a URI query for a nonexistent token'
+        )
+      })
+    })
+
+    describe('addWearable', function () {
       it('reverts when trying to add a wearable with a max supply greater than 27 bytes', async function () {
         const maxSupply = web3.utils.toBN(web3.utils.padLeft('0xff', 54, 'f'))
         const one = web3.utils.toBN(1)
@@ -422,10 +440,34 @@ describe.only('Deterministic Collection', function () {
       })
     })
 
-    describe.only('encodeTokenId', function () {
+    describe('encodeTokenId', function () {
       it('should encode a token id', async function () {
-        const expectedId = await contractInstance.encodeTokenId(0, 1)
+        let expectedId = await contractInstance.encodeTokenId(0, 1)
+        let decoded = decodeTokenId(expectedId)
         expect(expectedId).to.eq.BN(encodeTokenId(0, 1))
+        expect(0).to.eq.BN(decoded[0])
+        expect(1).to.eq.BN(decoded[1])
+
+        expectedId = await contractInstance.encodeTokenId(1, 0)
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(1, 0))
+        expect(1).to.eq.BN(decoded[0])
+        expect(0).to.eq.BN(decoded[1])
+
+        expectedId = await contractInstance.encodeTokenId(11232232, 1123123123)
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(11232232, 1123123123))
+        expect(11232232).to.eq.BN(decoded[0])
+        expect(1123123123).to.eq.BN(decoded[1])
+
+        expectedId = await contractInstance.encodeTokenId(
+          4569428193,
+          90893249234
+        )
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(4569428193, 90893249234))
+        expect(4569428193).to.eq.BN(decoded[0])
+        expect(90893249234).to.eq.BN(decoded[1])
       })
 
       it('revert when the first value is greater than 5 bytes', async function () {
@@ -440,14 +482,46 @@ describe.only('Deterministic Collection', function () {
           'The option id should be lower or equal than the MAX_OPTIONS'
         )
       })
+
+      it('revert when the second value is greater than 27 bytes', async function () {
+        const max = web3.utils.toBN(web3.utils.padLeft('0xff', 54, 'f'))
+        const one = web3.utils.toBN(1)
+
+        const expectedId = await contractInstance.encodeTokenId(0, max)
+        expect(expectedId).to.eq.BN(encodeTokenId(0, max))
+
+        await assertRevert(
+          contractInstance.encodeTokenId(0, max.add(one)),
+          'The issuance id should be lower or equal than the MAX_ISSUANCE'
+        )
+      })
     })
 
-    describe.only('decodeTokenId', function () {
+    describe('decodeTokenId', function () {
       it('should decode a token id', async function () {
-        const tokenId = encodeTokenId(0, 1)
-        const expectedId = await contractInstance.decodeTokenId(tokenId)
-        expect(expectedId[0]).to.eq.BN(0)
-        expect(expectedId[1]).to.eq.BN(1)
+        let expectedValues = await contractInstance.decodeTokenId(
+          encodeTokenId(0, 1)
+        )
+        expect(expectedValues[0]).to.eq.BN(0)
+        expect(expectedValues[1]).to.eq.BN(1)
+
+        expectedValues = await contractInstance.decodeTokenId(
+          encodeTokenId(1, 0)
+        )
+        expect(expectedValues[0]).to.eq.BN(1)
+        expect(expectedValues[1]).to.eq.BN(0)
+
+        expectedValues = await contractInstance.decodeTokenId(
+          encodeTokenId(124, 123212)
+        )
+        expect(expectedValues[0]).to.eq.BN(124)
+        expect(expectedValues[1]).to.eq.BN(123212)
+
+        expectedValues = await contractInstance.decodeTokenId(
+          encodeTokenId(4569428193, 90893249234)
+        )
+        expect(expectedValues[0]).to.eq.BN(4569428193)
+        expect(expectedValues[1]).to.eq.BN(90893249234)
       })
     })
   })
