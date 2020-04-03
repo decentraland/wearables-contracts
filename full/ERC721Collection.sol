@@ -1061,14 +1061,72 @@ contract ERC721Full is ERC721, ERC721Enumerable, ERC721Metadata {
     }
 }
 
-// File: contracts/ERC721Collection.sol
+// File: contracts/libs/String.sol
+
+pragma solidity ^0.5.11;
+
+library String {
+
+    /**
+     * @dev Convert bytes32 to string.
+     * @param _x - to be converted to string.
+     * @return string
+     */
+    function bytes32ToString(bytes32 _x) internal pure returns (string memory) {
+        bytes memory bytesString = new bytes(32);
+        uint charCount = 0;
+        for (uint j = 0; j < 32; j++) {
+            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
+            if (char != 0) {
+                bytesString[charCount] = char;
+                charCount++;
+            }
+        }
+        bytes memory bytesStringTrimmed = new bytes(charCount);
+        for (uint j = 0; j < charCount; j++) {
+            bytesStringTrimmed[j] = bytesString[j];
+        }
+        return string(bytesStringTrimmed);
+    }
+
+    /**
+     * @dev Convert uint to string.
+     * @param _i - uint256 to be converted to string.
+     * @return uint in string
+     */
+    function uintToString(uint _i) internal pure returns (string memory _uintAsString) {
+        uint i = _i;
+
+        if (i == 0) {
+            return "0";
+        }
+        uint j = i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len - 1;
+        while (i != 0) {
+            bstr[k--] = byte(uint8(48 + i % 10));
+            i /= 10;
+        }
+        return string(bstr);
+    }
+}
+
+// File: contracts/ERC721BaseCollection.sol
 
 pragma solidity ^0.5.11;
 
 
 
 
-contract ERC721Collection is Ownable, ERC721Full {
+contract ERC721BaseCollection is Ownable, ERC721Full {
+    using String for bytes32;
+    using String for uint256;
+
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
     mapping(uint256 => string) internal _tokenPaths;
@@ -1101,31 +1159,6 @@ contract ERC721Collection is Ownable, ERC721Full {
     modifier onlyAllowed() {
         require(allowed[msg.sender], "Only an `allowed` address can issue tokens");
         _;
-    }
-
-
-    /**
-     * @dev Issue a new NFT of the specified kind.
-     * @notice that will throw if kind has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _wearableId - token wearable
-     */
-    function issueToken(address _beneficiary, string calldata _wearableId) external onlyAllowed {
-        _issueToken(_beneficiary, _wearableId);
-    }
-
-    /**
-     * @dev Issue NFTs.
-     * @notice that will throw if kind has reached its maximum or is invalid
-     * @param _beneficiaries - owner of the tokens
-     * @param _wearableIds - token wearables
-     */
-    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external onlyAllowed {
-        require(_beneficiaries.length == _wearableIds.length, "Parameters should have the same length");
-
-        for(uint256 i = 0; i < _wearableIds.length; i++) {
-            _issueToken(_beneficiaries[i], _bytes32ToString(_wearableIds[i]));
-        }
     }
 
 
@@ -1207,7 +1240,7 @@ contract ERC721Collection is Ownable, ERC721Full {
         require(_wearableIds.length == _maxIssuances.length, "Parameters should have the same length");
 
         for (uint256 i = 0; i < _wearableIds.length; i++) {
-            addWearable(_bytes32ToString(_wearableIds[i]), _maxIssuances[i]);
+            addWearable(_wearableIds[i].bytes32ToString(), _maxIssuances[i]);
         }
     }
 
@@ -1273,6 +1306,81 @@ contract ERC721Collection is Ownable, ERC721Full {
         return keccak256(abi.encodePacked(_wearableId));
     }
 
+    function _mint(
+        address _beneficiary,
+        uint256 _tokenId,
+        bytes32 _wearableIdKey,
+        string memory _wearableId,
+        uint256 issuedId
+    ) internal {
+        // Mint erc721 token
+        super._mint(_beneficiary, _tokenId);
+
+        // Increase issuance
+        issued[_wearableIdKey] = issued[_wearableIdKey] + 1;
+
+        // Log
+        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, issuedId);
+    }
+}
+
+// File: contracts/ERC721Collection.sol
+
+pragma solidity ^0.5.11;
+
+
+
+
+contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
+    /**
+     * @dev Create the contract.
+     * @param _name - name of the contract
+     * @param _symbol - symbol of the contract
+     * @param _operator - Address allowed to mint tokens
+     * @param _baseURI - base URI for token URIs
+     */
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address _operator,
+        string memory _baseURI
+    ) public ERC721BaseCollection(_name, _symbol, _operator, _baseURI) {}
+
+    /**
+     * @dev Issue a new NFT of the specified kind.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _wearableId - token wearable
+     */
+    function issueToken(address _beneficiary, string calldata _wearableId) external onlyAllowed {
+        _issueToken(_beneficiary, _wearableId);
+    }
+
+    /**
+     * @dev Issue NFTs.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiaries - owner of the tokens
+     * @param _wearableIds - token wearables
+     */
+    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external onlyAllowed {
+        require(_beneficiaries.length == _wearableIds.length, "Parameters should have the same length");
+
+        for(uint256 i = 0; i < _wearableIds.length; i++) {
+            _issueToken(_beneficiaries[i], _wearableIds[i].bytes32ToString());
+        }
+    }
+
+    /**
+     * @dev Returns an URI for a given token ID.
+     * Throws if the token ID does not exist. May return an empty string.
+     * @param _tokenId - uint256 ID of the token queried
+     * @return token URI
+     */
+    function tokenURI(uint256 _tokenId) external view returns (string memory) {
+        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
+        return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
+    }
+
     /**
      * @dev Issue a new NFT of the specified kind.
      * @notice that will throw if kind has reached its maximum or is invalid
@@ -1282,16 +1390,14 @@ contract ERC721Collection is Ownable, ERC721Full {
     function _issueToken(address _beneficiary, string memory _wearableId) internal {
         bytes32 key = getWearableKey(_wearableId);
         if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
-            issued[key] = issued[key] + 1;
             uint tokenId = this.totalSupply();
 
-            _mint(_beneficiary, tokenId);
+            _mint(_beneficiary, tokenId, key, _wearableId, issued[key] + 1);
             _setTokenURI(
                 tokenId,
-                string(abi.encodePacked(_wearableId, "/", _uintToString(issued[key])))
+                string(abi.encodePacked(_wearableId, "/", issued[key].uintToString()))
             );
 
-            emit Issue(_beneficiary, tokenId, key, _wearableId, issued[key]);
         } else {
             revert("invalid: trying to issue an exhausted wearable of nft");
         }
@@ -1306,52 +1412,5 @@ contract ERC721Collection is Ownable, ERC721Full {
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
         require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
         _tokenPaths[_tokenId] = _uri;
-    }
-
-    /**
-     * @dev Convert bytes32 to string.
-     * @param _x - to be converted to string.
-     * @return string
-     */
-    function _bytes32ToString(bytes32 _x) internal pure returns (string memory) {
-        bytes memory bytesString = new bytes(32);
-        uint charCount = 0;
-        for (uint j = 0; j < 32; j++) {
-            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
-            if (char != 0) {
-                bytesString[charCount] = char;
-                charCount++;
-            }
-        }
-        bytes memory bytesStringTrimmed = new bytes(charCount);
-        for (uint j = 0; j < charCount; j++) {
-            bytesStringTrimmed[j] = bytesString[j];
-        }
-        return string(bytesStringTrimmed);
-    }
-
-
-     /**
-     * @dev Convert uint to string.
-     * @param _i - uint256 to be converted to string.
-     * @return uint in string
-     */
-    function _uintToString(uint _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint j = _i;
-        uint len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint k = len - 1;
-        while (_i != 0) {
-            bstr[k--] = byte(uint8(48 + _i % 10));
-            _i /= 10;
-        }
-        return string(bstr);
     }
 }
