@@ -245,7 +245,7 @@ contract Donation {
     function canMint(string memory _wearableId, uint256 _amount) public view returns (bool) {
         uint256 balance = balanceOf(_wearableId);
 
-        return balance >= _amount ? true : false;
+        return balance >= _amount;
     }
 
     /**
