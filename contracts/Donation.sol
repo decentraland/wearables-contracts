@@ -68,6 +68,9 @@ contract Donation {
 
      /**
      * @dev Donate in exchange for a random NFT.
+     * @notice that there is a maximum amount of NFTs that can be issued per transaction.
+     * If the donation greater than `price * maxNFTsPerTx`, all the donation will be used and
+     * a maximum of `maxNFTsPerTx` will be issued.
      * @param _wearableId - wearable id
      */
     function donateForNFT(string calldata _wearableId) external payable {
