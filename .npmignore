@@ -1,11 +1,13 @@
 .DS_Store
+.DS_Store
 .idea
-.zos.session
 .coverage_env
 .solidity_coverage
+.circleci
 build
-.DS_Store
 node_modules
-artifacts
 cache
-tests
+test
+scripts
+migrations
+full

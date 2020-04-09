@@ -1,5 +1,3 @@
-const ERC721Collection = artifacts.require('ERC721Collection')
-
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const BASE_URI =
   'https://api-wearables.decentraland.org/v1/standards/erc721-metadata/collections/'
@@ -18,6 +16,8 @@ export const WEARABLES = [
 ]
 
 export async function createDummyCollection(options) {
+  const ERC721Collection = artifacts.require('ERC721Collection')
+
   const contract = await ERC721Collection.new(
     options.name || CONTRACT_NAME,
     options.symbol || CONTRACT_SYMBOL,
