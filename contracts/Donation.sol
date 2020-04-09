@@ -38,7 +38,7 @@ contract Donation {
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
      * @param _price - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _maxNFTsPerCall - maximum of NFTs issued per transaction
+     * @param _maxNFTsPerCall - maximum of NFTs issued per call
      */
     constructor(
         address payable _fundsRecipient,

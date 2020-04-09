@@ -182,7 +182,7 @@ contract Donation {
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
      * @param _price - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _maxNFTsPerCall - maximum of NFTs issued per transaction
+     * @param _maxNFTsPerCall - maximum of NFTs issued per call
      */
     constructor(
         address payable _fundsRecipient,
@@ -211,8 +211,8 @@ contract Donation {
     }
 
      /**
-     * @dev Donate in exchange for a random NFT.
-     * @notice that there is a maximum amount of NFTs that can be issued per transaction.
+     * @dev Donate in exchange for NFTs.
+     * @notice that there is a maximum amount of NFTs that can be issued per call.
      * If the donation greater than `price * maxNFTsPerCall`, all the donation will be used and
      * a maximum of `maxNFTsPerCall` will be issued.
      * @param _wearableId - wearable id
