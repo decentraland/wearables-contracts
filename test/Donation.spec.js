@@ -11,7 +11,7 @@ describe('Donation', function () {
   // Donation
   const price = web3.utils.toBN(web3.utils.toWei('0.025', 'ether'))
   const donation = web3.utils.toBN(web3.utils.toWei('10', 'ether'))
-  const maxNFTsPerTx = 25
+  const maxNFTsPerCall = 25
 
   // Accounts
   let accounts
@@ -60,7 +60,7 @@ describe('Donation', function () {
       fundsRecipient,
       erc721Contract.address,
       price,
-      maxNFTsPerTx,
+      maxNFTsPerCall,
       fromDonationOwner
     )
 
@@ -84,20 +84,20 @@ describe('Donation', function () {
         fundsRecipient,
         erc721Contract.address,
         price,
-        maxNFTsPerTx,
+        maxNFTsPerCall,
         fromDonationOwner
       )
 
       const recipient = await contract.fundsRecipient()
       const collectionContract = await contract.erc721Collection()
       const expectedPrice = await contract.price()
-      const expectedMaxNFTsPerTx = await contract.maxNFTsPerTx()
+      const expectedMaxNFTsPerCall = await contract.maxNFTsPerCall()
       const amount = await contract.donations()
 
       expect(recipient).to.be.equal(fundsRecipient)
       expect(collectionContract).to.be.equal(erc721Contract.address)
       expect(expectedPrice).to.be.eq.BN(price)
-      expect(expectedMaxNFTsPerTx).to.be.eq.BN(maxNFTsPerTx)
+      expect(expectedMaxNFTsPerCall).to.be.eq.BN(maxNFTsPerCall)
       expect(amount).to.be.eq.BN(0)
     })
   })
@@ -285,7 +285,7 @@ describe('Donation', function () {
       let amount = await donationContract.donations()
       expect(amount).to.be.eq.BN(0)
 
-      const amountOfNFTs = maxNFTsPerTx + 110
+      const amountOfNFTs = maxNFTsPerCall + 110
       const finalPrice = price.mul(web3.utils.toBN(amountOfNFTs))
       const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
         ...fromUser,
@@ -293,11 +293,11 @@ describe('Donation', function () {
       })
 
       totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(maxNFTsPerTx)
+      expect(totalSupply).to.be.eq.BN(maxNFTsPerCall)
 
       issued = await erc721Contract.issued(hash)
-      expect(logs.length).to.be.equal(maxNFTsPerTx + 1)
-      expect(issued).to.be.eq.BN(maxNFTsPerTx)
+      expect(logs.length).to.be.equal(maxNFTsPerCall + 1)
+      expect(issued).to.be.eq.BN(maxNFTsPerCall)
 
       expect(logs[logs.length - 1].event).to.be.equal('DonatedForNFT')
       expect(logs[logs.length - 1].args._caller).to.be.equal(user)
@@ -305,13 +305,13 @@ describe('Donation', function () {
       expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
         WEARABLES[0].name
       )
-      expect(logs[logs.length - 1].args._issued).to.be.eq.BN(maxNFTsPerTx)
+      expect(logs[logs.length - 1].args._issued).to.be.eq.BN(maxNFTsPerCall)
 
       recipientBalance = await web3.eth.getBalance(fundsRecipient)
       expect(recipientBalance).to.be.eq.BN(finalPrice)
 
       balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(balanceOfUser).to.be.eq.BN(maxNFTsPerTx)
+      expect(balanceOfUser).to.be.eq.BN(maxNFTsPerCall)
 
       balanceOfContract = await web3.eth.getBalance(donationContract.address)
       expect(balanceOfContract).to.be.eq.BN(0)
@@ -475,7 +475,7 @@ describe('Donation', function () {
 
       maxIssuance = await erc721Contract.maxIssuance(hash)
 
-      for (let i = 0; i < maxIssuance - maxNFTsPerTx; i++) {
+      for (let i = 0; i < maxIssuance - maxNFTsPerCall; i++) {
         await donationContract.donateForNFT(WEARABLES[1].name, {
           ...fromUser,
           value: price,
@@ -484,7 +484,7 @@ describe('Donation', function () {
 
       canMint = await donationContract.canMint(
         WEARABLES[1].name,
-        maxNFTsPerTx + 1
+        maxNFTsPerCall + 1
       )
       expect(canMint).to.be.equal(false)
     })

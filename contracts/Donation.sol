@@ -21,7 +21,7 @@ contract Donation {
     address payable public fundsRecipient;
 
     uint256 public price;
-    uint256 public maxNFTsPerTx;
+    uint256 public maxNFTsPerCall;
     uint256 public donations;
 
     event DonatedForNFT(
@@ -38,19 +38,19 @@ contract Donation {
      * @param _fundsRecipient - Address of the recipient of the funds
      * @param _erc721Collection - Address of the collection
      * @param _price - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _maxNFTsPerTx - maximum of NFTs issued per transaction
+     * @param _maxNFTsPerCall - maximum of NFTs issued per transaction
      */
     constructor(
         address payable _fundsRecipient,
         ERC721Collection _erc721Collection,
         uint256 _price,
-        uint256 _maxNFTsPerTx
+        uint256 _maxNFTsPerCall
       )
       public {
         fundsRecipient = _fundsRecipient;
         erc721Collection = _erc721Collection;
         price = _price;
-        maxNFTsPerTx = _maxNFTsPerTx;
+        maxNFTsPerCall = _maxNFTsPerCall;
     }
 
     /**
@@ -67,14 +67,14 @@ contract Donation {
     }
 
      /**
-     * @dev Donate in exchange for a random NFT.
-     * @notice that there is a maximum amount of NFTs that can be issued per transaction.
-     * If the donation greater than `price * maxNFTsPerTx`, all the donation will be used and
-     * a maximum of `maxNFTsPerTx` will be issued.
+     * @dev Donate in exchange for NFTs.
+     * @notice that there is a maximum amount of NFTs that can be issued per call.
+     * If the donation greater than `price * maxNFTsPerCall`, all the donation will be used and
+     * a maximum of `maxNFTsPerCall` will be issued.
      * @param _wearableId - wearable id
      */
     function donateForNFT(string calldata _wearableId) external payable {
-        uint256 NFTsToIssued = Math.min(msg.value / price, maxNFTsPerTx);
+        uint256 NFTsToIssued = Math.min(msg.value / price, maxNFTsPerCall);
 
         require(NFTsToIssued > 0, "The donation should be higher or equal than the price");
         require(

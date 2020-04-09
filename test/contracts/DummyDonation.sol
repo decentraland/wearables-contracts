@@ -13,11 +13,11 @@ contract DummyDonation is Donation, EventsInterface {
         address payable fundsRecipient,
         ERC721Collection _erc721Collection,
         uint256 _price,
-        uint256 _maxNFTsPerTx
+        uint256 _maxNFTsPerCall
     )  Donation (
           fundsRecipient,
           _erc721Collection,
           _price,
-          _maxNFTsPerTx
+          _maxNFTsPerCall
     ) public {}
 }
