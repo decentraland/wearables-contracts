@@ -1306,15 +1306,24 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         return keccak256(abi.encodePacked(_wearableId));
     }
 
+    /**
+     * @dev Mint a new NFT of the specified kind.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _tokenId - token
+     * @param _wearableIdKey - wearable key
+     * @param _wearableId - token wearable
+     * @param _issuedId - issued id
+     */
     function _mint(
         address _beneficiary,
         uint256 _tokenId,
         bytes32 _wearableIdKey,
         string memory _wearableId,
-        uint256 issuedId
+        uint256 _issuedId
     ) internal {
         require(
-            issuedId > 0 && issuedId <= maxIssuance[_wearableIdKey],
+            _issuedId > 0 && _issuedId <= maxIssuance[_wearableIdKey],
             "Invalid issued id"
         );
 
@@ -1325,7 +1334,7 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         issued[_wearableIdKey] = issued[_wearableIdKey] + 1;
 
         // Log
-        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, issuedId);
+        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, _issuedId);
     }
 }
 
