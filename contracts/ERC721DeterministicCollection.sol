@@ -99,9 +99,6 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
         // Get wearable key
         bytes32 key = getWearableKey(wearableId);
 
-        // Check issuance
-        require(_issuedId > 0 && _issuedId <= maxIssuance[key], "Invalid issued id");
-
         // Encode token id
         uint tokenId = _encodeTokenId(_optionId, _issuedId);
 

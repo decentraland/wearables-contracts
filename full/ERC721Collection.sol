@@ -1313,6 +1313,11 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         string memory _wearableId,
         uint256 issuedId
     ) internal {
+        require(
+            issuedId > 0 && issuedId <= maxIssuance[_wearableIdKey],
+            "Invalid issued id"
+        );
+
         // Mint erc721 token
         super._mint(_beneficiary, _tokenId);
 
@@ -1389,18 +1394,14 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
      */
     function _issueToken(address _beneficiary, string memory _wearableId) internal {
         bytes32 key = getWearableKey(_wearableId);
-        if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
-            uint tokenId = this.totalSupply();
+        uint256 issuedId = issued[key] + 1;
+        uint256 tokenId = this.totalSupply();
 
-            _mint(_beneficiary, tokenId, key, _wearableId, issued[key] + 1);
-            _setTokenURI(
-                tokenId,
-                string(abi.encodePacked(_wearableId, "/", issued[key].uintToString()))
-            );
-
-        } else {
-            revert("invalid: trying to issue an exhausted wearable of nft");
-        }
+        _mint(_beneficiary, tokenId, key, _wearableId, issuedId);
+        _setTokenURI(
+            tokenId,
+            string(abi.encodePacked(_wearableId, "/", issuedId.uintToString()))
+        );
     }
 
     /**

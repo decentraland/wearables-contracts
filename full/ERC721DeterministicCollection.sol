@@ -1313,6 +1313,11 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         string memory _wearableId,
         uint256 issuedId
     ) internal {
+        require(
+            issuedId > 0 && issuedId <= maxIssuance[_wearableIdKey],
+            "Invalid issued id"
+        );
+
         // Mint erc721 token
         super._mint(_beneficiary, _tokenId);
 
@@ -1424,9 +1429,6 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
 
         // Get wearable key
         bytes32 key = getWearableKey(wearableId);
-
-        // Check issuance
-        require(_issuedId > 0 && _issuedId <= maxIssuance[key], "Invalid issued id");
 
         // Encode token id
         uint tokenId = _encodeTokenId(_optionId, _issuedId);
