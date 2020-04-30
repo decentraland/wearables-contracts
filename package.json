@@ -1,6 +1,6 @@
 {
   "name": "wearable-contracts",
-  "version": "0.0.1-rc7",
+  "version": "0.0.0",
   "description": "Decentraland wereable contracts",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,8 @@
     "test:watch": "nodemon test/** contracts/** --exec 'npm test'",
     "lint": "npx eslint test && npx solium -d contracts",
     "lint:fix": "npx eslint --fix test && npx solium -d contracts --fix",
-    "build": "babel test --out-dir tests"
+    "build": "babel test --out-dir tests",
+    "compile": "npx buidler compile"
   },
   "repository": {
     "type": "git",
