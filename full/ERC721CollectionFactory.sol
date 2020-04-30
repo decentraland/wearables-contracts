@@ -1306,13 +1306,27 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         return keccak256(abi.encodePacked(_wearableId));
     }
 
+    /**
+     * @dev Mint a new NFT of the specified kind.
+     * @notice that will throw if kind has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _tokenId - token
+     * @param _wearableIdKey - wearable key
+     * @param _wearableId - token wearable
+     * @param _issuedId - issued id
+     */
     function _mint(
         address _beneficiary,
         uint256 _tokenId,
         bytes32 _wearableIdKey,
         string memory _wearableId,
-        uint256 issuedId
+        uint256 _issuedId
     ) internal {
+        require(
+            _issuedId > 0 && _issuedId <= maxIssuance[_wearableIdKey],
+            "Invalid issued id"
+        );
+
         // Mint erc721 token
         super._mint(_beneficiary, _tokenId);
 
@@ -1320,7 +1334,7 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         issued[_wearableIdKey] = issued[_wearableIdKey] + 1;
 
         // Log
-        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, issuedId);
+        emit Issue(_beneficiary, _tokenId, _wearableIdKey, _wearableId, _issuedId);
     }
 }
 
@@ -1389,18 +1403,14 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
      */
     function _issueToken(address _beneficiary, string memory _wearableId) internal {
         bytes32 key = getWearableKey(_wearableId);
-        if (maxIssuance[key] > 0 && issued[key] < maxIssuance[key]) {
-            uint tokenId = this.totalSupply();
+        uint256 issuedId = issued[key] + 1;
+        uint256 tokenId = this.totalSupply();
 
-            _mint(_beneficiary, tokenId, key, _wearableId, issued[key] + 1);
-            _setTokenURI(
-                tokenId,
-                string(abi.encodePacked(_wearableId, "/", issued[key].uintToString()))
-            );
-
-        } else {
-            revert("invalid: trying to issue an exhausted wearable of nft");
-        }
+        _mint(_beneficiary, tokenId, key, _wearableId, issuedId);
+        _setTokenURI(
+            tokenId,
+            string(abi.encodePacked(_wearableId, "/", issuedId.uintToString()))
+        );
     }
 
     /**

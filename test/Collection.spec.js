@@ -105,9 +105,11 @@ describe('Collection', function () {
         const owner = await contractInstance.ownerOf(totalSupply.toNumber() - 1)
         expect(owner).to.be.equal(anotherHolder)
 
-        // match wearable id
+        // match wearable id & issued id
         const uri = await contractInstance.tokenURI(totalSupply.toNumber() - 1)
-        expect(issued).to.eq.BN(uri.split('/').pop())
+        const uriArr = uri.split('/')
+        expect(wearable0).to.eq.BN(uriArr[uriArr.length - 2])
+        expect(issued).to.eq.BN(uriArr[uriArr.length - 1])
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
@@ -131,7 +133,7 @@ describe('Collection', function () {
       it('reverts when issuing an invalid wearable', async function () {
         await assertRevert(
           contractInstance.issueToken(anotherHolder, invalidWearable, fromUser),
-          'invalid: trying to issue an exhausted wearable of nft'
+          'Invalid issued id'
         )
       })
 
@@ -148,7 +150,7 @@ describe('Collection', function () {
 
         await assertRevert(
           contractInstance.issueToken(holder, wearable2, fromUser),
-          'invalid: trying to issue an exhausted wearable of nft'
+          'Invalid issued id'
         )
       })
     })
@@ -177,10 +179,12 @@ describe('Collection', function () {
         // match owner
         let owner = await contractInstance.ownerOf(totalSupply.toNumber() - 2)
         expect(owner).to.be.equal(holder)
-        // match wearable id
-        let uri = await contractInstance.tokenURI(totalSupply.toNumber() - 2)
-        expect(issued).to.eq.BN(uri.split('/').pop())
 
+        // match wearable id & issued id
+        let uri = await contractInstance.tokenURI(totalSupply.toNumber() - 2)
+        let uriArr = uri.split('/')
+        expect(wearable1).to.eq.BN(uriArr[uriArr.length - 2])
+        expect(issued).to.eq.BN(uriArr[uriArr.length - 1])
         // Wearable0
         // match issued
         issued = await contractInstance.issued(wearable0Hash)
@@ -196,9 +200,11 @@ describe('Collection', function () {
         owner = await contractInstance.ownerOf(totalSupply.toNumber() - 1)
         expect(owner).to.be.equal(anotherHolder)
 
-        // match wearable id
+        // match wearable id & issued id
         uri = await contractInstance.tokenURI(totalSupply.toNumber() - 1)
-        expect(issued).to.eq.BN(uri.split('/').pop())
+        uriArr = uri.split('/')
+        expect(wearable0).to.eq.BN(uriArr[uriArr.length - 2])
+        expect(issued).to.eq.BN(uriArr[uriArr.length - 1])
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
@@ -262,7 +268,7 @@ describe('Collection', function () {
             ],
             fromUser
           ),
-          'invalid: trying to issue an exhausted wearable of nft'
+          'Invalid issued id'
         )
       })
     })

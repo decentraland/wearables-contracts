@@ -425,14 +425,14 @@ describe('Donation', function () {
       // Check if the collection was exhausted too
       await assertRevert(
         erc721Contract.issueToken(holder, WEARABLES[0].name, fromUser),
-        'invalid: trying to issue an exhausted wearable of nft'
+        'Invalid issued id'
       )
     })
 
     it('reverts when trying to mint an invalid wearable', async function () {
       await assertRevert(
         erc721Contract.issueToken(holder, 'invalid_masks', fromUser),
-        'invalid: trying to issue an exhausted wearable of nft'
+        'Invalid issued id'
       )
     })
   })
