@@ -80,7 +80,6 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
      * @param _uri - string URI to assign
      */
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-        require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
         _tokenPaths[_tokenId] = _uri;
     }
 }
