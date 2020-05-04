@@ -1322,10 +1322,12 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         string memory _wearableId,
         uint256 _issuedId
     ) internal {
+        // Check issuance
         require(
             _issuedId > 0 && _issuedId <= maxIssuance[_wearableIdKey],
             "Invalid issued id"
         );
+        require(issued[_wearableIdKey] < maxIssuance[_wearableIdKey], "Option exhausted");
 
         // Mint erc721 token
         super._mint(_beneficiary, _tokenId);
@@ -1420,7 +1422,6 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
      * @param _uri - string URI to assign
      */
     function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-        require(_exists(_tokenId), "ERC721Metadata: calling set URI for a nonexistent token");
         _tokenPaths[_tokenId] = _uri;
     }
 }

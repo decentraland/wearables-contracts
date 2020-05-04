@@ -91,7 +91,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      */
     function _issueToken(address _beneficiary, uint256 _optionId, uint256 _issuedId) internal {
         // Check option id
-        require(_optionId >= 0 && _optionId < wearables.length, "Invalid option id");
+        require(_optionId < wearables.length, "Invalid option id");
 
         // Get werable
         string memory wearableId = wearables[_optionId];
