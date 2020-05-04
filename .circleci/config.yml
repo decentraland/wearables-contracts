@@ -49,6 +49,10 @@ jobs:
           name: Install packages
           command: npm install
 
+      - run:
+          name: Build
+          command: npm run build
+
       # Compile contracts
       - run:
           name: Compile contracts
