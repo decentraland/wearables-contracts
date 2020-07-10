@@ -15,9 +15,15 @@ describe.only('SimpleStore', function () {
   let collection2
 
   // Store
-  const price = web3.utils.toBN(web3.utils.toWei('100', 'ether'))
-  const fees = web3.utils.toBN(25000) // 2.5%
-  const million = web3.utils.toBN(1000000)
+  const PRICE = web3.utils.toBN(web3.utils.toWei('100', 'ether'))
+  const STORE_FEE = web3.utils.toBN(25000) // 2.5%
+  const MILLION = web3.utils.toBN(1000000)
+
+  // WEARABLES_2
+  const COLLECTION2_WEARABLES = [
+    { name: 'coco_mask', max: 10 },
+    { name: 'turtle_mask', max: 100 },
+  ]
 
   // Accounts
   let accounts
@@ -76,17 +82,14 @@ describe.only('SimpleStore', function () {
 
     collection2 = await createDummyCollection({
       allowed: user,
-      wearables: [
-        { name: 'coco_mask', max: 10 },
-        { name: 'turtle_mask', max: 100 },
-      ],
+      wearables: COLLECTION2_WEARABLES,
       creationParams,
     })
 
     storeContract = await Store.new(
       manaContract.address,
-      price,
-      fees,
+      PRICE,
+      STORE_FEE,
       [collection1.address, collection2.address],
       [collection1Beneficiary, collection2Beneficiary],
       fromStoreOwner
@@ -103,15 +106,15 @@ describe.only('SimpleStore', function () {
     it('deploy with correct values', async function () {
       const contract = await Store.new(
         manaContract.address,
-        price,
-        fees,
+        PRICE,
+        STORE_FEE,
         [collection1.address, collection2.address],
         [collection1Beneficiary, collection2Beneficiary],
         fromStoreOwner
       )
 
       const acceptedToken = await contract.acceptedToken()
-      const contractPrice = await contract.price()
+      const contractPrice = await contract.PRICE()
       const ownerCutPerMillion = await contract.ownerCutPerMillion()
       const beneficiary1 = await contract.collectionBeneficiaries(
         collection1.address
@@ -121,8 +124,8 @@ describe.only('SimpleStore', function () {
       )
 
       expect(acceptedToken).to.be.equal(manaContract.address)
-      expect(contractPrice).to.be.eq.BN(price)
-      expect(ownerCutPerMillion).to.be.eq.BN(fees)
+      expect(contractPrice).to.be.eq.BN(PRICE)
+      expect(ownerCutPerMillion).to.be.eq.BN(STORE_FEE)
       expect(beneficiary1).to.be.equal(collection1Beneficiary)
       expect(beneficiary2).to.be.equal(collection2Beneficiary)
     })
@@ -153,6 +156,10 @@ describe.only('SimpleStore', function () {
         'beneficiary2'
       )
 
+      const fee = PRICE.mul(STORE_FEE).div(MILLION)
+
+      const hash = await collection1.getWearableKey(WEARABLES[0].name)
+
       const { logs } = await storeContract.buy(
         collection1.address,
         [0],
@@ -166,31 +173,120 @@ describe.only('SimpleStore', function () {
       totalSupplyCollection2 = await collection2.totalSupply()
       expect(totalSupplyCollection2).to.be.eq.BN(0)
 
+      const issued = await collection1.issued(hash)
+      expect(issued).to.be.eq.BN(1)
+
       expect(logs.length).to.be.equal(3)
 
       expect(logs[0].event).to.be.equal('Burn')
       expect(logs[0].args.burner).to.be.equal(storeContract.address)
-      // expect(logs[1].args.value).to.be.eq.BN()
+      expect(logs[0].args.value).to.be.eq.BN(fee)
 
       expect(logs[1].event).to.be.equal('Issue')
       expect(logs[1].args._beneficiary).to.be.equal(buyer)
       expect(logs[1].args._tokenId).to.be.eq.BN(
         totalSupplyCollection1.toNumber() - 1
       )
-      // expect(logs[1].args._wearableIdKey).to.be.equal(hash)
-      // expect(logs[1].args._wearableId).to.be.equal(WEARABLES[3].name)
-      // expect(logs[1].args._issuedId).to.eq.BN(issued)
-      // expect(issued).to.be.eq.BN(1)
+      expect(logs[1].args._wearableIdKey).to.be.equal(hash)
+      expect(logs[1].args._wearableId).to.be.equal(WEARABLES[0].name)
+      expect(logs[1].args._issuedId).to.eq.BN(1)
 
       expect(logs[2].event).to.be.equal('Bought')
       expect(logs[2].args._collectionAddress).to.be.equal(collection1.address)
-      //expect(logs[2].args._wearableId).to.be.eq.BN(donation)
-      expect(logs[2].args._price).to.be.eq.BN(price)
+      expect(logs[2].args._optionIds).to.be.eql([web3.utils.toBN(0)])
+      expect(logs[2].args._price).to.be.eq.BN(PRICE)
 
-      await buyerBalance.requireDecrease(price)
+      await buyerBalance.requireDecrease(PRICE)
+      await storeBalance.requireConstant()
+      await collection1BeneficiaryBalance.requireIncrease(PRICE.sub(fee))
+      await collection2BeneficiaryBalance.requireConstant()
+    })
+
+    it('should buy more than 1 item', async function () {
+      let totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(0)
+
+      let totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(0)
+
+      const buyerBalance = await balanceSnap(manaContract, buyer, 'buyer')
+      const storeBalance = await balanceSnap(
+        manaContract,
+        storeContract.address,
+        'store'
+      )
+      const collection1BeneficiaryBalance = await balanceSnap(
+        manaContract,
+        collection1Beneficiary,
+        'beneficiary1'
+      )
+      const collection2BeneficiaryBalance = await balanceSnap(
+        manaContract,
+        collection2Beneficiary,
+        'beneficiary2'
+      )
+
+      const expectedFinalPrice = PRICE.mul(web3.utils.toBN(2))
+      const fee = expectedFinalPrice.mul(STORE_FEE).div(MILLION)
+
+      const hash0 = await collection1.getWearableKey(WEARABLES[0].name)
+      const hash3 = await collection1.getWearableKey(WEARABLES[3].name)
+
+      const { logs } = await storeContract.buy(
+        collection1.address,
+        [0, 3],
+        buyer,
+        fromBuyer
+      )
+
+      totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(2)
+
+      totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(0)
+
+      const issued1 = await collection1.issued(hash0)
+      expect(issued1).to.be.eq.BN(1)
+
+      const issued2 = await collection1.issued(hash3)
+      expect(issued2).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(4)
+
+      expect(logs[0].event).to.be.equal('Burn')
+      expect(logs[0].args.burner).to.be.equal(storeContract.address)
+      expect(logs[0].args.value).to.be.eq.BN(fee)
+
+      expect(logs[1].event).to.be.equal('Issue')
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+      expect(logs[1].args._tokenId).to.be.eq.BN(
+        totalSupplyCollection1.toNumber() - 2
+      )
+      expect(logs[1].args._wearableIdKey).to.be.equal(hash0)
+      expect(logs[1].args._wearableId).to.be.equal(WEARABLES[0].name)
+      expect(logs[1].args._issuedId).to.eq.BN(1)
+
+      expect(logs[2].event).to.be.equal('Issue')
+      expect(logs[2].args._beneficiary).to.be.equal(buyer)
+      expect(logs[2].args._tokenId).to.be.eq.BN(
+        totalSupplyCollection1.toNumber() - 1
+      )
+      expect(logs[2].args._wearableIdKey).to.be.equal(hash3)
+      expect(logs[2].args._wearableId).to.be.equal(WEARABLES[3].name)
+      expect(logs[2].args._issuedId).to.eq.BN(1)
+
+      expect(logs[3].event).to.be.equal('Bought')
+      expect(logs[3].args._collectionAddress).to.be.equal(collection1.address)
+      expect(logs[3].args._optionIds).to.be.eql([
+        web3.utils.toBN(0),
+        web3.utils.toBN(3),
+      ])
+      expect(logs[3].args._price).to.be.eq.BN(expectedFinalPrice)
+
+      await buyerBalance.requireDecrease(expectedFinalPrice)
       await storeBalance.requireConstant()
       await collection1BeneficiaryBalance.requireIncrease(
-        price.sub(price.mul(fees).div(million))
+        expectedFinalPrice.sub(fee)
       )
       await collection2BeneficiaryBalance.requireConstant()
     })
@@ -233,7 +329,7 @@ describe.only('SimpleStore', function () {
 
       const { logs } = await donationContract.donateForNFT(WEARABLES[3].name, {
         ...fromUser,
-        value: price,
+        value: PRICE,
       })
 
       totalSupply = await erc721Contract.totalSupply()
@@ -251,14 +347,14 @@ describe.only('SimpleStore', function () {
 
       expect(logs[1].event).to.be.equal('DonatedForNFT')
       expect(logs[1].args._caller).to.be.equal(user)
-      expect(logs[1].args._value).to.be.eq.BN(price)
+      expect(logs[1].args._value).to.be.eq.BN(PRICE)
       expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
         WEARABLES[3].name
       )
       expect(logs[1].args._issued).to.be.eq.BN(1)
 
       recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(price)
+      expect(recipientBalance).to.be.eq.BN(PRICE)
 
       balanceOfUser = await erc721Contract.balanceOf(user)
       expect(balanceOfUser).to.be.eq.BN(1)
@@ -267,7 +363,7 @@ describe.only('SimpleStore', function () {
       expect(balanceOfContract).to.be.eq.BN(0)
 
       amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(price)
+      expect(amount).to.be.eq.BN(PRICE)
     })
 
     it('should donate for multiple NFT', async function () {
@@ -293,7 +389,7 @@ describe.only('SimpleStore', function () {
       expect(amount).to.be.eq.BN(0)
 
       const amountOfNFTs = 19
-      const finalPrice = price.mul(web3.utils.toBN(amountOfNFTs))
+      const finalPrice = PRICE.mul(web3.utils.toBN(amountOfNFTs))
       const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
         ...fromUser,
         value: finalPrice,
@@ -350,7 +446,7 @@ describe.only('SimpleStore', function () {
       expect(amount).to.be.eq.BN(0)
 
       const amountOfNFTs = maxNFTsPerCall + 110
-      const finalPrice = price.mul(web3.utils.toBN(amountOfNFTs))
+      const finalPrice = PRICE.mul(web3.utils.toBN(amountOfNFTs))
       const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
         ...fromUser,
         value: finalPrice,
@@ -407,8 +503,8 @@ describe.only('SimpleStore', function () {
       expect(amount).to.be.eq.BN(0)
 
       const amountOfNFTs = 19
-      // Should return 18 NFTs for this price
-      const finalPrice = price.mul(
+      // Should return 18 NFTs for this PRICE
+      const finalPrice = PRICE.mul(
         web3.utils.toBN(amountOfNFTs).sub(web3.utils.toBN(1))
       )
       const actualAmountOfNFTs = 18
@@ -452,16 +548,16 @@ describe.only('SimpleStore', function () {
           ...fromUser,
           value: 0,
         }),
-        'The donation should be higher or equal than the price'
+        'The donation should be higher or equal than the PRICE'
       )
 
-      const value = price.sub(web3.utils.toBN(1))
+      const value = PRICE.sub(web3.utils.toBN(1))
       await assertRevert(
         donationContract.donateForNFT(WEARABLES[0].name, {
           ...fromUser,
           value,
         }),
-        'The donation should be higher or equal than the price'
+        'The donation should be higher or equal than the PRICE'
       )
     })
 
@@ -474,14 +570,14 @@ describe.only('SimpleStore', function () {
       for (let i = 0; i < maxIssuance; i++) {
         await donationContract.donateForNFT(WEARABLES[0].name, {
           ...fromUser,
-          value: price,
+          value: PRICE,
         })
       }
 
       await assertRevert(
         donationContract.donateForNFT(WEARABLES[0].name, {
           ...fromUser,
-          value: price,
+          value: PRICE,
         }),
         'The amount of wearables to issue is higher than its available supply'
       )
@@ -528,7 +624,7 @@ describe.only('SimpleStore', function () {
       for (let i = 0; i < maxIssuance; i++) {
         await donationContract.donateForNFT(WEARABLES[0].name, {
           ...fromUser,
-          value: price,
+          value: PRICE,
         })
       }
 
@@ -542,7 +638,7 @@ describe.only('SimpleStore', function () {
       for (let i = 0; i < maxIssuance - maxNFTsPerCall; i++) {
         await donationContract.donateForNFT(WEARABLES[1].name, {
           ...fromUser,
-          value: price,
+          value: PRICE,
         })
       }
 
@@ -595,11 +691,11 @@ describe.only('SimpleStore', function () {
 
       await donationContract.donateForNFT(WEARABLES[0].name, {
         ...fromUser,
-        value: price,
+        value: PRICE,
       })
 
       amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(donation.add(price))
+      expect(amount).to.be.eq.BN(donation.add(PRICE))
     })
   })
 })
