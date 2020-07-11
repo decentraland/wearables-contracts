@@ -8,7 +8,6 @@ const Store = artifacts.require('DummySimpleStore')
 
 describe.only('SimpleStore', function () {
   // Contract
-  let erc721Contract
   let manaContract
   let storeContract
   let collection1
@@ -21,7 +20,7 @@ describe.only('SimpleStore', function () {
 
   // WEARABLES_2
   const COLLECTION2_WEARABLES = [
-    { name: 'coco_mask', max: 10 },
+    { name: 'coco_mask', max: 1 },
     { name: 'turtle_mask', max: 100 },
   ]
 
@@ -34,7 +33,6 @@ describe.only('SimpleStore', function () {
   let collection1Beneficiary
   let collection2Beneficiary
   let storeOwner
-  let fundsRecipient
   let hacker
   let holder
   let fromUser
@@ -114,7 +112,7 @@ describe.only('SimpleStore', function () {
       )
 
       const acceptedToken = await contract.acceptedToken()
-      const contractPrice = await contract.PRICE()
+      const contractPrice = await contract.price()
       const ownerCutPerMillion = await contract.ownerCutPerMillion()
       const beneficiary1 = await contract.collectionBeneficiaries(
         collection1.address
@@ -131,7 +129,7 @@ describe.only('SimpleStore', function () {
     })
   })
 
-  describe.only('buy', function () {
+  describe('buy', function () {
     it('should buy', async function () {
       let totalSupplyCollection1 = await collection1.totalSupply()
       expect(totalSupplyCollection1).to.be.eq.BN(0)
@@ -155,6 +153,9 @@ describe.only('SimpleStore', function () {
         collection2Beneficiary,
         'beneficiary2'
       )
+
+      let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
 
       const fee = PRICE.mul(STORE_FEE).div(MILLION)
 
@@ -200,6 +201,14 @@ describe.only('SimpleStore', function () {
       await storeBalance.requireConstant()
       await collection1BeneficiaryBalance.requireIncrease(PRICE.sub(fee))
       await collection2BeneficiaryBalance.requireConstant()
+
+      itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(1)
+
+      const itemId = await collection1.tokenOfOwnerByIndex(buyer, 0)
+      const uri = await collection1.tokenURI(itemId)
+      const uriArr = uri.split('/')
+      expect(WEARABLES[0].name).to.eq.BN(uriArr[uriArr.length - 2])
     })
 
     it('should buy more than 1 item', async function () {
@@ -225,6 +234,9 @@ describe.only('SimpleStore', function () {
         collection2Beneficiary,
         'beneficiary2'
       )
+
+      let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
 
       const expectedFinalPrice = PRICE.mul(web3.utils.toBN(2))
       const fee = expectedFinalPrice.mul(STORE_FEE).div(MILLION)
@@ -289,6 +301,43 @@ describe.only('SimpleStore', function () {
         expectedFinalPrice.sub(fee)
       )
       await collection2BeneficiaryBalance.requireConstant()
+
+      itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(2)
+
+      let itemId = await collection1.tokenOfOwnerByIndex(buyer, 0)
+      let uri = await collection1.tokenURI(itemId)
+      let uriArr = uri.split('/')
+      expect(WEARABLES[0].name).to.eq.BN(uriArr[uriArr.length - 2])
+
+      itemId = await collection1.tokenOfOwnerByIndex(buyer, 1)
+      uri = await collection1.tokenURI(itemId)
+      uriArr = uri.split('/')
+      expect(WEARABLES[3].name).to.eq.BN(uriArr[uriArr.length - 2])
+    })
+
+    it('reverts when the collection has not set a beneficiary', async function () {
+      const collection = await createDummyCollection({
+        allowed: user,
+        creationParams,
+      })
+
+      await assertRevert(
+        storeContract.buy(collection.address, [0], buyer, fromBuyer),
+        'The collection does not have a beneficiary'
+      )
+    })
+
+    it('reverts when buyer has not balance', async function () {
+      await manaContract.approve(storeContract.address, -1, fromHacker)
+
+      const balance = await manaContract.balanceOf(hacker)
+      await manaContract.transfer(storeContract.address, balance, fromHacker)
+
+      await assertRevert(
+        storeContract.buy(collection1.address, [0], hacker, fromHacker),
+        'Insufficient funds'
+      )
     })
 
     it('reverts when buyer has not approve the store to use the accepted token on his behalf', async function () {
@@ -302,296 +351,33 @@ describe.only('SimpleStore', function () {
         'The contract is not authorized to use the accepted token on sender behalf'
       )
     })
-  })
 
-  describe('donateForNFT', function () {
-    it('should donate for one NFT', async function () {
-      const hash = await erc721Contract.getWearableKey(WEARABLES[3].name)
-
-      let issued = await erc721Contract.issued(hash)
-      let balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(issued).to.be.eq.BN(0)
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(0)
-
-      let recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(0)
-
-      let balanceOfContract = await web3.eth.getBalance(
-        donationContract.address
-      )
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(0)
-
-      const { logs } = await donationContract.donateForNFT(WEARABLES[3].name, {
-        ...fromUser,
-        value: PRICE,
-      })
-
-      totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(1)
-
-      issued = await erc721Contract.issued(hash)
-      expect(logs.length).to.be.equal(2)
-      expect(logs[0].event).to.be.equal('Issue')
-      expect(logs[0].args._beneficiary).to.be.equal(user)
-      expect(logs[0].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
-      expect(logs[0].args._wearableIdKey).to.be.equal(hash)
-      expect(logs[0].args._wearableId).to.be.equal(WEARABLES[3].name)
-      expect(logs[0].args._issuedId).to.eq.BN(issued)
-      expect(issued).to.be.eq.BN(1)
-
-      expect(logs[1].event).to.be.equal('DonatedForNFT')
-      expect(logs[1].args._caller).to.be.equal(user)
-      expect(logs[1].args._value).to.be.eq.BN(PRICE)
-      expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
-        WEARABLES[3].name
-      )
-      expect(logs[1].args._issued).to.be.eq.BN(1)
-
-      recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(PRICE)
-
-      balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(balanceOfUser).to.be.eq.BN(1)
-
-      balanceOfContract = await web3.eth.getBalance(donationContract.address)
-      expect(balanceOfContract).to.be.eq.BN(0)
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(PRICE)
-    })
-
-    it('should donate for multiple NFT', async function () {
-      const hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
-
-      let issued = await erc721Contract.issued(hash)
-      let balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(issued).to.be.eq.BN(0)
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(0)
-
-      let recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(0)
-
-      let balanceOfContract = await web3.eth.getBalance(
-        donationContract.address
-      )
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(0)
-
-      const amountOfNFTs = 19
-      const finalPrice = PRICE.mul(web3.utils.toBN(amountOfNFTs))
-      const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
-        ...fromUser,
-        value: finalPrice,
-      })
-
-      totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(amountOfNFTs)
-
-      issued = await erc721Contract.issued(hash)
-      expect(logs.length).to.be.equal(amountOfNFTs + 1)
-      expect(issued).to.be.eq.BN(amountOfNFTs)
-
-      expect(logs[logs.length - 1].event).to.be.equal('DonatedForNFT')
-      expect(logs[logs.length - 1].args._caller).to.be.equal(user)
-      expect(logs[logs.length - 1].args._value).to.be.eq.BN(finalPrice)
-      expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
-        WEARABLES[0].name
-      )
-      expect(logs[logs.length - 1].args._issued).to.be.eq.BN(amountOfNFTs)
-
-      recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(finalPrice)
-
-      balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(balanceOfUser).to.be.eq.BN(amountOfNFTs)
-
-      balanceOfContract = await web3.eth.getBalance(donationContract.address)
-      expect(balanceOfContract).to.be.eq.BN(0)
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(finalPrice)
-    })
-
-    it('should issue the maximum set when donating too much', async function () {
-      const hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
-
-      let issued = await erc721Contract.issued(hash)
-      let balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(issued).to.be.eq.BN(0)
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(0)
-
-      let recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(0)
-
-      let balanceOfContract = await web3.eth.getBalance(
-        donationContract.address
-      )
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(0)
-
-      const amountOfNFTs = maxNFTsPerCall + 110
-      const finalPrice = PRICE.mul(web3.utils.toBN(amountOfNFTs))
-      const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
-        ...fromUser,
-        value: finalPrice,
-      })
-
-      totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(maxNFTsPerCall)
-
-      issued = await erc721Contract.issued(hash)
-      expect(logs.length).to.be.equal(maxNFTsPerCall + 1)
-      expect(issued).to.be.eq.BN(maxNFTsPerCall)
-
-      expect(logs[logs.length - 1].event).to.be.equal('DonatedForNFT')
-      expect(logs[logs.length - 1].args._caller).to.be.equal(user)
-      expect(logs[logs.length - 1].args._value).to.be.eq.BN(finalPrice)
-      expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
-        WEARABLES[0].name
-      )
-      expect(logs[logs.length - 1].args._issued).to.be.eq.BN(maxNFTsPerCall)
-
-      recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(finalPrice)
-
-      balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(balanceOfUser).to.be.eq.BN(maxNFTsPerCall)
-
-      balanceOfContract = await web3.eth.getBalance(donationContract.address)
-      expect(balanceOfContract).to.be.eq.BN(0)
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(finalPrice)
-    })
-
-    it('should floor the amount of NFTs and keep all the donation', async function () {
-      const hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
-
-      let issued = await erc721Contract.issued(hash)
-      let balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(issued).to.be.eq.BN(0)
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(0)
-
-      let recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(0)
-
-      let balanceOfContract = await web3.eth.getBalance(
-        donationContract.address
-      )
-      expect(balanceOfUser).to.be.eq.BN(0)
-
-      let amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(0)
-
-      const amountOfNFTs = 19
-      // Should return 18 NFTs for this PRICE
-      const finalPrice = PRICE.mul(
-        web3.utils.toBN(amountOfNFTs).sub(web3.utils.toBN(1))
-      )
-      const actualAmountOfNFTs = 18
-
-      const { logs } = await donationContract.donateForNFT(WEARABLES[0].name, {
-        ...fromUser,
-        value: finalPrice,
-      })
-
-      totalSupply = await erc721Contract.totalSupply()
-      expect(totalSupply).to.be.eq.BN(actualAmountOfNFTs)
-
-      issued = await erc721Contract.issued(hash)
-      expect(logs.length).to.be.equal(actualAmountOfNFTs + 1)
-      expect(issued).to.be.eq.BN(actualAmountOfNFTs)
-
-      expect(logs[logs.length - 1].event).to.be.equal('DonatedForNFT')
-      expect(logs[logs.length - 1].args._caller).to.be.equal(user)
-      expect(logs[logs.length - 1].args._value).to.be.eq.BN(finalPrice)
-      expect(logs[logs.length - 1].args._wearable).to.be.eq.BN(
-        WEARABLES[0].name
-      )
-      expect(logs[logs.length - 1].args._issued).to.be.eq.BN(actualAmountOfNFTs)
-
-      recipientBalance = await web3.eth.getBalance(fundsRecipient)
-      expect(recipientBalance).to.be.eq.BN(finalPrice)
-
-      balanceOfUser = await erc721Contract.balanceOf(user)
-      expect(balanceOfUser).to.be.eq.BN(actualAmountOfNFTs)
-
-      balanceOfContract = await web3.eth.getBalance(donationContract.address)
-      expect(balanceOfContract).to.be.eq.BN(0)
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(finalPrice)
-    })
-
-    it('reverts when donating a value lower than the minimum acceptable', async function () {
+    it('reverts when trying to buy an item not part of the  collection', async function () {
+      const wearablesCount = await collection1.wearablesCount()
       await assertRevert(
-        donationContract.donateForNFT(WEARABLES[0].name, {
-          ...fromUser,
-          value: 0,
-        }),
-        'The donation should be higher or equal than the PRICE'
-      )
-
-      const value = PRICE.sub(web3.utils.toBN(1))
-      await assertRevert(
-        donationContract.donateForNFT(WEARABLES[0].name, {
-          ...fromUser,
-          value,
-        }),
-        'The donation should be higher or equal than the PRICE'
+        storeContract.buy(
+          collection1.address,
+          [wearablesCount.add(web3.utils.toBN(1))],
+          buyer,
+          fromBuyer
+        ),
+        'Invalid wearable'
       )
     })
 
-    it('reverts when trying to mint an exhausted wearable', async function () {
-      this.timeout(Infinity)
-      const hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
-
-      const maxIssuance = await erc721Contract.maxIssuance(hash)
-
-      for (let i = 0; i < maxIssuance; i++) {
-        await donationContract.donateForNFT(WEARABLES[0].name, {
-          ...fromUser,
-          value: PRICE,
-        })
-      }
+    it('reverts when trying to buy an item from a not allowed collection', async function () {
+      await collection1.setAllowed(storeContract.address, false, creationParams)
 
       await assertRevert(
-        donationContract.donateForNFT(WEARABLES[0].name, {
-          ...fromUser,
-          value: PRICE,
-        }),
-        'The amount of wearables to issue is higher than its available supply'
-      )
-
-      // Check if the collection was exhausted too
-      await assertRevert(
-        erc721Contract.issueToken(holder, WEARABLES[0].name, fromUser),
-        'Invalid issued id'
+        storeContract.buy(collection1.address, [0], buyer, fromBuyer),
+        'Only an `allowed` address can issue tokens'
       )
     })
 
-    it('reverts when trying to mint an invalid wearable', async function () {
+    it('reverts when trying to buy more than the amount of items left', async function () {
+      // Only 1 item left. Trying to buy 2
       await assertRevert(
-        erc721Contract.issueToken(holder, 'invalid_masks', fromUser),
+        storeContract.buy(collection2.address, [0, 0], buyer, fromBuyer),
         'Invalid issued id'
       )
     })
@@ -599,103 +385,70 @@ describe.only('SimpleStore', function () {
 
   describe('canMint', function () {
     it('should return if a wearable can be minted', async function () {
-      let canMint = await donationContract.canMint(WEARABLES[0].name, 0)
+      let canMint = await storeContract.canMint(collection1.address, 0, 0)
       expect(canMint).to.be.equal(true)
 
-      const optionsCount = await erc721Contract.wearablesCount()
+      const optionsCount = await collection1.wearablesCount()
 
       for (let i = 0; i < optionsCount.toNumber(); i++) {
-        canMint = await donationContract.canMint(WEARABLES[i].name, 1)
+        canMint = await storeContract.canMint(collection1.address, i, 1)
         expect(canMint).to.be.equal(true)
       }
     })
 
-    it('should return false for an invalid wearable', async function () {
-      const canMint = await donationContract.canMint('invalid_masks', 1)
+    it('should return false for an exhausted wearable', async function () {
+      this.timeout(Infinity)
+      const hash = await collection2.getWearableKey(
+        COLLECTION2_WEARABLES[0].name
+      )
+
+      const maxIssuance = await collection2.maxIssuance(hash)
+
+      for (let i = 0; i < maxIssuance; i++) {
+        await collection2.issueToken(
+          user,
+          COLLECTION2_WEARABLES[0].name,
+          fromUser
+        )
+      }
+
+      const canMint = await storeContract.canMint(collection2.address, 0, 1)
       expect(canMint).to.be.equal(false)
     })
 
-    it('should return false for an exhausted wearable', async function () {
-      this.timeout(Infinity)
-      let hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
-
-      let maxIssuance = await erc721Contract.maxIssuance(hash)
-
-      for (let i = 0; i < maxIssuance; i++) {
-        await donationContract.donateForNFT(WEARABLES[0].name, {
-          ...fromUser,
-          value: PRICE,
-        })
-      }
-
-      let canMint = await donationContract.canMint(WEARABLES[0].name, 1)
-      expect(canMint).to.be.equal(false)
-
-      hash = await erc721Contract.getWearableKey(WEARABLES[1].name)
-
-      maxIssuance = await erc721Contract.maxIssuance(hash)
-
-      for (let i = 0; i < maxIssuance - maxNFTsPerCall; i++) {
-        await donationContract.donateForNFT(WEARABLES[1].name, {
-          ...fromUser,
-          value: PRICE,
-        })
-      }
-
-      canMint = await donationContract.canMint(
-        WEARABLES[1].name,
-        maxNFTsPerCall + 1
+    it('reverts for an invalid wearable', async function () {
+      await assertRevert(
+        storeContract.canMint(collection1.address, WEARABLES.length, 1),
+        'Invalid wearable'
       )
-      expect(canMint).to.be.equal(false)
     })
   })
 
   describe('balanceOf', function () {
     it('should return balance of wearables', async function () {
-      const optionsCount = await erc721Contract.wearablesCount()
+      const optionsCount = await collection1.wearablesCount()
 
       for (let i = 0; i < optionsCount.toNumber(); i++) {
-        const balance = await donationContract.balanceOf(WEARABLES[i].name)
+        const balance = await storeContract.balanceOf(collection1.address, i)
         expect(balance).to.be.eq.BN(WEARABLES[i].max)
       }
 
-      await erc721Contract.issueToken(holder, WEARABLES[0].name, fromUser)
+      await collection1.issueToken(user, WEARABLES[0].name, fromUser)
 
-      const hash = await erc721Contract.getWearableKey(WEARABLES[0].name)
+      const hash = await collection1.getWearableKey(WEARABLES[0].name)
 
-      const issued = await await erc721Contract.issued(hash)
+      const issued = await await collection1.issued(hash)
       expect(issued).to.be.eq.BN(1)
 
-      const balance = await donationContract.balanceOf(WEARABLES[0].name)
+      const balance = await storeContract.balanceOf(collection1.address, 0)
       expect(balance).to.be.eq.BN(WEARABLES[0].max - 1)
     })
 
-    it('should return 0 for an invalid wearable', async function () {
-      const balance = await donationContract.balanceOf('invalid_masks')
-      expect(balance).to.be.eq.BN(0)
-    })
-  })
-
-  describe('donations', function () {
-    it('should increase donations', async function () {
-      let amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(0)
-
-      await donationContract.donate({
-        ...fromUser,
-        value: donation,
-      })
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(donation)
-
-      await donationContract.donateForNFT(WEARABLES[0].name, {
-        ...fromUser,
-        value: PRICE,
-      })
-
-      amount = await donationContract.donations()
-      expect(amount).to.be.eq.BN(donation.add(PRICE))
+    it('reverts for an invalid wearable', async function () {
+      await assertRevert(
+        storeContract.balanceOf(collection1.address, WEARABLES.length),
+        'Invalid wearable'
+      )
     })
   })
 })
