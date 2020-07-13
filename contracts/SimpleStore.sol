@@ -19,7 +19,7 @@ contract SimpleStore is Ownable {
 
     event Bought(address indexed _collectionAddress, uint256[] _optionIds, address _beneficiary, uint256 _price);
     event ChangedCollectionBeneficiary(address indexed _collectionAddress, address _oldBeneficiary, address _newBeneficiary);
-    event ChangedOwnerCutPerMillion(uint256 ownerCutPerMillion);
+    event ChangedOwnerCutPerMillion(uint256 _oldOwnerCutPerMillion, uint256 _newOwnerCutPerMillion);
 
     /**
      * @dev Constructor of the contract.
@@ -42,7 +42,7 @@ contract SimpleStore is Ownable {
         ownerCutPerMillion = _ownerCutPerMillion;
 
         for (uint256 i = 0; i < _collectionAddresses.length; i++) {
-            _setCollectionnBeneficiary(_collectionAddresses[i], _collectionBeneficiaries[i]);
+            _setCollectionBeneficiary(_collectionAddresses[i], _collectionBeneficiaries[i]);
         }
     }
 
@@ -168,7 +168,7 @@ contract SimpleStore is Ownable {
     * @param _beneficiary - beneficiary address
     */
     function setCollectionBeneficiary(address _collectionAddress, address _beneficiary) external onlyOwner {
-        _setCollectionnBeneficiary(_collectionAddress,  _beneficiary);
+        _setCollectionBeneficiary(_collectionAddress,  _beneficiary);
     }
 
     /**
@@ -179,8 +179,9 @@ contract SimpleStore is Ownable {
     function setOwnerCutPerMillion(uint256 _ownerCutPerMillion) public onlyOwner {
         require(_ownerCutPerMillion < 1000000, "The owner cut should be between 0 and 999,999");
 
+        emit ChangedOwnerCutPerMillion(ownerCutPerMillion, _ownerCutPerMillion);
+
         ownerCutPerMillion = _ownerCutPerMillion;
-        emit ChangedOwnerCutPerMillion(ownerCutPerMillion);
     }
 
     /**
@@ -189,7 +190,7 @@ contract SimpleStore is Ownable {
     * @param _collectionAddress - collectionn address
     * @param _beneficiary - beneficiary address
     */
-    function _setCollectionnBeneficiary(address _collectionAddress, address _beneficiary) internal {
+    function _setCollectionBeneficiary(address _collectionAddress, address _beneficiary) internal {
         emit ChangedCollectionBeneficiary(_collectionAddress, collectionBeneficiaries[_collectionAddress], _beneficiary);
 
         collectionBeneficiaries[_collectionAddress] = _beneficiary;

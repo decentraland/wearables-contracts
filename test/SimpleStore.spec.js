@@ -2,7 +2,12 @@ import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
 import assertRevert from './helpers/assertRevert'
 import { balanceSnap } from './helpers/balanceSnap'
-import { createDummyCollection, WEARABLES } from './helpers/collection'
+import {
+  createDummyCollection,
+  WEARABLES,
+  ZERO_ADDRESS,
+} from './helpers/collection'
+import { expect } from 'chai'
 
 const Store = artifacts.require('DummySimpleStore')
 
@@ -379,6 +384,103 @@ describe.only('SimpleStore', function () {
       await assertRevert(
         storeContract.buy(collection2.address, [0, 0], buyer, fromBuyer),
         'Invalid issued id'
+      )
+    })
+  })
+
+  describe('setOwnerCutPerMillion', function () {
+    it('should set fee', async function () {
+      let fee = await storeContract.ownerCutPerMillion()
+      expect(fee).to.be.eq.BN(STORE_FEE)
+
+      const { logs } = await storeContract.setOwnerCutPerMillion(
+        1,
+        fromStoreOwner
+      )
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('ChangedOwnerCutPerMillion')
+      expect(logs[0].args._oldOwnerCutPerMillion).to.be.eq.BN(STORE_FEE)
+      expect(logs[0].args._newOwnerCutPerMillion).to.be.eq.BN(1)
+
+      fee = await storeContract.ownerCutPerMillion()
+      expect(fee).to.be.eq.BN(1)
+
+      await storeContract.setOwnerCutPerMillion(0, fromStoreOwner)
+
+      fee = await storeContract.ownerCutPerMillion()
+      expect(fee).to.be.eq.BN(0)
+    })
+
+    it('reverts when fee is equal or higher than 1 million', async function () {
+      await assertRevert(
+        storeContract.setOwnerCutPerMillion(MILLION, fromStoreOwner),
+        'The owner cut should be between 0 and 999,999'
+      )
+
+      await assertRevert(
+        storeContract.setOwnerCutPerMillion(
+          MILLION.add(web3.utils.toBN(1)),
+          fromStoreOwner
+        ),
+        'The owner cut should be between 0 and 999,999'
+      )
+    })
+
+    it('reverts when trying to set fee by hacker', async function () {
+      await assertRevert(
+        storeContract.setOwnerCutPerMillion(MILLION, fromHacker),
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
+  describe('setCollectionBeneficiary', function () {
+    it('should set collection beneficiary', async function () {
+      let beneficiary = await storeContract.collectionBeneficiaries(
+        collection1.address
+      )
+      expect(beneficiary).to.be.eq.BN(collection1Beneficiary)
+
+      const { logs } = await storeContract.setCollectionBeneficiary(
+        collection1.address,
+        collection2Beneficiary,
+        fromStoreOwner
+      )
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('ChangedCollectionBeneficiary')
+      expect(logs[0].args._collectionAddress).to.be.equal(collection1.address)
+      expect(logs[0].args._oldBeneficiary).to.be.equal(collection1Beneficiary)
+      expect(logs[0].args._newBeneficiary).to.be.equal(collection2Beneficiary)
+
+      beneficiary = await storeContract.collectionBeneficiaries(
+        collection1.address
+      )
+      expect(beneficiary).to.be.eq.BN(collection2Beneficiary)
+
+      await storeContract.setCollectionBeneficiary(
+        collection1.address,
+        ZERO_ADDRESS,
+        fromStoreOwner
+      )
+
+      beneficiary = await storeContract.collectionBeneficiaries(
+        collection1.address
+      )
+      expect(beneficiary).to.be.eq.BN(ZERO_ADDRESS)
+    })
+
+    it('reverts when trying to set a collection beneficiary by hacker', async function () {
+      await assertRevert(
+        storeContract.setCollectionBeneficiary(
+          collection1.address,
+          collection2Beneficiary,
+          fromHacker
+        ),
+        'Ownable: caller is not the owner'
       )
     })
   })
