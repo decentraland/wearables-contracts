@@ -16,7 +16,6 @@ contract SimpleStore is Ownable {
 
     mapping (address => address) public collectionBeneficiaries;
 
-
     event Bought(address indexed _collectionAddress, uint256[] _optionIds, address _beneficiary, uint256 _price);
     event ChangedCollectionBeneficiary(address indexed _collectionAddress, address _oldBeneficiary, address _newBeneficiary);
     event ChangedOwnerCutPerMillion(uint256 _oldOwnerCutPerMillion, uint256 _newOwnerCutPerMillion);
