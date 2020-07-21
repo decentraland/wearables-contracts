@@ -247,70 +247,66 @@ interface IERC721Collection {
     function wearables(uint256 _index) external view returns (string memory);
 }
 
-// File: contracts/SimpleStore.sol
+// File: contracts/BurningStore.sol
 
-pragma solidity >=0.5.11;
-
-
-
+pragma solidity ^0.5.11;
+pragma experimental ABIEncoderV2;
 
 
 
-contract SimpleStore is Ownable {
+
+
+
+contract BurningStore is Ownable {
     using SafeMath for uint256;
+
+    struct CollectionData {
+        mapping (uint256 => uint256) pricePerOption;
+        mapping (uint256 => uint256) availableQtyPerOption;
+    }
 
     IERC20 public acceptedToken;
     uint256 public price;
-    uint256 public ownerCutPerMillion;
 
-    mapping (address => address) public collectionBeneficiaries;
+    mapping (address => CollectionData) public collectionsData;
 
     event Bought(address indexed _collectionAddress, uint256[] _optionIds, address _beneficiary, uint256 _price);
-    event ChangedCollectionBeneficiary(address indexed _collectionAddress, address _oldBeneficiary, address _newBeneficiary);
-    event ChangedOwnerCutPerMillion(uint256 _oldOwnerCutPerMillion, uint256 _newOwnerCutPerMillion);
+    event SetCollectionData(address indexed _collectionAddress, uint256[] _optionIds, uint256[] _availableQtys, uint256[] _prices);
 
     /**
-     * @dev Constructor of the contract.
-     * @param _acceptedToken - Address of the ERC20 token accepted
-     * @param _price - price in MANA (WEI) in exchange for an NFT
-     * @param _ownerCutPerMillion - Share amount, from 0 to 999,999
-     * @param _collectionAddresses - collectionn addresses
-     * @param _collectionBeneficiaries - collectionn beneficiaries
-     */
+    * @dev Constructor of the contract.
+    * @param _acceptedToken - Address of the ERC20 token accepted
+    * @param _collectionAddresses - collection addresses
+    * @param _collectionOptionIds - collection option ids
+    * @param _collectionAvailableQtys - collection available qtys for sale
+    * @param _collectionPrices - collection prices
+    */
     constructor(
         IERC20 _acceptedToken,
-        uint256 _price,
-        uint256 _ownerCutPerMillion,
         address[] memory _collectionAddresses,
-        address[] memory _collectionBeneficiaries
+        uint256[][] memory _collectionOptionIds,
+        uint256[][] memory _collectionAvailableQtys,
+        uint256[][] memory _collectionPrices
       )
       public {
         acceptedToken = _acceptedToken;
-        price = _price;
-        ownerCutPerMillion = _ownerCutPerMillion;
 
         for (uint256 i = 0; i < _collectionAddresses.length; i++) {
-            _setCollectionBeneficiary(_collectionAddresses[i], _collectionBeneficiaries[i]);
+            _setCollectionData(_collectionAddresses[i], _collectionOptionIds[i], _collectionAvailableQtys[i], _collectionPrices[i]);
         }
     }
 
-
-     /**
-     * @dev Donate in exchange for NFTs.
-     * @notice that there is a maximum amount of NFTs that can be issued per call.
-     * If the donation greater than `price * maxNFTsPerCall`, all the donation will be used and
-     * a maximum of `maxNFTsPerCall` will be issued.
-     * @param _collectionAddress - collectionn address
-     * @param _optionIds - collection option id
-     * @param _beneficiary - beneficiary address
-     */
+    /**
+    * @dev Donate in exchange for NFTs.
+    * @notice that there is a maximum amount of NFTs that can be issued per call.
+    * If the donation greater than `price * maxNFTsPerCall`, all the donation will be used and
+    * a maximum of `maxNFTsPerCall` will be issued.
+    * @param _collectionAddress - collectionn address
+    * @param _optionIds - collection option id
+    * @param _beneficiary - beneficiary address
+    */
     function buy(address _collectionAddress, uint256[] calldata _optionIds, address _beneficiary) external {
-        // Check that the collection has a beneficiary
-        address collectionBeneficiary = collectionBeneficiaries[_collectionAddress];
-        require(
-            collectionBeneficiary != address(0),
-            "The collection does not have a beneficiary"
-        );
+        CollectionData storage collectionData = collectionsData[_collectionAddress];
 
         uint256 amount = _optionIds.length;
         uint256 finalPrice = 0;
@@ -318,20 +314,25 @@ contract SimpleStore is Ownable {
         bytes32[] memory items = new bytes32[](amount);
 
         for (uint256 i = 0; i < amount; i++) {
+            uint256 optionId = _optionIds[i];
+            require(collectionData.availableQtyPerOption[optionId] > 0, "Sold out item");
+
             // Add price
-            finalPrice = finalPrice.add(price);
+            uint256 itemPrice = collectionData.pricePerOption[optionId];
+            finalPrice = finalPrice.add(itemPrice);
 
             // Add beneneficiary
             beneficiaries[i] = _beneficiary;
 
             // Add item
-            string memory item = itemByOptionId(_collectionAddress, _optionIds[i]);
+            string memory item = itemByOptionId(_collectionAddress, optionId);
             bytes32 itemAsBytes32;
             // solium-disable-next-line security/no-inline-assembly
             assembly {
                 itemAsBytes32 := mload(add(item, 32))
             }
             items[i] = itemAsBytes32;
+            collectionData.availableQtyPerOption[optionId] = collectionData.availableQtyPerOption[optionId].sub(1);
         }
 
 
@@ -344,21 +345,8 @@ contract SimpleStore is Ownable {
             "Transfering finalPrice to this contract failed"
         );
 
-        uint256 fees = 0;
-
-        if (ownerCutPerMillion > 0) {
-            // Calculate fees
-            fees = finalPrice.mul(ownerCutPerMillion).div(1000000);
-
-            // Burn it
-            acceptedToken.burn(fees);
-        }
-
-        // Transfer sale amount to collectionBeneficiary
-        require(
-            acceptedToken.transfer(collectionBeneficiary, finalPrice.sub(fees)),
-            "Transfering the sale amount to the collection beneficiary failed"
-        );
+        // Burn it
+        acceptedToken.burn(finalPrice);
 
         // Mint NFT
         IERC721Collection(_collectionAddress).issueTokens(beneficiaries, items);
@@ -373,9 +361,9 @@ contract SimpleStore is Ownable {
     * @return whether a wearable can be minted
     */
     function canMint(address _collectionAddress, uint256 _optionId, uint256 _amount) public view returns (bool) {
-        uint256 balance = balanceOf(_collectionAddress, _optionId);
+        CollectionData storage collectionData = collectionsData[_collectionAddress];
 
-        return balance >= _amount;
+        return collectionData.availableQtyPerOption[_optionId] >= _amount;
     }
 
     /**
@@ -386,13 +374,9 @@ contract SimpleStore is Ownable {
      * @return wearable's available supply
      */
     function balanceOf(address _collectionAddress, uint256 _optionId) public view returns (uint256) {
-        IERC721Collection collection = IERC721Collection(_collectionAddress);
-        bytes32 wearableKey = collection.getWearableKey(itemByOptionId(_collectionAddress, _optionId));
+        CollectionData storage collectionData = collectionsData[_collectionAddress];
 
-        uint256 issued = collection.issued(wearableKey);
-        uint256 maxIssuance = collection.maxIssuance(wearableKey);
-
-        return maxIssuance.sub(issued);
+        return collectionData.availableQtyPerOption[_optionId];
     }
 
     function itemByOptionId(address _collectionAddress, uint256 _optionId) public view returns (string memory) {
@@ -413,35 +397,43 @@ contract SimpleStore is Ownable {
     * @dev Sets the beneficiary address where the sales amount
     *  will be transferred on each sale for a collection
     * @param _collectionAddress - collectionn address
-    * @param _beneficiary - beneficiary address
+    * @param _collectionOptionIds - collection option ids
+    * @param _collectionAvailableQtys - collection available qtys for sale
+    * @param _collectionPrices - collectionn prices
     */
-    function setCollectionBeneficiary(address _collectionAddress, address _beneficiary) external onlyOwner {
-        _setCollectionBeneficiary(_collectionAddress,  _beneficiary);
+    function setCollectionData(
+        address _collectionAddress,
+        uint256[] calldata _collectionOptionIds,
+        uint256[] calldata _collectionAvailableQtys,
+        uint256[] calldata _collectionPrices
+    ) external onlyOwner {
+        _setCollectionData(_collectionAddress, _collectionOptionIds, _collectionAvailableQtys, _collectionPrices);
     }
 
-    /**
-    * @dev Sets the share cut for the owner of the contract that's
-    *  charged to the seller on a successful sale
-    * @param _ownerCutPerMillion - Share amount, from 0 to 999,999
-    */
-    function setOwnerCutPerMillion(uint256 _ownerCutPerMillion) public onlyOwner {
-        require(_ownerCutPerMillion < 1000000, "The owner cut should be between 0 and 999,999");
-
-        emit ChangedOwnerCutPerMillion(ownerCutPerMillion, _ownerCutPerMillion);
-
-        ownerCutPerMillion = _ownerCutPerMillion;
-    }
 
     /**
     * @dev Sets the beneficiary address where the sales amount
     *  will be transferred on each sale for a collection
     * @param _collectionAddress - collectionn address
-    * @param _beneficiary - beneficiary address
+    * @param _collectionOptionIds - collection option ids
+    * @param _collectionAvailableQtys - collection available qtys for sale
+    * @param _collectionPrices - collectionn prices
     */
-    function _setCollectionBeneficiary(address _collectionAddress, address _beneficiary) internal {
-        emit ChangedCollectionBeneficiary(_collectionAddress, collectionBeneficiaries[_collectionAddress], _beneficiary);
+    function _setCollectionData(
+        address _collectionAddress,
+        uint256[] memory _collectionOptionIds,
+        uint256[] memory _collectionAvailableQtys,
+        uint256[] memory _collectionPrices
+    ) internal {
+        // emit ChangedCollectionBeneficiary(_collectionAddress, collectionBeneficiaries[_collectionAddress], _beneficiary);
+        CollectionData storage collectionData = collectionsData[_collectionAddress];
 
-        collectionBeneficiaries[_collectionAddress] = _beneficiary;
+        for (uint256 i = 0; i < _collectionOptionIds.length; i++) {
+            collectionData.availableQtyPerOption[_collectionOptionIds[i]] = _collectionAvailableQtys[i];
+            collectionData.pricePerOption[_collectionOptionIds[i]] = _collectionPrices[i];
+        }
+
+        emit SetCollectionData(_collectionAddress, _collectionOptionIds, _collectionAvailableQtys, _collectionPrices);
     }
 
     /**

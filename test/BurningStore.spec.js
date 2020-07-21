@@ -9,9 +9,9 @@ import {
 } from './helpers/collection'
 import { expect } from 'chai'
 
-const Store = artifacts.require('DummySimpleStore')
+const Store = artifacts.require('DummyBurningStore')
 
-describe.only('SimpleStore', function () {
+describe.only('BurningStore', function () {
   // Contract
   let manaContract
   let storeContract
@@ -19,9 +19,10 @@ describe.only('SimpleStore', function () {
   let collection2
 
   // Store
-  const PRICE = web3.utils.toBN(web3.utils.toWei('100', 'ether'))
-  const STORE_FEE = web3.utils.toBN(25000) // 2.5%
-  const MILLION = web3.utils.toBN(1000000)
+  const PRICE_COLLECTION_1 = web3.utils.toBN(web3.utils.toWei('100', 'ether'))
+  const PRICE_COLLECTION_2 = web3.utils.toBN(web3.utils.toWei('10', 'ether'))
+  const AVAILABILITY_COLLECTION_1 = web3.utils.toBN(10)
+  const AVAILABILITY_COLLECTION_2 = web3.utils.toBN(1)
 
   // WEARABLES_2
   const COLLECTION2_WEARABLES = [
@@ -91,10 +92,37 @@ describe.only('SimpleStore', function () {
 
     storeContract = await Store.new(
       manaContract.address,
-      PRICE,
-      STORE_FEE,
       [collection1.address, collection2.address],
-      [collection1Beneficiary, collection2Beneficiary],
+      [
+        [0, 1, 2, 3, 4, 5, 6, 7],
+        [0, 1],
+      ],
+      [
+        [
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+          AVAILABILITY_COLLECTION_1,
+        ],
+        [AVAILABILITY_COLLECTION_2, AVAILABILITY_COLLECTION_2],
+      ],
+      [
+        [
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+          PRICE_COLLECTION_1,
+        ],
+        [PRICE_COLLECTION_2, PRICE_COLLECTION_2],
+      ],
       fromStoreOwner
     )
 
@@ -109,28 +137,65 @@ describe.only('SimpleStore', function () {
     it('deploy with correct values', async function () {
       const contract = await Store.new(
         manaContract.address,
-        PRICE,
-        STORE_FEE,
         [collection1.address, collection2.address],
-        [collection1Beneficiary, collection2Beneficiary],
+        [
+          [0, 1, 2, 3, 4, 5, 6, 7],
+          [0, 1],
+        ],
+        [
+          [
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+            AVAILABILITY_COLLECTION_1,
+          ],
+          [AVAILABILITY_COLLECTION_2, AVAILABILITY_COLLECTION_2],
+        ],
+        [
+          [
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+            PRICE_COLLECTION_1,
+          ],
+          [PRICE_COLLECTION_2, PRICE_COLLECTION_2],
+        ],
         fromStoreOwner
       )
 
       const acceptedToken = await contract.acceptedToken()
-      const contractPrice = await contract.price()
-      const ownerCutPerMillion = await contract.ownerCutPerMillion()
-      const beneficiary1 = await contract.collectionBeneficiaries(
-        collection1.address
-      )
-      const beneficiary2 = await contract.collectionBeneficiaries(
-        collection2.address
-      )
-
       expect(acceptedToken).to.be.equal(manaContract.address)
-      expect(contractPrice).to.be.eq.BN(PRICE)
-      expect(ownerCutPerMillion).to.be.eq.BN(STORE_FEE)
-      expect(beneficiary1).to.be.equal(collection1Beneficiary)
-      expect(beneficiary2).to.be.equal(collection2Beneficiary)
+
+      for (let i = 0; i < WEARABLES.length; i++) {
+        const collectionData = await contract.collectionData(
+          collection1.address,
+          i
+        )
+
+        expect(collectionData.availableQty).to.be.eq.BN(
+          AVAILABILITY_COLLECTION_1
+        )
+        expect(collectionData.price).to.be.eq.BN(PRICE_COLLECTION_1)
+      }
+
+      for (let i = 0; i < COLLECTION2_WEARABLES.length; i++) {
+        const collectionData = await contract.collectionData(
+          collection2.address,
+          i
+        )
+        expect(collectionData.availableQty).to.be.eq.BN(
+          AVAILABILITY_COLLECTION_2
+        )
+        expect(collectionData.price).to.be.eq.BN(PRICE_COLLECTION_2)
+      }
     })
   })
 
@@ -148,21 +213,9 @@ describe.only('SimpleStore', function () {
         storeContract.address,
         'store'
       )
-      const collection1BeneficiaryBalance = await balanceSnap(
-        manaContract,
-        collection1Beneficiary,
-        'beneficiary1'
-      )
-      const collection2BeneficiaryBalance = await balanceSnap(
-        manaContract,
-        collection2Beneficiary,
-        'beneficiary2'
-      )
 
       let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
       expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
-
-      const fee = PRICE.mul(STORE_FEE).div(MILLION)
 
       const hash = await collection1.getWearableKey(WEARABLES[0].name)
 
@@ -172,6 +225,8 @@ describe.only('SimpleStore', function () {
         buyer,
         fromBuyer
       )
+
+      const finalPrice = PRICE_COLLECTION_1
 
       totalSupplyCollection1 = await collection1.totalSupply()
       expect(totalSupplyCollection1).to.be.eq.BN(1)
@@ -186,7 +241,7 @@ describe.only('SimpleStore', function () {
 
       expect(logs[0].event).to.be.equal('Burn')
       expect(logs[0].args.burner).to.be.equal(storeContract.address)
-      expect(logs[0].args.value).to.be.eq.BN(fee)
+      expect(logs[0].args.value).to.be.eq.BN(finalPrice)
 
       expect(logs[1].event).to.be.equal('Issue')
       expect(logs[1].args._beneficiary).to.be.equal(buyer)
@@ -200,12 +255,10 @@ describe.only('SimpleStore', function () {
       expect(logs[2].event).to.be.equal('Bought')
       expect(logs[2].args._collectionAddress).to.be.equal(collection1.address)
       expect(logs[2].args._optionIds).to.be.eql([web3.utils.toBN(0)])
-      expect(logs[2].args._price).to.be.eq.BN(PRICE)
+      expect(logs[2].args._price).to.be.eq.BN(finalPrice)
 
-      await buyerBalance.requireDecrease(PRICE)
+      await buyerBalance.requireDecrease(finalPrice)
       await storeBalance.requireConstant()
-      await collection1BeneficiaryBalance.requireIncrease(PRICE.sub(fee))
-      await collection2BeneficiaryBalance.requireConstant()
 
       itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
       expect(itemsBalanceOfBuyer).to.be.eq.BN(1)
@@ -229,22 +282,9 @@ describe.only('SimpleStore', function () {
         storeContract.address,
         'store'
       )
-      const collection1BeneficiaryBalance = await balanceSnap(
-        manaContract,
-        collection1Beneficiary,
-        'beneficiary1'
-      )
-      const collection2BeneficiaryBalance = await balanceSnap(
-        manaContract,
-        collection2Beneficiary,
-        'beneficiary2'
-      )
 
       let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
       expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
-
-      const expectedFinalPrice = PRICE.mul(web3.utils.toBN(2))
-      const fee = expectedFinalPrice.mul(STORE_FEE).div(MILLION)
 
       const hash0 = await collection1.getWearableKey(WEARABLES[0].name)
       const hash3 = await collection1.getWearableKey(WEARABLES[3].name)
@@ -255,6 +295,8 @@ describe.only('SimpleStore', function () {
         buyer,
         fromBuyer
       )
+
+      const finalPrice = PRICE_COLLECTION_1.mul(web3.utils.toBN(2))
 
       totalSupplyCollection1 = await collection1.totalSupply()
       expect(totalSupplyCollection1).to.be.eq.BN(2)
@@ -272,7 +314,7 @@ describe.only('SimpleStore', function () {
 
       expect(logs[0].event).to.be.equal('Burn')
       expect(logs[0].args.burner).to.be.equal(storeContract.address)
-      expect(logs[0].args.value).to.be.eq.BN(fee)
+      expect(logs[0].args.value).to.be.eq.BN(finalPrice)
 
       expect(logs[1].event).to.be.equal('Issue')
       expect(logs[1].args._beneficiary).to.be.equal(buyer)
@@ -298,14 +340,10 @@ describe.only('SimpleStore', function () {
         web3.utils.toBN(0),
         web3.utils.toBN(3),
       ])
-      expect(logs[3].args._price).to.be.eq.BN(expectedFinalPrice)
+      expect(logs[3].args._price).to.be.eq.BN(finalPrice)
 
-      await buyerBalance.requireDecrease(expectedFinalPrice)
+      await buyerBalance.requireDecrease(finalPrice)
       await storeBalance.requireConstant()
-      await collection1BeneficiaryBalance.requireIncrease(
-        expectedFinalPrice.sub(fee)
-      )
-      await collection2BeneficiaryBalance.requireConstant()
 
       itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
       expect(itemsBalanceOfBuyer).to.be.eq.BN(2)
@@ -319,18 +357,6 @@ describe.only('SimpleStore', function () {
       uri = await collection1.tokenURI(itemId)
       uriArr = uri.split('/')
       expect(WEARABLES[3].name).to.eq.BN(uriArr[uriArr.length - 2])
-    })
-
-    it('reverts when the collection has not set a beneficiary', async function () {
-      const collection = await createDummyCollection({
-        allowed: user,
-        creationParams,
-      })
-
-      await assertRevert(
-        storeContract.buy(collection.address, [0], buyer, fromBuyer),
-        'The collection does not have a beneficiary'
-      )
     })
 
     it('reverts when buyer has not balance', async function () {
@@ -357,7 +383,7 @@ describe.only('SimpleStore', function () {
       )
     })
 
-    it('reverts when trying to buy an item not part of the  collection', async function () {
+    it('reverts when trying to buy an item not part of the collection', async function () {
       const wearablesCount = await collection1.wearablesCount()
       await assertRevert(
         storeContract.buy(
@@ -366,7 +392,7 @@ describe.only('SimpleStore', function () {
           buyer,
           fromBuyer
         ),
-        'Invalid wearable'
+        'Sold out item'
       )
     })
 
@@ -383,101 +409,100 @@ describe.only('SimpleStore', function () {
       // Only 1 item left. Trying to buy 2
       await assertRevert(
         storeContract.buy(collection2.address, [0, 0], buyer, fromBuyer),
-        'Invalid issued id'
+        'Sold out item'
       )
     })
   })
 
-  describe('setOwnerCutPerMillion', function () {
-    it('should set fee', async function () {
-      let fee = await storeContract.ownerCutPerMillion()
-      expect(fee).to.be.eq.BN(STORE_FEE)
+  describe('setCollectionData', function () {
+    it('should set collection data', async function () {
+      const collection3 = await createDummyCollection({
+        allowed: user,
+        wearables: COLLECTION2_WEARABLES,
+        creationParams,
+      })
 
-      const { logs } = await storeContract.setOwnerCutPerMillion(
-        1,
+      let item1 = await storeContract.collectionData(collection3.address, 1)
+      expect(item1.availableQty).to.be.eq.BN(0)
+      expect(item1.price).to.be.eq.BN(0)
+
+      let item3 = await storeContract.collectionData(collection3.address, 3)
+      expect(item3.availableQty).to.be.eq.BN(0)
+      expect(item3.price).to.be.eq.BN(0)
+
+      let item2 = await storeContract.collectionData(collection3.address, 2)
+      expect(item2.availableQty).to.be.eq.BN(0)
+      expect(item2.price).to.be.eq.BN(0)
+
+      const { logs } = await storeContract.setCollectionData(
+        collection3.address,
+        [1, 3, 2],
+        [100, 1, 2],
+        [100, 100, 1000],
         fromStoreOwner
       )
 
       expect(logs.length).to.be.equal(1)
 
-      expect(logs[0].event).to.be.equal('ChangedOwnerCutPerMillion')
-      expect(logs[0].args._oldOwnerCutPerMillion).to.be.eq.BN(STORE_FEE)
-      expect(logs[0].args._newOwnerCutPerMillion).to.be.eq.BN(1)
+      expect(logs[0].event).to.be.equal('SetCollectionData')
+      expect(logs[0].args._collectionAddress).to.be.equal(collection3.address)
+      expect(logs[0].args._optionIds).to.be.eql([
+        web3.utils.toBN(1),
+        web3.utils.toBN(3),
+        web3.utils.toBN(2),
+      ])
+      expect(logs[0].args._availableQtys).to.be.eql([
+        web3.utils.toBN(100),
+        web3.utils.toBN(1),
+        web3.utils.toBN(2),
+      ])
+      expect(logs[0].args._prices).to.be.eql([
+        web3.utils.toBN(100),
+        web3.utils.toBN(100),
+        web3.utils.toBN(1000),
+      ])
 
-      fee = await storeContract.ownerCutPerMillion()
-      expect(fee).to.be.eq.BN(1)
+      item1 = await storeContract.collectionData(collection3.address, 1)
+      expect(item1.availableQty).to.be.eq.BN(web3.utils.toBN(100))
+      expect(item1.price).to.be.eq.BN(web3.utils.toBN(100))
 
-      await storeContract.setOwnerCutPerMillion(0, fromStoreOwner)
+      item3 = await storeContract.collectionData(collection3.address, 3)
+      expect(item3.availableQty).to.be.eq.BN(web3.utils.toBN(1))
+      expect(item3.price).to.be.eq.BN(web3.utils.toBN(100))
 
-      fee = await storeContract.ownerCutPerMillion()
-      expect(fee).to.be.eq.BN(0)
+      item2 = await storeContract.collectionData(collection3.address, 2)
+      expect(item2.availableQty).to.be.eq.BN(web3.utils.toBN(2))
+      expect(item2.price).to.be.eq.BN(web3.utils.toBN(1000))
     })
 
-    it('reverts when fee is equal or higher than 1 million', async function () {
-      await assertRevert(
-        storeContract.setOwnerCutPerMillion(MILLION, fromStoreOwner),
-        'The owner cut should be between 0 and 999,999'
-      )
+    it('should update collection data', async function () {
+      let item1 = await storeContract.collectionData(collection1.address, 1)
+      expect(item1.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+      expect(item1.price).to.be.eq.BN(PRICE_COLLECTION_1)
 
-      await assertRevert(
-        storeContract.setOwnerCutPerMillion(
-          MILLION.add(web3.utils.toBN(1)),
-          fromStoreOwner
-        ),
-        'The owner cut should be between 0 and 999,999'
-      )
-    })
+      const newAvailability = AVAILABILITY_COLLECTION_1.add(web3.utils.toBN(1))
+      const newPrice = PRICE_COLLECTION_1.add(web3.utils.toBN(1))
 
-    it('reverts when trying to set fee by hacker', async function () {
-      await assertRevert(
-        storeContract.setOwnerCutPerMillion(MILLION, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-  })
-
-  describe('setCollectionBeneficiary', function () {
-    it('should set collection beneficiary', async function () {
-      let beneficiary = await storeContract.collectionBeneficiaries(
-        collection1.address
-      )
-      expect(beneficiary).to.be.eq.BN(collection1Beneficiary)
-
-      const { logs } = await storeContract.setCollectionBeneficiary(
+      await storeContract.setCollectionData(
         collection1.address,
-        collection2Beneficiary,
+        [1],
+        [newAvailability],
+        [newPrice],
         fromStoreOwner
       )
 
-      expect(logs.length).to.be.equal(1)
-
-      expect(logs[0].event).to.be.equal('ChangedCollectionBeneficiary')
-      expect(logs[0].args._collectionAddress).to.be.equal(collection1.address)
-      expect(logs[0].args._oldBeneficiary).to.be.equal(collection1Beneficiary)
-      expect(logs[0].args._newBeneficiary).to.be.equal(collection2Beneficiary)
-
-      beneficiary = await storeContract.collectionBeneficiaries(
-        collection1.address
-      )
-      expect(beneficiary).to.be.eq.BN(collection2Beneficiary)
-
-      await storeContract.setCollectionBeneficiary(
-        collection1.address,
-        ZERO_ADDRESS,
-        fromStoreOwner
-      )
-
-      beneficiary = await storeContract.collectionBeneficiaries(
-        collection1.address
-      )
-      expect(beneficiary).to.be.eq.BN(ZERO_ADDRESS)
+      item1 = await storeContract.collectionData(collection1.address, 1)
+      expect(item1.availableQty).to.be.eq.BN(newAvailability)
+      expect(item1.price).to.be.eq.BN(newPrice)
     })
 
     it('reverts when trying to set a collection beneficiary by hacker', async function () {
       await assertRevert(
-        storeContract.setCollectionBeneficiary(
+        storeContract.setCollectionData(
           collection1.address,
-          collection2Beneficiary,
+          [1, 3, 2],
+          [100, 1, 2],
+          [100, 100, 1000],
           fromHacker
         ),
         'Ownable: caller is not the owner'
@@ -507,22 +532,21 @@ describe.only('SimpleStore', function () {
       const maxIssuance = await collection2.maxIssuance(hash)
 
       for (let i = 0; i < maxIssuance; i++) {
-        await collection2.issueToken(
-          user,
-          COLLECTION2_WEARABLES[0].name,
-          fromUser
-        )
+        await storeContract.buy(collection2.address, [0], buyer, fromBuyer)
       }
 
       const canMint = await storeContract.canMint(collection2.address, 0, 1)
       expect(canMint).to.be.equal(false)
     })
 
-    it('reverts for an invalid wearable', async function () {
-      await assertRevert(
-        storeContract.canMint(collection1.address, WEARABLES.length, 1),
-        'Invalid wearable'
+    it('should return false for an invalid wearable', async function () {
+      const canMint = await storeContract.canMint(
+        collection1.address,
+        WEARABLES.length,
+        1
       )
+
+      expect(canMint).to.be.equal(false)
     })
   })
 
@@ -532,10 +556,10 @@ describe.only('SimpleStore', function () {
 
       for (let i = 0; i < optionsCount.toNumber(); i++) {
         const balance = await storeContract.balanceOf(collection1.address, i)
-        expect(balance).to.be.eq.BN(WEARABLES[i].max)
+        expect(balance).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
       }
 
-      await collection1.issueToken(user, WEARABLES[0].name, fromUser)
+      await storeContract.buy(collection1.address, [0], buyer, fromBuyer)
 
       const hash = await collection1.getWearableKey(WEARABLES[0].name)
 
@@ -543,14 +567,16 @@ describe.only('SimpleStore', function () {
       expect(issued).to.be.eq.BN(1)
 
       const balance = await storeContract.balanceOf(collection1.address, 0)
-      expect(balance).to.be.eq.BN(WEARABLES[0].max - 1)
+      expect(balance).to.be.eq.BN(AVAILABILITY_COLLECTION_1 - 1)
     })
 
-    it('reverts for an invalid wearable', async function () {
-      await assertRevert(
-        storeContract.balanceOf(collection1.address, WEARABLES.length),
-        'Invalid wearable'
+    it('should return 0 for an invalid wearable', async function () {
+      const balance = await storeContract.balanceOf(
+        collection1.address,
+        WEARABLES.length
       )
+
+      expect(balance).to.be.eq.BN(0)
     })
   })
 })

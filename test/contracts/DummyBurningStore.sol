@@ -1,26 +1,25 @@
-pragma solidity ^0.5.11;
+pragma experimental ABIEncoderV2;
 
-
-import "../../contracts/SimpleStore.sol";
+import "../../contracts/BurningStore.sol";
 
 interface EventsInterface {
     event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId, uint256 _issuedId);
     event Burn(address indexed burner, uint256 value);
 }
 
-contract DummySimpleStore is SimpleStore, EventsInterface {
+contract DummyBurningStore is BurningStore, EventsInterface {
 
     constructor(
         IERC20 _acceptedToken,
-        uint256 _price,
-        uint256 _ownerCutPerMillion,
         address[] memory _collectionAddresses,
-        address[] memory _collectionBeneficiaries
-    )  SimpleStore (
+        uint256[][] memory _collectionOptionIds,
+        uint256[][] memory _collectionAvailableQtys,
+        uint256[][] memory _collectionPrices
+    )  BurningStore (
         _acceptedToken,
-        _price,
-        _ownerCutPerMillion,
         _collectionAddresses,
-        _collectionBeneficiaries
+        _collectionOptionIds,
+        _collectionAvailableQtys,
+        _collectionPrices
     ) public {}
 }
