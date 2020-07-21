@@ -11,7 +11,7 @@ import { expect } from 'chai'
 
 const Store = artifacts.require('DummyBurningStore')
 
-describe.only('BurningStore', function () {
+describe('BurningStore', function () {
   // Contract
   let manaContract
   let storeContract

@@ -261,14 +261,13 @@ contract BurningStore is Ownable {
     using SafeMath for uint256;
 
     struct CollectionData {
-        mapping (uint256 => uint256) pricePerOption;
-        mapping (uint256 => uint256) availableQtyPerOption;
+        mapping (uint256 => uint256) pricePerOptionId;
+        mapping (uint256 => uint256) availableQtyPerOptionId;
     }
 
     IERC20 public acceptedToken;
-    uint256 public price;
 
-    mapping (address => CollectionData) public collectionsData;
+    mapping (address => CollectionData) collectionsData;
 
     event Bought(address indexed _collectionAddress, uint256[] _optionIds, address _beneficiary, uint256 _price);
     event SetCollectionData(address indexed _collectionAddress, uint256[] _optionIds, uint256[] _availableQtys, uint256[] _prices);
@@ -306,7 +305,7 @@ contract BurningStore is Ownable {
     * @param _beneficiary - beneficiary address
     */
     function buy(address _collectionAddress, uint256[] calldata _optionIds, address _beneficiary) external {
-        CollectionData storage collectionData = collectionsData[_collectionAddress];
+        CollectionData storage collection = collectionsData[_collectionAddress];
 
         uint256 amount = _optionIds.length;
         uint256 finalPrice = 0;
@@ -315,10 +314,10 @@ contract BurningStore is Ownable {
 
         for (uint256 i = 0; i < amount; i++) {
             uint256 optionId = _optionIds[i];
-            require(collectionData.availableQtyPerOption[optionId] > 0, "Sold out item");
+            require(collection.availableQtyPerOptionId[optionId] > 0, "Sold out item");
 
             // Add price
-            uint256 itemPrice = collectionData.pricePerOption[optionId];
+            uint256 itemPrice = collection.pricePerOptionId[optionId];
             finalPrice = finalPrice.add(itemPrice);
 
             // Add beneneficiary
@@ -332,7 +331,7 @@ contract BurningStore is Ownable {
                 itemAsBytes32 := mload(add(item, 32))
             }
             items[i] = itemAsBytes32;
-            collectionData.availableQtyPerOption[optionId] = collectionData.availableQtyPerOption[optionId].sub(1);
+            collection.availableQtyPerOptionId[optionId] = collection.availableQtyPerOptionId[optionId].sub(1);
         }
 
 
@@ -361,9 +360,9 @@ contract BurningStore is Ownable {
     * @return whether a wearable can be minted
     */
     function canMint(address _collectionAddress, uint256 _optionId, uint256 _amount) public view returns (bool) {
-        CollectionData storage collectionData = collectionsData[_collectionAddress];
+        CollectionData storage collection = collectionsData[_collectionAddress];
 
-        return collectionData.availableQtyPerOption[_optionId] >= _amount;
+        return collection.availableQtyPerOptionId[_optionId] >= _amount;
     }
 
     /**
@@ -374,11 +373,17 @@ contract BurningStore is Ownable {
      * @return wearable's available supply
      */
     function balanceOf(address _collectionAddress, uint256 _optionId) public view returns (uint256) {
-        CollectionData storage collectionData = collectionsData[_collectionAddress];
+        CollectionData storage collection = collectionsData[_collectionAddress];
 
-        return collectionData.availableQtyPerOption[_optionId];
+        return collection.availableQtyPerOptionId[_optionId];
     }
 
+    /**
+    * @dev Get item id by option id
+    * @param _collectionAddress - collectionn address
+    * @param _optionId - collection option id
+    * @return string of the item id
+    */
     function itemByOptionId(address _collectionAddress, uint256 _optionId) public view returns (string memory) {
        /* solium-disable-next-line */
         (bool success, bytes memory data) = address(_collectionAddress).staticcall(
@@ -391,6 +396,20 @@ contract BurningStore is Ownable {
         require(success, "Invalid wearable");
 
         return abi.decode(data, (string));
+    }
+
+    /**
+    * @dev Get collection data by option id
+    * @param _collectionAddress - collectionn address
+    * @param _optionId - collection option id
+    * @return availableQty - collection option id available qty
+    * @return price - collection option id price
+    */
+    function collectionData(address _collectionAddress, uint256 _optionId) external view returns (
+        uint256 availableQty, uint256 price
+    ) {
+        availableQty = collectionsData[_collectionAddress].availableQtyPerOptionId[_optionId];
+        price = collectionsData[_collectionAddress].pricePerOptionId[_optionId];
     }
 
     /**
@@ -410,7 +429,6 @@ contract BurningStore is Ownable {
         _setCollectionData(_collectionAddress, _collectionOptionIds, _collectionAvailableQtys, _collectionPrices);
     }
 
-
     /**
     * @dev Sets the beneficiary address where the sales amount
     *  will be transferred on each sale for a collection
@@ -426,11 +444,11 @@ contract BurningStore is Ownable {
         uint256[] memory _collectionPrices
     ) internal {
         // emit ChangedCollectionBeneficiary(_collectionAddress, collectionBeneficiaries[_collectionAddress], _beneficiary);
-        CollectionData storage collectionData = collectionsData[_collectionAddress];
+        CollectionData storage collection = collectionsData[_collectionAddress];
 
         for (uint256 i = 0; i < _collectionOptionIds.length; i++) {
-            collectionData.availableQtyPerOption[_collectionOptionIds[i]] = _collectionAvailableQtys[i];
-            collectionData.pricePerOption[_collectionOptionIds[i]] = _collectionPrices[i];
+            collection.availableQtyPerOptionId[_collectionOptionIds[i]] = _collectionAvailableQtys[i];
+            collection.pricePerOptionId[_collectionOptionIds[i]] = _collectionPrices[i];
         }
 
         emit SetCollectionData(_collectionAddress, _collectionOptionIds, _collectionAvailableQtys, _collectionPrices);
