@@ -26,7 +26,7 @@ export async function createDummyCollection(options) {
     options.creationParams
   )
 
-  await setupWearables(contract, WEARABLES)
+  await setupWearables(contract, options.wearables || WEARABLES)
 
   return contract
 }
