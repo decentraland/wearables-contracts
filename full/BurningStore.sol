@@ -334,7 +334,6 @@ contract BurningStore is Ownable {
             collection.availableQtyPerOptionId[optionId] = collection.availableQtyPerOptionId[optionId].sub(1);
         }
 
-
         // Check if the sender has at least `price` and the contract has allowance to use on its behalf
         _requireBalance(msg.sender, finalPrice);
 
