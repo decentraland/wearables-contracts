@@ -2,11 +2,7 @@ import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
 import assertRevert from './helpers/assertRevert'
 import { balanceSnap } from './helpers/balanceSnap'
-import {
-  createDummyCollection,
-  WEARABLES,
-  ZERO_ADDRESS,
-} from './helpers/collection'
+import { createDummyCollection, WEARABLES } from './helpers/collection'
 import { expect } from 'chai'
 
 const Store = artifacts.require('DummyBurningStore')
@@ -36,8 +32,6 @@ describe('BurningStore', function () {
   let user
   let buyer
   let anotherBuyer
-  let collection1Beneficiary
-  let collection2Beneficiary
   let storeOwner
   let hacker
   let holder
@@ -54,8 +48,6 @@ describe('BurningStore', function () {
     accounts = await web3.eth.getAccounts()
     deployer = accounts[ADDRESS_INDEXES.deployer]
     user = accounts[ADDRESS_INDEXES.user]
-    collection1Beneficiary = accounts[ADDRESS_INDEXES.anotherUser]
-    collection2Beneficiary = accounts[ADDRESS_INDEXES.updateOperator]
     hacker = accounts[ADDRESS_INDEXES.hacker]
     storeOwner = accounts[ADDRESS_INDEXES.operator]
     buyer = accounts[ADDRESS_INDEXES.buyer]
@@ -219,11 +211,19 @@ describe('BurningStore', function () {
 
       const hash = await collection1.getWearableKey(WEARABLES[0].name)
 
+      let itemData = await storeContract.collectionData(collection1.address, 0)
+      expect(itemData.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+
       const { logs } = await storeContract.buy(
         collection1.address,
         [0],
         buyer,
         fromBuyer
+      )
+
+      itemData = await storeContract.collectionData(collection1.address, 0)
+      expect(itemData.availableQty).to.be.eq.BN(
+        AVAILABILITY_COLLECTION_1.sub(web3.utils.toBN(1))
       )
 
       const finalPrice = PRICE_COLLECTION_1
@@ -289,11 +289,27 @@ describe('BurningStore', function () {
       const hash0 = await collection1.getWearableKey(WEARABLES[0].name)
       const hash3 = await collection1.getWearableKey(WEARABLES[3].name)
 
+      let item0Data = await storeContract.collectionData(collection1.address, 0)
+      expect(item0Data.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+
+      let item3Data = await storeContract.collectionData(collection1.address, 3)
+      expect(item3Data.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+
       const { logs } = await storeContract.buy(
         collection1.address,
         [0, 3],
         buyer,
         fromBuyer
+      )
+
+      item0Data = await storeContract.collectionData(collection1.address, 0)
+      expect(item0Data.availableQty).to.be.eq.BN(
+        AVAILABILITY_COLLECTION_1.sub(web3.utils.toBN(1))
+      )
+
+      item3Data = await storeContract.collectionData(collection1.address, 3)
+      expect(item3Data.availableQty).to.be.eq.BN(
+        AVAILABILITY_COLLECTION_1.sub(web3.utils.toBN(1))
       )
 
       const finalPrice = PRICE_COLLECTION_1.mul(web3.utils.toBN(2))
@@ -359,6 +375,68 @@ describe('BurningStore', function () {
       expect(WEARABLES[3].name).to.eq.BN(uriArr[uriArr.length - 2])
     })
 
+    it('should buy entire outfit :: gas checker', async function () {
+      let totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(0)
+
+      const buyerBalance = await balanceSnap(manaContract, buyer, 'buyer')
+      const storeBalance = await balanceSnap(
+        manaContract,
+        storeContract.address,
+        'store'
+      )
+
+      let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
+
+      let item0Data = await storeContract.collectionData(collection1.address, 0)
+      expect(item0Data.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+
+      let item3Data = await storeContract.collectionData(collection1.address, 3)
+      expect(item3Data.availableQty).to.be.eq.BN(AVAILABILITY_COLLECTION_1)
+
+      const receipt = await storeContract.buy(
+        collection1.address,
+        WEARABLES.map((_, i) => i),
+        buyer,
+        fromBuyer
+      )
+
+      for (let i = 0; i < WEARABLES.length; i++) {
+        const itemData = await storeContract.collectionData(
+          collection1.address,
+          i
+        )
+        expect(itemData.availableQty).to.be.eq.BN(
+          AVAILABILITY_COLLECTION_1.sub(web3.utils.toBN(1))
+        )
+      }
+
+      const finalPrice = PRICE_COLLECTION_1.mul(
+        web3.utils.toBN(WEARABLES.length)
+      )
+
+      totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(WEARABLES.length)
+
+      const logs = receipt.logs
+
+      expect(logs[logs.length - 1].event).to.be.equal('Bought')
+      expect(logs[logs.length - 1].args._collectionAddress).to.be.equal(
+        collection1.address
+      )
+      expect(logs[logs.length - 1].args._optionIds).to.be.eql(
+        WEARABLES.map((_, i) => web3.utils.toBN(i))
+      )
+      expect(logs[logs.length - 1].args._price).to.be.eq.BN(finalPrice)
+
+      await buyerBalance.requireDecrease(finalPrice)
+      await storeBalance.requireConstant()
+
+      itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(WEARABLES.length)
+    })
+
     it('reverts when buyer has not balance', async function () {
       await manaContract.approve(storeContract.address, -1, fromHacker)
 
@@ -409,6 +487,15 @@ describe('BurningStore', function () {
       // Only 1 item left. Trying to buy 2
       await assertRevert(
         storeContract.buy(collection2.address, [0, 0], buyer, fromBuyer),
+        'Sold out item'
+      )
+
+      // Buy item left
+      await storeContract.buy(collection2.address, [0], buyer, fromBuyer)
+
+      // Try again
+      await assertRevert(
+        storeContract.buy(collection2.address, [0], buyer, fromBuyer),
         'Sold out item'
       )
     })
@@ -570,6 +657,22 @@ describe('BurningStore', function () {
       expect(balance).to.be.eq.BN(AVAILABILITY_COLLECTION_1 - 1)
     })
 
+    it('should return 0 for an exhausted wearable', async function () {
+      this.timeout(Infinity)
+      const hash = await collection2.getWearableKey(
+        COLLECTION2_WEARABLES[0].name
+      )
+
+      const maxIssuance = await collection2.maxIssuance(hash)
+
+      for (let i = 0; i < maxIssuance; i++) {
+        await storeContract.buy(collection2.address, [0], buyer, fromBuyer)
+      }
+
+      const balance = await storeContract.balanceOf(collection2.address, 0)
+      expect(balance).to.be.eq.BN(0)
+    })
+
     it('should return 0 for an invalid wearable', async function () {
       const balance = await storeContract.balanceOf(
         collection1.address,
@@ -577,6 +680,23 @@ describe('BurningStore', function () {
       )
 
       expect(balance).to.be.eq.BN(0)
+    })
+  })
+
+  describe('itemByOptionId', function () {
+    it('should return item string id by option id', async function () {
+      const optionsCount = await collection1.wearablesCount()
+
+      for (let i = 0; i < optionsCount.toNumber(); i++) {
+        const item = await storeContract.itemByOptionId(collection1.address, i)
+        expect(item).to.be.equal(WEARABLES[i].name)
+      }
+    })
+
+    it('reverts when trying to get an item string id by an invalid option id', async function () {
+      await assertRevert(
+        storeContract.itemByOptionId(collection1.address, WEARABLES.length)
+      )
     })
   })
 })
