@@ -1,5 +1,7 @@
 
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
 
 contract OwnableDelegateProxy { }
 

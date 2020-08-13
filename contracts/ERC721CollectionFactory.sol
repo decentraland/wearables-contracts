@@ -1,6 +1,8 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+pragma solidity ^0.6.12;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./ERC721Collection.sol";
 import "./interfaces/Factory.sol";
@@ -14,8 +16,8 @@ contract ProxyRegistry {
 contract ERC721CollectionFactory is Ownable, Factory {
     using SafeMath for uint256;
 
-    string public name;
-    string public symbol;
+    string public override name;
+    string public override symbol;
     string public baseURI;
 
     ProxyRegistry public proxyRegistry;
@@ -61,7 +63,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @param _optionId the option id
      * @param _toAddress address of the future owner of the asset(s)
      */
-    function mint(uint256 _optionId, address _toAddress) public onlyAllowed {
+    function mint(uint256 _optionId, address _toAddress) public override onlyAllowed {
         require(canMint(_optionId), "Exhausted wearable");
 
         string memory wearable = _wearableByOptionId(_optionId);
@@ -83,7 +85,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
     * @param _optionId the option id
     * @return whether an option can be minted
     */
-    function canMint(uint256 _optionId) public view returns (bool) {
+    function canMint(uint256 _optionId) public view override returns (bool) {
         return balanceOf(_optionId) > 0;
     }
 
@@ -91,7 +93,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @dev Check if support factory interface.
      * @return always true
      */
-    function supportsFactoryInterface() public view returns (bool) {
+    function supportsFactoryInterface() public view override returns (bool) {
         return true;
     }
 
@@ -99,7 +101,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @dev Return the number of options the factory supports.
      * @return supported options count
      */
-    function numOptions() public view returns (uint256) {
+    function numOptions() public view override returns (uint256) {
         return erc721Collection.wearablesCount();
     }
 
@@ -124,7 +126,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
      * @param _optionId - uint256 ID of the token queried
      * @return token URI
      */
-    function tokenURI(uint256 _optionId) public view returns (string memory) {
+    function tokenURI(uint256 _optionId) public view override returns (string memory) {
         string memory wearable = _wearableByOptionId(_optionId);
         return string(abi.encodePacked(baseURI, wearable));
     }

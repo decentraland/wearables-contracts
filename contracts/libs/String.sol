@@ -1,4 +1,6 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
 
 library String {
 
@@ -27,7 +29,7 @@ library String {
     /**
      * @dev Convert uint to string.
      * @param _i - uint256 to be converted to string.
-     * @return uint in string
+     * @return _uintAsString uint in string
      */
     function uintToString(uint _i) internal pure returns (string memory _uintAsString) {
         uint i = _i;

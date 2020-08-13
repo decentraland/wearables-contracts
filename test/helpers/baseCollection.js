@@ -322,16 +322,17 @@ export function doTest(
           fromHolder
         )
 
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('Transfer')
-        expect(logs[0].args.from).to.be.equal(holder)
-        expect(logs[0].args.to).to.be.equal(anotherHolder)
-        expect(logs[0].args.tokenId).to.eq.BN(token1)
-
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(4)
         expect(logs[1].event).to.be.equal('Transfer')
         expect(logs[1].args.from).to.be.equal(holder)
         expect(logs[1].args.to).to.be.equal(anotherHolder)
-        expect(logs[1].args.tokenId).to.eq.BN(token2)
+        expect(logs[1].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[3].event).to.be.equal('Transfer')
+        expect(logs[3].args.from).to.be.equal(holder)
+        expect(logs[3].args.to).to.be.equal(anotherHolder)
+        expect(logs[3].args.tokenId).to.eq.BN(token2)
 
         ownerToken1 = await contractInstance.ownerOf(token1)
         ownerToken2 = await contractInstance.ownerOf(token2)
@@ -352,16 +353,17 @@ export function doTest(
           fromHolder
         )
 
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('Transfer')
-        expect(logs[0].args.from).to.be.equal(holder)
-        expect(logs[0].args.to).to.be.equal(anotherHolder)
-        expect(logs[0].args.tokenId).to.eq.BN(token1)
-
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(4)
         expect(logs[1].event).to.be.equal('Transfer')
         expect(logs[1].args.from).to.be.equal(holder)
         expect(logs[1].args.to).to.be.equal(anotherHolder)
-        expect(logs[1].args.tokenId).to.eq.BN(token2)
+        expect(logs[1].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[3].event).to.be.equal('Transfer')
+        expect(logs[3].args.from).to.be.equal(holder)
+        expect(logs[3].args.to).to.be.equal(anotherHolder)
+        expect(logs[3].args.tokenId).to.eq.BN(token2)
 
         ownerToken1 = await contractInstance.ownerOf(token1)
         ownerToken2 = await contractInstance.ownerOf(token2)
@@ -385,16 +387,17 @@ export function doTest(
           fromHacker
         )
 
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('Transfer')
-        expect(logs[0].args.from).to.be.equal(holder)
-        expect(logs[0].args.to).to.be.equal(anotherHolder)
-        expect(logs[0].args.tokenId).to.eq.BN(token1)
-
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(4)
         expect(logs[1].event).to.be.equal('Transfer')
         expect(logs[1].args.from).to.be.equal(holder)
         expect(logs[1].args.to).to.be.equal(anotherHolder)
-        expect(logs[1].args.tokenId).to.eq.BN(token2)
+        expect(logs[1].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[3].event).to.be.equal('Transfer')
+        expect(logs[3].args.from).to.be.equal(holder)
+        expect(logs[3].args.to).to.be.equal(anotherHolder)
+        expect(logs[3].args.tokenId).to.eq.BN(token2)
 
         ownerToken1 = await contractInstance.ownerOf(token1)
         ownerToken2 = await contractInstance.ownerOf(token2)
@@ -417,16 +420,17 @@ export function doTest(
           fromHacker
         )
 
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('Transfer')
-        expect(logs[0].args.from).to.be.equal(holder)
-        expect(logs[0].args.to).to.be.equal(anotherHolder)
-        expect(logs[0].args.tokenId).to.eq.BN(token1)
-
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(4)
         expect(logs[1].event).to.be.equal('Transfer')
         expect(logs[1].args.from).to.be.equal(holder)
         expect(logs[1].args.to).to.be.equal(anotherHolder)
-        expect(logs[1].args.tokenId).to.eq.BN(token2)
+        expect(logs[1].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[3].event).to.be.equal('Transfer')
+        expect(logs[3].args.from).to.be.equal(holder)
+        expect(logs[3].args.to).to.be.equal(anotherHolder)
+        expect(logs[3].args.tokenId).to.eq.BN(token2)
 
         ownerToken1 = await contractInstance.ownerOf(token1)
         ownerToken2 = await contractInstance.ownerOf(token2)

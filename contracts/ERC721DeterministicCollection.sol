@@ -1,12 +1,14 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
+pragma solidity ^0.6.12;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 import "./ERC721BaseCollection.sol";
 
 
-contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollection {
+contract ERC721DeterministicCollection is Ownable, ERC721, ERC721BaseCollection {
     uint8 constant public OPTIONS_BITS = 40;
     uint8 constant public ISSUANCE_BITS = 216;
 
@@ -34,7 +36,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @param _wearableId - wearable id
      * @param _maxIssuance - total supply for the wearable
      */
-    function addWearable(string memory _wearableId, uint256 _maxIssuance) public onlyOwner {
+    function addWearable(string memory _wearableId, uint256 _maxIssuance) public override onlyOwner {
         require(wearables.length < MAX_OPTIONS, "Wearables options have reached MAX_OPTIONS");
         require(_maxIssuance <= MAX_ISSUANCE, "Max issuance should be lower or equal than MAX_ISSUANCE");
 
@@ -47,12 +49,12 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @param _tokenId - uint256 ID of the token queried
      * @return token URI
      */
-    function tokenURI(uint256 _tokenId) external view returns (string memory) {
+    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
         require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
 
         (uint256 optionId, uint256 issuedId) = _decodeTokenId(_tokenId);
 
-        return string(abi.encodePacked(baseURI, wearables[optionId], "/", issuedId.uintToString()));
+        return string(abi.encodePacked(baseURI(), wearables[optionId], "/", issuedId.uintToString()));
     }
 
     /**
@@ -111,7 +113,7 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @notice optionId (`optionBits` bits) + issuedId (`issuedIdBits` bits)
      * @param _optionId - option id
      * @param _issuedId - issued id
-     * @return uint256 of the encoded id
+     * @return id uint256 of the encoded id
      */
     function _encodeTokenId(uint256 _optionId, uint256 _issuedId) internal pure returns (uint256 id) {
         require(_optionId <= MAX_OPTIONS, "The option id should be lower or equal than the MAX_OPTIONS");
@@ -127,8 +129,8 @@ contract ERC721DeterministicCollection is Ownable, ERC721Full, ERC721BaseCollect
      * @dev Decode token id
      * @notice optionId (`optionBits` bits) + issuedId (`issuedIdBits` bits)
      * @param _id - token id
-     * @return uint256 of the option id
-     * @return uint256 of the issued id
+     * @return optionId uint256 of the option id
+     * @return issuedId uint256 of the issued id
      */
     function _decodeTokenId(uint256 _id) internal pure returns (uint256 optionId, uint256 issuedId) {
         uint256 mask = MAX_ISSUANCE;

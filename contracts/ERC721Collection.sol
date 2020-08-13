@@ -1,11 +1,13 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
+pragma solidity ^0.6.12;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 import "./ERC721BaseCollection.sol";
 
-contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
+contract ERC721Collection is Ownable, ERC721, ERC721BaseCollection {
     /**
      * @dev Create the contract.
      * @param _name - name of the contract
@@ -44,16 +46,16 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
         }
     }
 
-    /**
-     * @dev Returns an URI for a given token ID.
-     * Throws if the token ID does not exist. May return an empty string.
-     * @param _tokenId - uint256 ID of the token queried
-     * @return token URI
-     */
-    function tokenURI(uint256 _tokenId) external view returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
-        return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
-    }
+    // /**
+    //  * @dev Returns an URI for a given token ID.
+    //  * Throws if the token ID does not exist. May return an empty string.
+    //  * @param _tokenId - uint256 ID of the token queried
+    //  * @return token URI
+    //  */
+    // function tokenURI(uint256 _tokenId) public view override(ERC721, ERC721BaseCollection) returns (string memory) {
+    //     require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
+    //     return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
+    // }
 
     /**
      * @dev Issue a new NFT of the specified kind.
@@ -73,13 +75,13 @@ contract ERC721Collection is Ownable, ERC721Full, ERC721BaseCollection {
         );
     }
 
-    /**
-     * @dev Internal function to set the token URI for a given token.
-     * Reverts if the token ID does not exist.
-     * @param _tokenId - uint256 ID of the token to set as its URI
-     * @param _uri - string URI to assign
-     */
-    function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-        _tokenPaths[_tokenId] = _uri;
-    }
+    // /**
+    //  * @dev Internal function to set the token URI for a given token.
+    //  * Reverts if the token ID does not exist.
+    //  * @param _tokenId - uint256 ID of the token to set as its URI
+    //  * @param _uri - string URI to assign
+    //  */
+    // function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
+    //     _tokenPaths[_tokenId] = _uri;
+    // }
 }
