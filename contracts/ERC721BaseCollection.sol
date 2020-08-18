@@ -3,8 +3,8 @@
 pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
+import "./tokens/ERC721.sol";
 import "./libs/String.sol";
 
 contract ERC721BaseCollection is Ownable, ERC721 {
@@ -13,7 +13,6 @@ contract ERC721BaseCollection is Ownable, ERC721 {
 
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
-   // mapping(uint256 => string) internal _tokenPaths;
     mapping(address => bool) public allowed;
 
     string[] public wearables;
@@ -66,19 +65,6 @@ contract ERC721BaseCollection is Ownable, ERC721 {
         allowed[_operator] = _allowed;
         emit Allowed(_operator, _allowed);
     }
-
-
-    // /**
-    //  * @dev Returns an URI for a given token ID.
-    //  * Throws if the token ID does not exist. May return an empty string.
-    //  * @param _tokenId - uint256 ID of the token queried
-    //  * @return token URI
-    //  */
-    // function tokenURI(uint256 _tokenId) public view override virtual returns (string memory) {
-    //     require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
-    //     return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
-    // }
-
 
     /**
      * @dev Transfers the ownership of given tokens ID to another address.
