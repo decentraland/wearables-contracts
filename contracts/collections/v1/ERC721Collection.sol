@@ -2,11 +2,10 @@
 
 pragma solidity ^0.6.12;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ERC721BaseCollection.sol";
 
-contract ERC721Collection is Ownable, ERC721, ERC721BaseCollection {
+contract ERC721Collection is ERC721BaseCollection {
     /**
      * @dev Create the contract.
      * @param _name - name of the contract
@@ -61,5 +60,16 @@ contract ERC721Collection is Ownable, ERC721, ERC721BaseCollection {
             tokenId,
             string(abi.encodePacked(_wearableId, "/", issuedId.uintToString()))
         );
+    }
+
+     /**
+     * @dev Add a new wearable to the collection.
+     * @notice that this method allows wearableIds of any size. It should be used
+     * if a wearableId is greater than 32 bytes
+     * @param _wearableId - wearable id
+     * @param _maxIssuance - total supply for the wearable
+     */
+    function addWearable(string memory _wearableId, uint256 _maxIssuance) public override onlyOwner {
+        super.addWearable(_wearableId, _maxIssuance);
     }
 }

@@ -2,12 +2,11 @@
 
 pragma solidity ^0.6.12;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ERC721BaseCollection.sol";
 
 
-contract ERC721DeterministicCollection is Ownable, ERC721, ERC721BaseCollection {
+contract ERC721DeterministicCollection is ERC721BaseCollection {
     uint8 constant public OPTIONS_BITS = 40;
     uint8 constant public ISSUANCE_BITS = 216;
 

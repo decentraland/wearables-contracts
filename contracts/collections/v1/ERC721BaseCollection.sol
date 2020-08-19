@@ -4,8 +4,8 @@ pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./tokens/ERC721.sol";
-import "./libs/String.sol";
+import "../../tokens/ERC721.sol";
+import "../../libs/String.sol";
 
 contract ERC721BaseCollection is Ownable, ERC721 {
     using String for bytes32;

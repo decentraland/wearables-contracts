@@ -5,8 +5,8 @@ pragma solidity ^0.6.12;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./ERC721Collection.sol";
-import "./interfaces/Factory.sol";
+import "../../interfaces/IERC721Collection.sol";
+import "../../interfaces/Factory.sol";
 
 contract OwnableDelegateProxy { }
 
@@ -22,7 +22,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
     string public baseURI;
 
     ProxyRegistry public proxyRegistry;
-    ERC721Collection public erc721Collection;
+    IERC721Collection public erc721Collection;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
     event Allowed(address indexed _oldAllowed, address indexed _newAllowed);
@@ -41,7 +41,7 @@ contract ERC721CollectionFactory is Ownable, Factory {
         string memory _symbol,
         string memory _baseURI,
         ProxyRegistry _proxyRegistry,
-        ERC721Collection _erc721Collection
+        IERC721Collection _erc721Collection
       )
       public {
         name = _name;

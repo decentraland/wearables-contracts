@@ -3,7 +3,7 @@
 pragma solidity ^0.6.12;
 
 
-import "../../contracts/Donation.sol";
+import "../markets/Donation.sol";
 
 interface EventsInterface {
   event Issue(address indexed _beneficiary, uint256 indexed _tokenId, bytes32 indexed _wearableIdKey, string _wearableId, uint256 _issuedId);
@@ -13,7 +13,7 @@ contract DummyDonation is Donation, EventsInterface {
 
     constructor(
         address payable fundsRecipient,
-        ERC721Collection _erc721Collection,
+        IERC721Collection _erc721Collection,
         uint256 _price,
         uint256 _maxNFTsPerCall
     )  Donation (

@@ -3,7 +3,7 @@
 pragma solidity ^0.6.12;
 
 
-import "../../contracts/ERC721BaseCollection.sol";
+import "../collections/v1/ERC721BaseCollection.sol";
 
 contract DummyERC721MaxIssuanceCollection is ERC721BaseCollection {
 
@@ -31,8 +31,4 @@ contract DummyERC721MaxIssuanceCollection is ERC721BaseCollection {
             string(abi.encodePacked(_wearableId, "/", issuedId.uintToString()))
         );
     }
-
-    // function _setTokenURI(uint256 _tokenId, string memory _uri) internal {
-    //     _tokenPaths[_tokenId] = _uri;
-    // }
 }
