@@ -3,25 +3,12 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "./ERC721BaseCollectionV2.sol";
 
 
-contract ERC721CollectionV2 is Ownable, ERC721, ERC721BaseCollectionV2 {
-    /**
-     * @dev Create the contract.
-     * @param _name - name of the contract
-     * @param _symbol - symbol of the contract
-     * @param _operator - Address allowed to mint tokens
-     * @param _baseURI - base URI for token URIs
-     */
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        address _operator,
-        string memory _baseURI
-    ) public ERC721BaseCollectionV2(_name, _symbol, _operator, _baseURI) {}
+contract ERC721CollectionV2 is ERC721BaseCollectionV2 {
+
+    constructor() public {}
 
      /**
      * @dev Returns an URI for a given token ID.
@@ -67,7 +54,7 @@ contract ERC721CollectionV2 is Ownable, ERC721, ERC721BaseCollectionV2 {
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal onlyMinter(_itemId) {
+    function _issueToken(address _beneficiary, uint256 _itemId) internal canMint(_itemId) {
         // Check item id
         require(_itemId < items.length, "Invalid item id");
 

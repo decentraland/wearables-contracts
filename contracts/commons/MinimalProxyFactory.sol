@@ -20,12 +20,11 @@ contract MinimalProxyFactory is Ownable {
         _setImplementation(_implementation);
     }
 
-    function createProxy(bytes32 _salt, bytes memory _data) public {
-        address addr;
-
+    function createProxy(bytes32 _salt, bytes memory _data) public virtual returns (address addr) {
         bytes memory slotcode = code;
         bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
 
+        // solium-disable-next-line security/no-inline-assembly
         assembly {
             addr := create2(0, add(slotcode, 0x20), mload(slotcode), salt)
         }

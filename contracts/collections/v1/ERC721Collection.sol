@@ -61,15 +61,4 @@ contract ERC721Collection is ERC721BaseCollection {
             string(abi.encodePacked(_wearableId, "/", issuedId.uintToString()))
         );
     }
-
-     /**
-     * @dev Add a new wearable to the collection.
-     * @notice that this method allows wearableIds of any size. It should be used
-     * if a wearableId is greater than 32 bytes
-     * @param _wearableId - wearable id
-     * @param _maxIssuance - total supply for the wearable
-     */
-    function addWearable(string memory _wearableId, uint256 _maxIssuance) public override onlyOwner {
-        super.addWearable(_wearableId, _maxIssuance);
-    }
 }
