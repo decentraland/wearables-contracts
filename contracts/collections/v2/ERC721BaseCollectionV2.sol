@@ -3,12 +3,11 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
+import "../../commons//OwnableInitializable.sol";
 import "../../tokens/ERC721Initializable.sol";
 import "../../libs/String.sol";
 
-contract ERC721BaseCollectionV2 is Ownable, ERC721Initializable {
+contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     using String for bytes32;
     using String for uint256;
 
@@ -37,6 +36,7 @@ contract ERC721BaseCollectionV2 is Ownable, ERC721Initializable {
     Item[] public items;
 
     // Status
+    bool public initialized;
     bool public isComplete;
     bool public isEditable;
 
@@ -55,6 +55,8 @@ contract ERC721BaseCollectionV2 is Ownable, ERC721Initializable {
     event SetEditable(bool __previousValue, bool _newValue);
     event Complete();
 
+    constructor() internal {}
+
     /**
      * @dev Create the contract.
      * @param _name - name of the contract
@@ -72,16 +74,20 @@ contract ERC721BaseCollectionV2 is Ownable, ERC721Initializable {
         string memory _baseURI,
         Item[] memory _items
     ) public virtual whenNotInitialized {
-        require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
+        initialized = true;
 
+        require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
+        // Ownable init
+        //@TODO: check if ownable needs to inherit from Context and this event should be emitted
+        _initOwnable();
         // ERC721 init
-        super.initialize(_name, _symbol);
+        _initERC721(_name, _symbol);
         // Base URI init
         setBaseURI(_baseURI);
         // Creator init
         creator = _creator;
         // Items init
-        _initializeItems(items);
+        _initializeItems(_items);
 
         if (_shouldComplete) {
             _completeCollection();
@@ -102,6 +108,12 @@ contract ERC721BaseCollectionV2 is Ownable, ERC721Initializable {
 
     function isManager(uint256 _itemId) internal view returns (bool) {
         return globalManagers[msg.sender] || itemManagers[_itemId][msg.sender];
+    }
+
+
+    modifier whenNotInitialized() {
+        require(!initialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
+        _;
     }
 
     modifier onlyCreator() {

@@ -1,16 +1,16 @@
-import assertRevert from './helpers/assertRevert'
+import assertRevert from '../helpers/assertRevert'
 import {
   createDummyCollection,
   WEARABLES,
-  BASE_URI
-} from './helpers/collection'
+  BASE_URI,
+} from '../helpers/collection'
 
 const ProxyRegistry = artifacts.require('ProxyRegistry')
 const ERC721CollectionFactory = artifacts.require(
   'DummyERC721CollectionFactory'
 )
 
-describe('Factory', function() {
+describe('Factory', function () {
   // Contract
   const name = 'Factory'
   const symbol = 'FCTR'
@@ -38,7 +38,7 @@ describe('Factory', function() {
 
   let creationParams
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
     user = accounts[1]
@@ -57,7 +57,7 @@ describe('Factory', function() {
     creationParams = {
       ...fromDeployer,
       gas: 6e6,
-      gasPrice: 21e9
+      gasPrice: 21e9,
     }
 
     proxyRegistry = await ProxyRegistry.new()
@@ -65,7 +65,7 @@ describe('Factory', function() {
 
     erc721Contract = await createDummyCollection({
       allowed: user,
-      creationParams
+      creationParams,
     })
 
     factoryContract = await ERC721CollectionFactory.new(
@@ -80,8 +80,8 @@ describe('Factory', function() {
     await erc721Contract.setAllowed(factoryContract.address, true)
   })
 
-  describe('create factory', async function() {
-    it('deploy with correct values', async function() {
+  describe('create factory', async function () {
+    it('deploy with correct values', async function () {
       const contract = await ERC721CollectionFactory.new(
         name,
         symbol,
@@ -109,8 +109,8 @@ describe('Factory', function() {
     })
   })
 
-  describe('mint', function() {
-    it('should mint', async function() {
+  describe('mint', function () {
+    it('should mint', async function () {
       const wearableId = await erc721Contract.wearables(optionId0)
       const hash = await erc721Contract.getWearableKey(wearableId)
 
@@ -144,7 +144,7 @@ describe('Factory', function() {
       expect(balanceOfHolder).to.be.eq.BN(1)
     })
 
-    it('reverts when minting by an allowed address', async function() {
+    it('reverts when minting by an allowed address', async function () {
       await assertRevert(
         factoryContract.mint(optionId0, holder, fromHacker),
         'Only `allowed` proxy can issue tokens'
@@ -156,7 +156,7 @@ describe('Factory', function() {
       )
     })
 
-    it('reverts when minting an invalid option', async function() {
+    it('reverts when minting an invalid option', async function () {
       const optionsCount = await factoryContract.numOptions()
       await assertRevert(
         factoryContract.mint(optionsCount, holder, fromFactoryOwnerProxy),
@@ -164,7 +164,7 @@ describe('Factory', function() {
       )
     })
 
-    it('reverts when minting an exhausted option', async function() {
+    it('reverts when minting an exhausted option', async function () {
       const wearableId = await erc721Contract.wearables(optionId0)
       const hash = await erc721Contract.getWearableKey(wearableId)
 
@@ -186,13 +186,13 @@ describe('Factory', function() {
       expect(canMint).to.be.equal(false)
     })
 
-    it('reverts when querying if an option can be minted', async function() {
+    it('reverts when querying if an option can be minted', async function () {
       await assertRevert(factoryContract.canMint(optionId0 - 1))
     })
   })
 
-  describe('transferFrom', function() {
-    it('should transferFrom', async function() {
+  describe('transferFrom', function () {
+    it('should transferFrom', async function () {
       const wearableId = await erc721Contract.wearables(optionId0)
       const hash = await erc721Contract.getWearableKey(wearableId)
 
@@ -227,7 +227,7 @@ describe('Factory', function() {
       expect(balanceOfHolder).to.be.eq.BN(1)
     })
 
-    it('reverts when transferFrom by an allowed address', async function() {
+    it('reverts when transferFrom by an allowed address', async function () {
       await assertRevert(
         factoryContract.transferFrom(hacker, holder, optionId0, fromHacker),
         'Only `allowed` proxy can issue tokens'
@@ -244,7 +244,7 @@ describe('Factory', function() {
       )
     })
 
-    it('reverts when transferFrom an invalid option', async function() {
+    it('reverts when transferFrom an invalid option', async function () {
       const optionsCount = await factoryContract.numOptions()
       await assertRevert(
         factoryContract.transferFrom(
@@ -257,7 +257,7 @@ describe('Factory', function() {
       )
     })
 
-    it('reverts when transferFrom an exhausted option', async function() {
+    it('reverts when transferFrom an exhausted option', async function () {
       const wearableId = await erc721Contract.wearables(optionId0)
       const hash = await erc721Contract.getWearableKey(wearableId)
 
@@ -285,8 +285,8 @@ describe('Factory', function() {
     })
   })
 
-  describe('Owner', function() {
-    it('should set Base URI', async function() {
+  describe('Owner', function () {
+    it('should set Base URI', async function () {
       const newBaseURI = 'https'
 
       let _baseURI = await factoryContract.baseURI()
@@ -312,7 +312,7 @@ describe('Factory', function() {
       expect(uri).to.be.equal(newBaseURI + WEARABLES[optionId0].name)
     })
 
-    it('reverts when trying to change values by hacker', async function() {
+    it('reverts when trying to change values by hacker', async function () {
       await assertRevert(
         factoryContract.setBaseURI('', fromHacker),
         'Ownable: caller is not the owner'
@@ -320,8 +320,8 @@ describe('Factory', function() {
     })
   })
 
-  describe('approval', function() {
-    it('should return valid isApprovedForAll', async function() {
+  describe('approval', function () {
+    it('should return valid isApprovedForAll', async function () {
       let isApprovedForAll = await factoryContract.isApprovedForAll(
         factoryOwner,
         factoryOwner
@@ -345,8 +345,8 @@ describe('Factory', function() {
     })
   })
 
-  describe('balanceOf', function() {
-    it('should return balance of options', async function() {
+  describe('balanceOf', function () {
+    it('should return balance of options', async function () {
       const optionsCount = await factoryContract.numOptions()
 
       for (let i = 0; i < optionsCount.toNumber(); i++) {
@@ -365,34 +365,34 @@ describe('Factory', function() {
       expect(balance).to.be.eq.BN(WEARABLES[optionId0].max - issued.toNumber())
     })
 
-    it('reverts for an invalid option', async function() {
+    it('reverts for an invalid option', async function () {
       await assertRevert(factoryContract.balanceOf(optionId0 - 1))
     })
   })
 
-  describe('proxies', function() {
-    it('should return proxy count', async function() {
+  describe('proxies', function () {
+    it('should return proxy count', async function () {
       const proxy = await factoryContract.proxies(factoryOwner)
       expect(proxy).to.be.equal(factoryOwnerProxy)
     })
   })
 
-  describe('numOptions', function() {
-    it('should return options count', async function() {
+  describe('numOptions', function () {
+    it('should return options count', async function () {
       const optionsCount = await factoryContract.numOptions()
       expect(optionsCount).to.be.eq.BN(WEARABLES.length)
     })
   })
 
-  describe('supportsFactoryInterface', function() {
-    it('should return support factory interface', async function() {
+  describe('supportsFactoryInterface', function () {
+    it('should return support factory interface', async function () {
       const supported = await factoryContract.supportsFactoryInterface()
       expect(supported).to.be.equal(true)
     })
   })
 
-  describe('ownerOf', function() {
-    it('should return owner of options', async function() {
+  describe('ownerOf', function () {
+    it('should return owner of options', async function () {
       const wearablesCount = await erc721Contract.wearablesCount()
       for (let i = 0; i < wearablesCount.toNumber(); i++) {
         const owner = await factoryContract.ownerOf(i)
@@ -400,7 +400,7 @@ describe('Factory', function() {
       }
     })
 
-    it('should return the owner event if the option is invalid', async function() {
+    it('should return the owner event if the option is invalid', async function () {
       const owner = await factoryContract.ownerOf(-1)
       expect(owner).to.be.equal(factoryOwner)
     })

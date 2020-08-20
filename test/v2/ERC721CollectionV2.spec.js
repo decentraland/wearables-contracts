@@ -1,5 +1,5 @@
-import assertRevert from './helpers/assertRevert'
-import { doTest } from './helpers/baseCollection'
+import assertRevert from '../helpers/assertRevert'
+import { doTest } from '../helpers/baseCollectionV2'
 import {
   CONTRACT_NAME,
   CONTRACT_SYMBOL,
@@ -7,11 +7,9 @@ import {
   setupWearables,
   ZERO_ADDRESS,
   BASE_URI as URI,
-} from './helpers/collection'
+} from '../helpers/collection'
 
-const ERC721DeterministicCollection = artifacts.require(
-  'DummyERC721DeterministicCollection'
-)
+const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 
 let wearables = WEARABLES.map((w) => ({ ...w, issued: 1 }))
 
@@ -41,7 +39,7 @@ async function issueWearable(contract, beneficiary, index, from) {
   wearables[index].issued++
 }
 
-describe('Deterministic Collection', function () {
+describe('Collection V2', function () {
   // option id = 0
   // issued id = 1
   const token1 = encodeTokenId(0, 1)
@@ -55,7 +53,7 @@ describe('Deterministic Collection', function () {
   const token3 = encodeTokenId(1, 1)
 
   doTest(
-    ERC721DeterministicCollection,
+    ERC721CollectionV2,
     CONTRACT_NAME,
     CONTRACT_SYMBOL,
     WEARABLES,
@@ -104,7 +102,7 @@ describe('Deterministic Collection', function () {
 
       fromDeployer = { from: deployer }
 
-      contractInstance = await ERC721DeterministicCollection.new(
+      contractInstance = await ERC721CollectionV2.new(
         CONTRACT_NAME,
         CONTRACT_SYMBOL,
         user,

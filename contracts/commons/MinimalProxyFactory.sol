@@ -13,7 +13,7 @@ contract MinimalProxyFactory is Ownable {
     bytes public code;
     bytes32 public codeHash;
 
-    event ProxyCreated(address indexed _collection, bytes32 _salt);
+    event ProxyCreated(address indexed _address, bytes32 _salt);
     event ImplementationChanged(address indexed _implementation, bytes32 _codeHash, bytes _code);
 
     constructor(address _implementation) public {
@@ -40,7 +40,7 @@ contract MinimalProxyFactory is Ownable {
     /**
     * @dev Get a deterministics collection.
     */
-    function getCollectionAddress(address _address, bytes32 _salt) internal view returns (address) {
+    function getAddress(bytes32 _salt, address _address) public view returns (address) {
         return address(
             uint256(
                 keccak256(
@@ -64,21 +64,14 @@ contract MinimalProxyFactory is Ownable {
             _implementation != address(0) && _implementation.isContract(),
             "MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION"
         );
-
-        bytes memory slotcode;
-        bytes20 targetBytes = bytes20(_implementation);
-
         // Adapted from https://github.com/optionality/clone-factory/blob/32782f82dfc5a00d103a7e61a17a5dedbd1e8e9d/contracts/CloneFactory.sol
-        assembly {
-            slotcode := mload(0x40)
-            mstore(slotcode, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)
-            mstore(add(slotcode, 0x14), targetBytes)
-            mstore(add(slotcode, 0x28), 0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000)
-        }
-
-        implementation = _implementation;
-        code = slotcode;
+        code = abi.encodePacked(
+            hex"3d602d80600a3d3981f3363d3d373d3d3d363d73",
+            _implementation,
+            hex"5af43d82803e903d91602b57fd5bf3"
+        );
         codeHash = keccak256(code);
+        implementation = _implementation;
 
         emit ImplementationChanged(implementation, codeHash, code);
     }

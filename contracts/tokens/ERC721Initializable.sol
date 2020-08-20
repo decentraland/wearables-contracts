@@ -88,18 +88,12 @@ contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC7
      */
     bytes4 private constant _INTERFACE_ID_ERC721_ENUMERABLE = 0x780e9d63;
 
-    bool public initialized;
-
-    modifier whenNotInitialized() {
-        require(!initialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
-        _;
-    }
+    constructor() internal {}
 
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    function initialize(string memory name, string memory symbol) public virtual whenNotInitialized {
-        initialized = true;
+    function _initERC721(string memory name, string memory symbol) internal {
         _name = name;
         _symbol = symbol;
 
@@ -107,8 +101,6 @@ contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC7
         _registerInterface(_INTERFACE_ID_ERC721);
         _registerInterface(_INTERFACE_ID_ERC721_METADATA);
         _registerInterface(_INTERFACE_ID_ERC721_ENUMERABLE);
-
-
     }
 
     /**

@@ -1,5 +1,5 @@
-import assertRevert from './helpers/assertRevert'
-import { createDummyCollection, WEARABLES } from './helpers/collection'
+import assertRevert from '../helpers/assertRevert'
+import { createDummyCollection, WEARABLES } from '../helpers/collection'
 
 const Donation = artifacts.require('DummyDonation')
 
