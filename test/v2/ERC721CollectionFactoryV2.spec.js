@@ -1,18 +1,101 @@
 import { keccak256 } from '@ethersproject/solidity'
 import { randomBytes } from '@ethersproject/random'
+import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
 import {
   createDummyCollection,
   getInitData,
-  WEARABLES,
-  BASE_URI,
   ZERO_ADDRESS,
+  ITEMS,
 } from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
+
+function encodeERC721Initialize(
+  name,
+  symbol,
+  creator,
+  shouldComplete,
+  baseURI,
+  items
+) {
+  return web3.eth.abi.encodeFunctionCall(
+    {
+      inputs: [
+        {
+          internalType: 'string',
+          name: '_name',
+          type: 'string',
+        },
+        {
+          internalType: 'string',
+          name: '_symbol',
+          type: 'string',
+        },
+        {
+          internalType: 'address',
+          name: '_creator',
+          type: 'address',
+        },
+        {
+          internalType: 'bool',
+          name: '_shouldComplete',
+          type: 'bool',
+        },
+        {
+          internalType: 'string',
+          name: '_baseURI',
+          type: 'string',
+        },
+        {
+          components: [
+            {
+              internalType: 'uint256',
+              name: 'maxSupply',
+              type: 'uint256',
+            },
+            {
+              internalType: 'uint256',
+              name: 'totalSupply',
+              type: 'uint256',
+            },
+            {
+              internalType: 'uint256',
+              name: 'price',
+              type: 'uint256',
+            },
+            {
+              internalType: 'address',
+              name: 'beneficiary',
+              type: 'address',
+            },
+            {
+              internalType: 'string',
+              name: 'metadata',
+              type: 'string',
+            },
+            {
+              internalType: 'bytes32',
+              name: 'contentHash',
+              type: 'bytes32',
+            },
+          ],
+          internalType: 'struct ERC721BaseCollectionV2.Item[]',
+          name: '_items',
+          type: 'tuple[]',
+        },
+      ],
+      name: 'initialize',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
+    [name, symbol, creator, shouldComplete, baseURI, items]
+  )
+}
 
 describe.only('Factory', function () {
   let collectionContract
@@ -148,7 +231,7 @@ describe.only('Factory', function () {
     })
   })
 
-  describe.only('getAddress', function () {
+  describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
       const salt = randomBytes(32)
       const expectedAddress = await factoryContract.getAddress(salt, user)
@@ -199,367 +282,119 @@ describe.only('Factory', function () {
     })
   })
 
-  describe('createCollection', function () {
+  describe.only('createCollection', function () {
+    const name = 'collectionName'
+    const symbol = 'collectionSymbol'
+    const shouldComplete = true
+    const baseURI = 'collectionBaseURI'
+    const items = []
+
     it('should create a collection', async function () {
-      const collectionV2Impl = await ERC721CollectionV2.new()
+      const salt = randomBytes(32)
+      const expectedAddress = await factoryContract.getAddress(salt, user)
 
-      await factoryContract.setImplementation(
-        collectionV2Impl.address,
-        factoryOwner
-      )
-
-      const data = web3.eth.abi.encodeFunctionCall(
-        {
-          inputs: [
-            {
-              internalType: 'string',
-              name: '_name',
-              type: 'string',
-            },
-            {
-              internalType: 'string',
-              name: '_symbol',
-              type: 'string',
-            },
-            {
-              internalType: 'address',
-              name: '_creator',
-              type: 'address',
-            },
-            {
-              internalType: 'bool',
-              name: '_shouldComplete',
-              type: 'bool',
-            },
-            {
-              internalType: 'string',
-              name: '_baseURI',
-              type: 'string',
-            },
-            {
-              components: [
-                {
-                  internalType: 'uint256',
-                  name: 'maxSupply',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'totalSupply',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'price',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'address',
-                  name: 'beneficiary',
-                  type: 'address',
-                },
-                {
-                  internalType: 'string',
-                  name: 'metadata',
-                  type: 'string',
-                },
-                {
-                  internalType: 'bytes32',
-                  name: 'contentHash',
-                  type: 'bytes32',
-                },
-              ],
-              internalType: 'struct ERC721BaseCollectionV2.Item[]',
-              name: '_items',
-              type: 'tuple[]',
-            },
-          ],
-          name: 'initialize',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-        [
-          options.name || CONTRACT_NAME,
-          options.symbol || CONTRACT_SYMBOL,
-          options.creator,
-          options.shouldComplete,
-          options.baseURI || BASE_URI,
-          options.items || ITEMS,
-        ]
-      )
-
-      const { logs } = await factory.createCollection(
-        web3.utils.randomHex(32),
-        data,
-        { gas: 100000000 }
-      )
-
-      const ERC721Collection = artifacts.require('ERC721CollectionV2')
-      const contract = logs[0].args._address
-      const collection = await ERC721Collection.at(contract)
-      return collection
-    })
-
-    it('reverts when minting by an allowed address', async function () {
-      await assertRevert(
-        factoryContract.mint(optionId0, holder, fromHacker),
-        'Only `allowed` proxy can issue tokens'
-      )
-
-      await assertRevert(
-        factoryContract.mint(optionId0, holder, fromFactoryOwner),
-        'Only `allowed` proxy can issue tokens'
-      )
-    })
-
-    it('reverts when minting an invalid option', async function () {
-      const optionsCount = await factoryContract.numOptions()
-      await assertRevert(
-        factoryContract.mint(optionsCount, holder, fromFactoryOwnerProxy),
-        'Invalid wearable'
-      )
-    })
-
-    it('reverts when minting an exhausted option', async function () {
-      const wearableId = await erc721Contract.wearables(optionId0)
-      const hash = await erc721Contract.getWearableKey(wearableId)
-
-      const maxKind = await erc721Contract.maxIssuance(hash)
-
-      let canMint = await factoryContract.canMint(optionId0)
-      expect(canMint).to.be.equal(true)
-
-      for (let i = 0; i < maxKind.toNumber(); i++) {
-        await erc721Contract.issueToken(holder, wearableId, fromUser)
-      }
-
-      await assertRevert(
-        factoryContract.mint(optionId0, holder, fromFactoryOwnerProxy),
-        'Exhausted wearable'
-      )
-
-      canMint = await factoryContract.canMint(optionId0)
-      expect(canMint).to.be.equal(false)
-    })
-
-    it('reverts when querying if an option can be minted', async function () {
-      await assertRevert(factoryContract.canMint(optionId0 - 1))
-    })
-  })
-
-  describe('transferFrom', function () {
-    it('should transferFrom', async function () {
-      const wearableId = await erc721Contract.wearables(optionId0)
-      const hash = await erc721Contract.getWearableKey(wearableId)
-
-      let issued = await erc721Contract.issued(hash)
-      let balanceOfHolder = await erc721Contract.balanceOf(holder)
-
-      expect(wearableId).to.be.equal(WEARABLES[optionId0].name)
-      expect(issued).to.be.eq.BN(0)
-      expect(balanceOfHolder).to.be.eq.BN(0)
-
-      const { logs } = await factoryContract.transferFrom(
-        hacker,
-        holder,
-        optionId0,
-        fromFactoryOwnerProxy
-      )
-
-      const totalSupply = await erc721Contract.totalSupply()
-
-      issued = await erc721Contract.issued(hash)
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('Issue')
-      expect(logs[0].args._beneficiary).to.be.equal(holder)
-      expect(logs[0].args._tokenId).to.be.eq.BN(totalSupply.toNumber() - 1)
-      expect(logs[0].args._wearableIdKey).to.be.equal(hash)
-      expect(logs[0].args._wearableId).to.be.equal(WEARABLES[optionId0].name)
-      expect(logs[0].args._issuedId).to.eq.BN(issued)
-
-      expect(issued).to.be.eq.BN(1)
-      balanceOfHolder = await erc721Contract.balanceOf(holder)
-      expect(balanceOfHolder).to.be.eq.BN(1)
-    })
-
-    it('reverts when transferFrom by an allowed address', async function () {
-      await assertRevert(
-        factoryContract.transferFrom(hacker, holder, optionId0, fromHacker),
-        'Only `allowed` proxy can issue tokens'
-      )
-
-      await assertRevert(
-        factoryContract.transferFrom(
-          hacker,
-          holder,
-          optionId0,
-          fromFactoryOwner
+      const { logs } = await factoryContract.createCollection(
+        salt,
+        encodeERC721Initialize(
+          name,
+          symbol,
+          user,
+          shouldComplete,
+          baseURI,
+          items
         ),
-        'Only `allowed` proxy can issue tokens'
+        fromUser
       )
+
+      expect(logs.length).to.be.equal(3)
+
+      let log = logs[0]
+      expect(log.event).to.be.equal('ProxyCreated')
+      expect(log.args._address).to.be.equal(expectedAddress)
+      expect(log.args._salt).to.be.equal(hexlify(salt))
+
+      log = logs[1]
+      expect(log.event).to.be.equal('OwnershipTransferred')
+      expect(log.args.previousOwner).to.be.equal(ZERO_ADDRESS)
+      expect(log.args.newOwner).to.be.equal(factoryContract.address)
+
+      log = logs[2]
+      expect(log.event).to.be.equal('OwnershipTransferred')
+      expect(log.args.previousOwner).to.be.equal(factoryContract.address)
+      expect(log.args.newOwner).to.be.equal(factoryOwner)
     })
 
-    it('reverts when transferFrom an invalid option', async function () {
-      const optionsCount = await factoryContract.numOptions()
-      await assertRevert(
-        factoryContract.transferFrom(
-          hacker,
-          holder,
-          optionsCount,
-          fromFactoryOwnerProxy
+    it('should create a collection with items', async function () {
+      const salt = randomBytes(32)
+      const expectedAddress = await factoryContract.getAddress(salt, user)
+
+      const { logs } = await factoryContract.createCollection(
+        salt,
+        encodeERC721Initialize(
+          name,
+          symbol,
+          user,
+          shouldComplete,
+          baseURI,
+          ITEMS
         ),
-        'Invalid wearable'
+        fromUser
       )
-    })
 
-    it('reverts when transferFrom an exhausted option', async function () {
-      const wearableId = await erc721Contract.wearables(optionId0)
-      const hash = await erc721Contract.getWearableKey(wearableId)
+      expect(logs.length).to.be.equal(3)
 
-      const maxKind = await erc721Contract.maxIssuance(hash)
+      let log = logs[0]
+      expect(log.event).to.be.equal('ProxyCreated')
+      expect(log.args._address).to.be.equal(expectedAddress)
+      expect(log.args._salt).to.be.equal(hexlify(salt))
 
-      let canMint = await factoryContract.canMint(optionId0)
-      expect(canMint).to.be.equal(true)
+      log = logs[1]
+      expect(log.event).to.be.equal('OwnershipTransferred')
+      expect(log.args.previousOwner).to.be.equal(ZERO_ADDRESS)
+      expect(log.args.newOwner).to.be.equal(factoryContract.address)
 
-      for (let i = 0; i < maxKind.toNumber(); i++) {
-        await erc721Contract.issueToken(holder, wearableId, fromUser)
+      log = logs[2]
+      expect(log.event).to.be.equal('OwnershipTransferred')
+      expect(log.args.previousOwner).to.be.equal(factoryContract.address)
+      expect(log.args.newOwner).to.be.equal(factoryOwner)
+
+      // Check collection data
+      const collection = await ERC721CollectionV2.at(expectedAddress)
+      const baseURI_ = await collection.baseURI()
+      const creator_ = await collection.creator()
+      const owner_ = await collection.owner()
+      const name_ = await collection.name()
+      const symbol_ = await collection.symbol()
+      const isComplete_ = await collection.isComplete()
+
+      expect(baseURI_).to.be.equal(baseURI)
+      expect(creator_).to.be.equal(user)
+      expect(owner_).to.be.equal(factoryOwner)
+      expect(name_).to.be.equal(name)
+      expect(symbol_).to.be.equal(symbol)
+      expect(isComplete_).to.be.equal(shouldComplete)
+
+      const itemLength = await collection.itemsCount()
+
+      expect(ITEMS.length).to.be.eq.BN(itemLength)
+
+      for (let i = 0; i < ITEMS.length; i++) {
+        const {
+          maxSupply,
+          totalSupply,
+          price,
+          beneficiary,
+          metadata,
+          contentHash,
+        } = await collection.items(i)
+
+        expect(maxSupply).to.be.eq.BN(ITEMS[i][0])
+        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
+        expect(price).to.be.eq.BN(ITEMS[i][2])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][4])
+        expect(contentHash).to.be.equal(ITEMS[i][5])
       }
-
-      await assertRevert(
-        factoryContract.transferFrom(
-          hacker,
-          holder,
-          optionId0,
-          fromFactoryOwnerProxy
-        ),
-        'Exhausted wearable'
-      )
-
-      canMint = await factoryContract.canMint(optionId0)
-      expect(canMint).to.be.equal(false)
-    })
-  })
-
-  describe('Owner', function () {
-    it('should set Base URI', async function () {
-      const newBaseURI = 'https'
-
-      let _baseURI = await factoryContract.baseURI()
-      expect(_baseURI).to.be.equal(BASE_URI)
-
-      const { logs } = await factoryContract.setBaseURI(
-        newBaseURI,
-        fromFactoryOwner
-      )
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('BaseURI')
-      expect(logs[0].args._oldBaseURI).to.be.equal(_baseURI)
-      expect(logs[0].args._newBaseURI).to.be.equal(newBaseURI)
-
-      const wearableId = await erc721Contract.wearables(optionId0)
-      const uri = await factoryContract.tokenURI(optionId0)
-
-      _baseURI = await factoryContract.baseURI()
-
-      expect(_baseURI).to.be.equal(newBaseURI)
-      expect(wearableId).to.be.equal(WEARABLES[optionId0].name)
-      expect(uri).to.be.equal(newBaseURI + WEARABLES[optionId0].name)
-    })
-
-    it('reverts when trying to change values by hacker', async function () {
-      await assertRevert(
-        factoryContract.setBaseURI('', fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-  })
-
-  describe('approval', function () {
-    it('should return valid isApprovedForAll', async function () {
-      let isApprovedForAll = await factoryContract.isApprovedForAll(
-        factoryOwner,
-        factoryOwner
-      )
-      expect(isApprovedForAll).to.be.equal(true)
-
-      isApprovedForAll = await factoryContract.isApprovedForAll(
-        factoryOwner,
-        factoryOwnerProxy
-      )
-      expect(isApprovedForAll).to.be.equal(true)
-
-      isApprovedForAll = await factoryContract.isApprovedForAll(
-        user,
-        factoryOwner
-      )
-      expect(isApprovedForAll).to.be.equal(false)
-
-      isApprovedForAll = await factoryContract.isApprovedForAll(hacker, user)
-      expect(isApprovedForAll).to.be.equal(false)
-    })
-  })
-
-  describe('balanceOf', function () {
-    it('should return balance of options', async function () {
-      const optionsCount = await factoryContract.numOptions()
-
-      for (let i = 0; i < optionsCount.toNumber(); i++) {
-        const balance = await factoryContract.balanceOf(i)
-        expect(balance).to.be.eq.BN(WEARABLES[i].max)
-      }
-
-      const wearableId = await erc721Contract.wearables(optionId0)
-
-      await erc721Contract.issueToken(holder, wearableId, fromUser)
-
-      const hash = await erc721Contract.getWearableKey(wearableId)
-      const balance = await factoryContract.balanceOf(optionId0)
-
-      const issued = await await erc721Contract.issued(hash)
-      expect(balance).to.be.eq.BN(WEARABLES[optionId0].max - issued.toNumber())
-    })
-
-    it('reverts for an invalid option', async function () {
-      await assertRevert(factoryContract.balanceOf(optionId0 - 1))
-    })
-  })
-
-  describe('proxies', function () {
-    it('should return proxy count', async function () {
-      const proxy = await factoryContract.proxies(factoryOwner)
-      expect(proxy).to.be.equal(factoryOwnerProxy)
-    })
-  })
-
-  describe('numOptions', function () {
-    it('should return options count', async function () {
-      const optionsCount = await factoryContract.numOptions()
-      expect(optionsCount).to.be.eq.BN(WEARABLES.length)
-    })
-  })
-
-  describe('supportsFactoryInterface', function () {
-    it('should return support factory interface', async function () {
-      const supported = await factoryContract.supportsFactoryInterface()
-      expect(supported).to.be.equal(true)
-    })
-  })
-
-  describe('ownerOf', function () {
-    it('should return owner of options', async function () {
-      const wearablesCount = await erc721Contract.wearablesCount()
-      for (let i = 0; i < wearablesCount.toNumber(); i++) {
-        const owner = await factoryContract.ownerOf(i)
-        expect(owner).to.be.equal(factoryOwner)
-      }
-    })
-
-    it('should return the owner event if the option is invalid', async function () {
-      const owner = await factoryContract.ownerOf(-1)
-      expect(owner).to.be.equal(factoryOwner)
     })
   })
 })

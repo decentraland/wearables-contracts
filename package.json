@@ -25,6 +25,7 @@
   "homepage": "https://github.com/decentraland/wearable-contracts#readme",
   "devDependencies": {
     "@ethersproject/abi": "^5.0.2",
+    "@ethersproject/bytes": "^5.0.3",
     "@ethersproject/random": "^5.0.2",
     "@ethersproject/solidity": "^5.0.2",
     "@nomiclabs/buidler": "^1.4.3",
