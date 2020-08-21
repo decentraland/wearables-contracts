@@ -1,7 +1,6 @@
 require('babel-register')
 require('babel-polyfill')
 
-usePlugin('@nomiclabs/buidler-ganache')
 usePlugin('@nomiclabs/buidler-truffle5')
 usePlugin('buidler-gas-reporter')
 
@@ -25,9 +24,14 @@ module.exports = {
       loggingEnabled: false,
       blockGasLimit: 100000000,
     },
+    local: {
+      url: 'http://127.0.0.1:8545',
+      blockGasLimit: 100000000,
+      network_id: '*', // eslint-disable-line camelcase
+    },
   },
   gasReporter: {
-    enabled: true,
+    enabled: !!process.env.REPORT_GAS === true,
     currency: 'USD',
     gasPrice: 21,
     showTimeSpent: true,
