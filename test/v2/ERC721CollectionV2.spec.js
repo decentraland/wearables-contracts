@@ -3,18 +3,18 @@ import { doTest } from '../helpers/baseCollectionV2'
 import {
   CONTRACT_NAME,
   CONTRACT_SYMBOL,
-  WEARABLES,
-  setupWearables,
+  ITEMS,
+  setupItems,
   ZERO_ADDRESS,
   BASE_URI as URI,
-} from '../helpers/collection'
+} from '../helpers/collectionV2'
 
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 
-let wearables = WEARABLES.map((w) => ({ ...w, issued: 1 }))
+let items = ITEMS.map((i) => [1, ...i])
 
 function cleanIssuances() {
-  wearables = WEARABLES.map((w) => ({ ...w, issued: 1 }))
+  items = ITEMS.map((i) => [1, ...i])
 }
 
 function encodeTokenId(a, b) {
@@ -39,7 +39,7 @@ async function issueWearable(contract, beneficiary, index, from) {
   wearables[index].issued++
 }
 
-describe('Collection V2', function () {
+describe.only('Collection V2', function () {
   // option id = 0
   // issued id = 1
   const token1 = encodeTokenId(0, 1)
@@ -52,24 +52,41 @@ describe('Collection V2', function () {
   // issued id = 1
   const token3 = encodeTokenId(1, 1)
 
+  const BASE_URI = URI + `${CONTRACT_NAME}/wearables/`
+
+  // collectionContract = await createDummyCollection(factoryContract, {
+  //   creator: user,
+  //   shouldComplete: true,
+  //   creationParams,
+  // })
+
   doTest(
     ERC721CollectionV2,
+    async (creator, creationParams) => {
+      const collectionContract = await ERC721CollectionV2.new()
+      await collectionContract.initialize(
+        CONTRACT_NAME,
+        CONTRACT_SYMBOL,
+        creator,
+        false,
+        BASE_URI,
+        ITEMS,
+        creationParams
+      )
+      return collectionContract
+    },
     CONTRACT_NAME,
     CONTRACT_SYMBOL,
-    WEARABLES,
+    ITEMS,
     issueWearable,
     cleanIssuances,
     [token1, token2, token3]
   )
 
-  describe('Issuance', function () {
+  describe.skip('Issuance', function () {
     // Wearables
-    const wearable0 = WEARABLES[0].name
-    const wearable1 = WEARABLES[1].name
-    const wearable0Hash = web3.utils.soliditySha3(wearable0)
-    const wearable1Hash = web3.utils.soliditySha3(wearable1)
-
-    const BASE_URI = URI + `${CONTRACT_NAME}/wearables/`
+    const wearable0 = ITEMS[0]
+    const wearable1 = ITEMS[1]
 
     // Accounts
     let accounts
@@ -114,7 +131,7 @@ describe('Collection V2', function () {
         }
       )
 
-      await setupWearables(contractInstance, WEARABLES)
+      await setupWearables(contractInstance, ITEMS)
     })
 
     afterEach(async () => {

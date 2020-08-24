@@ -28,12 +28,13 @@ contract MinimalProxyFactory is Ownable {
         assembly {
             addr := create2(0, add(slotcode, 0x20), mload(slotcode), salt)
         }
+        require(addr != address(0), "MinimalProxyFactory#createProxy: CREATION_FAILED");
 
         emit ProxyCreated(addr, _salt);
 
         if (_data.length > 0) {
             (bool success,) = addr.call(_data);
-            require(success, "ERC721CollectionFactoryV2#_deployMinimal: CALL_FAILED");
+            require(success, "MinimalProxyFactory#createProxy: CALL_FAILED");
         }
     }
 

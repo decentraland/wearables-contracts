@@ -97,8 +97,7 @@ function encodeERC721Initialize(
   )
 }
 
-describe.only('Factory', function () {
-  let collectionContract
+describe('Factory', function () {
   let collectionImplementation
   let factoryContract
 
@@ -107,13 +106,10 @@ describe.only('Factory', function () {
   let deployer
   let user
   let factoryOwner
-  let factoryOwnerProxy
   let hacker
-  let holder
   let fromUser
   let fromHacker
   let fromFactoryOwner
-  let fromFactoryOwnerProxy
   let fromDeployer
 
   let creationParams
@@ -122,15 +118,11 @@ describe.only('Factory', function () {
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
     user = accounts[1]
-    holder = accounts[2]
     factoryOwner = accounts[3]
     hacker = accounts[4]
-    factoryOwnerProxy = accounts[5]
 
-    fromFactoryOwner = { from: factoryOwner }
     fromUser = { from: user }
     fromHacker = { from: hacker }
-    fromFactoryOwnerProxy = { from: factoryOwnerProxy }
 
     fromDeployer = { from: deployer }
 
@@ -146,12 +138,6 @@ describe.only('Factory', function () {
       collectionImplementation.address,
       factoryOwner
     )
-
-    collectionContract = await createDummyCollection(factoryContract, {
-      creator: user,
-      shouldComplete: true,
-      creationParams,
-    })
   })
 
   describe('create factory', async function () {
@@ -282,7 +268,7 @@ describe.only('Factory', function () {
     })
   })
 
-  describe.only('createCollection', function () {
+  describe('createCollection', function () {
     const name = 'collectionName'
     const symbol = 'collectionSymbol'
     const shouldComplete = true
@@ -395,6 +381,92 @@ describe.only('Factory', function () {
         expect(metadata).to.be.equal(ITEMS[i][4])
         expect(contentHash).to.be.equal(ITEMS[i][5])
       }
+    })
+
+    it('should create different addresses from different salts', async function () {
+      const salt1 = randomBytes(32)
+      const salt2 = randomBytes(32)
+
+      const res1 = await factoryContract.createCollection(
+        salt1,
+        encodeERC721Initialize(
+          name,
+          symbol,
+          user,
+          shouldComplete,
+          baseURI,
+          ITEMS
+        ),
+        fromUser
+      )
+      const address1 = res1.logs[0].args._address
+
+      const res2 = await factoryContract.createCollection(
+        salt2,
+        encodeERC721Initialize(
+          name,
+          symbol,
+          user,
+          shouldComplete,
+          baseURI,
+          ITEMS
+        ),
+        fromUser
+      )
+      const address2 = res2.logs[0].args._address
+
+      expect(address2).to.not.be.equal(address1)
+    })
+
+    it('reverts if initialize call failed', async function () {
+      const salt = randomBytes(32)
+      await assertRevert(
+        factoryContract.createCollection(
+          salt,
+          encodeERC721Initialize(
+            name,
+            symbol,
+            ZERO_ADDRESS,
+            shouldComplete,
+            baseURI,
+            ITEMS
+          ),
+          fromUser
+        ),
+        'MinimalProxyFactory#createProxy: CALL_FAILED'
+      )
+    })
+
+    it('reverts if trying to re-deploy the same collection', async function () {
+      const salt = randomBytes(32)
+      await factoryContract.createCollection(
+        salt,
+        encodeERC721Initialize(
+          name,
+          symbol,
+          user,
+          shouldComplete,
+          baseURI,
+          ITEMS
+        ),
+        fromUser
+      )
+
+      await assertRevert(
+        factoryContract.createCollection(
+          salt,
+          encodeERC721Initialize(
+            name,
+            symbol,
+            user,
+            shouldComplete,
+            baseURI,
+            ITEMS
+          ),
+          fromUser
+        ),
+        'MinimalProxyFactory#createProxy: CREATION_FAILED'
+      )
     })
   })
 })

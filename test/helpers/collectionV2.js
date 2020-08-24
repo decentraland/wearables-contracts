@@ -86,11 +86,8 @@ export async function createDummyCollection(factory, options) {
   return collection
 }
 
-export async function setupItems(contract, wearables = WEARABLES) {
-  return contract.addWearables(
-    wearables.map((w) => web3.utils.fromAscii(w.name)),
-    wearables.map((w) => w.max)
-  )
+export async function setupItems(contract, items = ITEMS) {
+  return contract.addItems(items)
 }
 
 export function getInitData(options) {
