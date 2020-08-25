@@ -172,3 +172,20 @@ export function getInitData(options) {
     ]
   )
 }
+
+export function encodeTokenId(a, b) {
+  return web3.utils.toBN(
+    `0x${web3.utils.padLeft(a, 10).replace('0x', '')}${web3.utils
+      .padLeft(b, 54)
+      .replace('0x', '')}`
+  )
+}
+
+export function decodeTokenId(id) {
+  const hexId = web3.utils.padLeft(web3.utils.toHex(id), 64).replace('0x', '')
+
+  return [
+    web3.utils.toBN(hexId.substr(0, 10)),
+    web3.utils.toBN(hexId.substr(10, hexId.length)),
+  ]
+}

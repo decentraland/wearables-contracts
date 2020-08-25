@@ -6,7 +6,9 @@ import {
   ITEMS,
   setupItems,
   ZERO_ADDRESS,
-  BASE_URI as URI,
+  BASE_URI,
+  encodeTokenId,
+  decodeTokenId,
 } from '../helpers/collectionV2'
 
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
@@ -17,26 +19,8 @@ function cleanIssuances() {
   items = ITEMS.map((i) => [1, ...i])
 }
 
-function encodeTokenId(a, b) {
-  return web3.utils.toBN(
-    `0x${web3.utils.padLeft(a, 10).replace('0x', '')}${web3.utils
-      .padLeft(b, 54)
-      .replace('0x', '')}`
-  )
-}
-
-function decodeTokenId(id) {
-  const hexId = web3.utils.padLeft(web3.utils.toHex(id), 64).replace('0x', '')
-
-  return [
-    web3.utils.toBN(hexId.substr(0, 10)),
-    web3.utils.toBN(hexId.substr(10, hexId.length)),
-  ]
-}
-
-async function issueWearable(contract, beneficiary, index, from) {
-  await contract.issueToken(beneficiary, index, wearables[index].issued, from)
-  wearables[index].issued++
+async function issueItem(contract, beneficiary, index, from) {
+  await contract.issueToken(beneficiary, index, from)
 }
 
 describe.only('Collection V2', function () {
@@ -51,8 +35,6 @@ describe.only('Collection V2', function () {
   // option id = 1
   // issued id = 1
   const token3 = encodeTokenId(1, 1)
-
-  const BASE_URI = URI + `${CONTRACT_NAME}/wearables/`
 
   // collectionContract = await createDummyCollection(factoryContract, {
   //   creator: user,
@@ -78,7 +60,7 @@ describe.only('Collection V2', function () {
     CONTRACT_NAME,
     CONTRACT_SYMBOL,
     ITEMS,
-    issueWearable,
+    issueItem,
     cleanIssuances,
     [token1, token2, token3]
   )
