@@ -4,6 +4,7 @@ import {
   ZERO_ADDRESS,
   BASE_URI,
   decodeTokenId,
+  encodeTokenId,
 } from './collectionV2'
 
 const BN = web3.utils.BN
@@ -19,21 +20,10 @@ export function doTest(
   afterEach = () => ({}),
   tokenIds = [0, 1, 2]
 ) {
-  xdescribe('Base Collection', function () {
+  describe('Base Collection V2', function () {
     this.timeout(100000)
 
     let creationParams
-
-    //wearable
-    const item0 = items[0]
-    const item1 = items[1]
-    const item2 = items[2]
-
-    const issuance1 = 10
-    const newItem1 = 'new_exclusive_wearable_1'
-    const issuance2 = 10
-    const newItem2 = 'new_exclusive_wearable_2'
-    const newLongWearable1 = 'new_exclusive_wearable_1_super_super_long'
 
     // tokens
     const token1 = tokenIds[0]
@@ -91,18 +81,25 @@ export function doTest(
         gasPrice: 21e9,
       }
 
+      // Create collection and set up wearables
       collectionContract = await createContract(creator, creationParams)
 
+      // Approve the collection to mint items
+      await collectionContract.approveCollection(fromDeployer)
+
+      // Issue some tokens
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, anotherHolder, 1, fromCreator)
     })
 
     this.afterEach(async () => {
-      afterEach()
+      if (typeof afterEach === 'function') {
+        afterEach()
+      }
     })
 
-    xdescribe('initialize', function () {
+    describe('initialize', function () {
       it('should be initialized with correct values', async function () {
         const contract = await Contract.new()
         await contract.initialize(
@@ -120,14 +117,20 @@ export function doTest(
         const owner_ = await contract.owner()
         const name_ = await contract.name()
         const symbol_ = await contract.symbol()
-        const isComplete_ = await contract.isComplete()
+        const isInitialized_ = await contract.isInitialized()
+        const isApproved_ = await contract.isApproved()
+        const isCompleted_ = await contract.isCompleted()
+        const isEditable_ = await contract.isEditable()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
         expect(owner_).to.be.equal(deployer)
         expect(name_).to.be.equal(contractName)
         expect(symbol_).to.be.equal(contractSymbol)
-        expect(isComplete_).to.be.equal(false)
+        expect(isInitialized_).to.be.equal(true)
+        expect(isApproved_).to.be.equal(false)
+        expect(isCompleted_).to.be.equal(false)
+        expect(isEditable_).to.be.equal(true)
 
         const itemLength = await contract.itemsCount()
 
@@ -171,14 +174,20 @@ export function doTest(
         const owner_ = await contract.owner()
         const name_ = await contract.name()
         const symbol_ = await contract.symbol()
-        const isComplete_ = await contract.isComplete()
+        const isInitialized_ = await contract.isInitialized()
+        const isApproved_ = await contract.isApproved()
+        const isCompleted_ = await contract.isCompleted()
+        const isEditable_ = await contract.isEditable()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
         expect(owner_).to.be.equal(deployer)
         expect(name_).to.be.equal(contractName)
         expect(symbol_).to.be.equal(contractSymbol)
-        expect(isComplete_).to.be.equal(false)
+        expect(isInitialized_).to.be.equal(true)
+        expect(isApproved_).to.be.equal(false)
+        expect(isCompleted_).to.be.equal(false)
+        expect(isEditable_).to.be.equal(true)
 
         const itemLength = await contract.itemsCount()
 
@@ -197,12 +206,793 @@ export function doTest(
           creationParams
         )
 
-        const isComplete_ = await contract.isComplete()
-        expect(isComplete_).to.be.equal(true)
+        const isCompleted_ = await contract.isCompleted()
+        expect(isCompleted_).to.be.equal(true)
+      })
+
+      it('reverts when trying to initialize more than once', async function () {
+        const contract = await Contract.new()
+        await contract.initialize(
+          contractName,
+          contractSymbol,
+          user,
+          true,
+          BASE_URI,
+          [],
+          creationParams
+        )
+
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            user,
+            true,
+            BASE_URI,
+            [],
+            creationParams
+          ),
+          'ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED'
+        )
       })
     })
 
-    xdescribe('addItem', function () {
+    describe('approveCollection', function () {
+      let contract
+      beforeEach(async () => {
+        contract = await Contract.new()
+        await contract.initialize(
+          contractName,
+          contractSymbol,
+          creator,
+          false,
+          BASE_URI,
+          items,
+          creationParams
+        )
+      })
+      it('should approve a collection', async function () {
+        let isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(false)
+
+        const { logs } = await contract.approveCollection(fromDeployer)
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('Approve')
+
+        isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(true)
+      })
+
+      it('reverts when trying to approve a collection by not the owner', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        await assertRevert(
+          contract.approveCollection(fromCreator),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          contract.approveCollection(fromMinter),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          contract.approveCollection(fromManager),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          contract.approveCollection(fromHacker),
+          'Ownable: caller is not the owner'
+        )
+      })
+
+      it('reverts when trying to approve the collection more than once', async function () {
+        await contract.approveCollection(fromDeployer)
+
+        await assertRevert(
+          contract.approveCollection(fromDeployer),
+          'ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED'
+        )
+      })
+    })
+
+    describe('minters', function () {
+      it('should add global minters', async function () {
+        let isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+
+        const { logs } = await collectionContract.setMinters(
+          [minter],
+          [true],
+          fromCreator
+        )
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('SetGlobalMinter')
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(true)
+
+        await collectionContract.setMinters([minter], [false], fromCreator)
+        isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+      })
+
+      it('should add global minters in batch', async function () {
+        let isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.globalMinters(user)
+        expect(isMinter).to.be.equal(false)
+
+        let res = await collectionContract.setMinters(
+          [minter, user],
+          [true, true],
+          fromCreator
+        )
+        let logs = res.logs
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('SetGlobalMinter')
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        expect(logs[1].event).to.be.equal('SetGlobalMinter')
+        expect(logs[1].args._minter).to.be.equal(user)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        res = await collectionContract.setMinters(
+          [minter, anotherUser, user],
+          [false, true, false],
+          fromCreator
+        )
+        logs = res.logs
+
+        expect(logs.length).to.be.equal(3)
+        expect(logs[0].event).to.be.equal('SetGlobalMinter')
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(false)
+
+        expect(logs[1].event).to.be.equal('SetGlobalMinter')
+        expect(logs[1].args._minter).to.be.equal(anotherUser)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        expect(logs[2].event).to.be.equal('SetGlobalMinter')
+        expect(logs[2].args._minter).to.be.equal(user)
+        expect(logs[2].args._value).to.be.equal(false)
+
+        isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.globalMinters(user)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.globalMinters(anotherUser)
+        expect(isMinter).to.be.equal(true)
+      })
+
+      it('should add items minters', async function () {
+        let isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(false)
+
+        const { logs } = await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('SetItemMinter')
+        expect(logs[0].args._itemId).to.be.eq.BN(0)
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(true)
+
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [false],
+          fromCreator
+        )
+        isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(false)
+      })
+
+      it('should add items minters in batch', async function () {
+        let isMinter = await collectionContract.itemMinters(1, minter)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.itemMinters(1, user)
+        expect(isMinter).to.be.equal(false)
+
+        let res = await collectionContract.setItemsMinters(
+          [1, 1],
+          [minter, user],
+          [true, true],
+          fromCreator
+        )
+        let logs = res.logs
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('SetItemMinter')
+        expect(logs[0].args._itemId).to.be.eq.BN(1)
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        expect(logs[1].event).to.be.equal('SetItemMinter')
+        expect(logs[1].args._itemId).to.be.eq.BN(1)
+        expect(logs[1].args._minter).to.be.equal(user)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        res = await collectionContract.setItemsMinters(
+          [1, 1, 1],
+          [minter, anotherUser, user],
+          [false, true, false],
+          fromCreator
+        )
+        logs = res.logs
+
+        expect(logs.length).to.be.equal(3)
+        expect(logs[0].event).to.be.equal('SetItemMinter')
+        expect(logs[0].args._itemId).to.be.eq.BN(1)
+        expect(logs[0].args._minter).to.be.equal(minter)
+        expect(logs[0].args._value).to.be.equal(false)
+
+        expect(logs[1].event).to.be.equal('SetItemMinter')
+        expect(logs[1].args._itemId).to.be.eq.BN(1)
+        expect(logs[1].args._minter).to.be.equal(anotherUser)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        expect(logs[2].event).to.be.equal('SetItemMinter')
+        expect(logs[2].args._itemId).to.be.eq.BN(1)
+        expect(logs[2].args._minter).to.be.equal(user)
+        expect(logs[2].args._value).to.be.equal(false)
+
+        isMinter = await collectionContract.itemMinters(1, minter)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.itemMinters(1, user)
+        expect(isMinter).to.be.equal(false)
+
+        isMinter = await collectionContract.itemMinters(1, anotherUser)
+        expect(isMinter).to.be.equal(true)
+      })
+
+      it("reverts when params' length missmath", async function () {
+        await assertRevert(
+          collectionContract.setMinters([minter], [true, false], fromCreator),
+          'ERC721BaseCollectionV2#setMinters: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([minter, user], [true], fromCreator),
+          'ERC721BaseCollectionV2#setMinters: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0, 0],
+            [minter],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0],
+            [minter, user],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0],
+            [minter],
+            [true, false],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+        )
+      })
+
+      it('reverts when not the creator trying to set a minter', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([user], [false], fromDeployer),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([user], [false], fromManager),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([user], [false], fromMinter),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([user], [false], fromHacker),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [1],
+            [user],
+            [false],
+            fromDeployer
+          ),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters([1], [user], [false], fromMinter),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters([1], [user], [false], fromManager),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters([1], [user], [false], fromHacker),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when the using an invalid address', async function () {
+        await assertRevert(
+          collectionContract.setMinters([ZERO_ADDRESS], [true], fromCreator),
+          'ERC721BaseCollectionV2#setMinters: INVALID_MINTER_ADDRESS'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0],
+            [ZERO_ADDRESS],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: INVALID_MINTER_ADDRESS'
+        )
+      })
+
+      it('reverts when the itemId is invalid', async function () {
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [items.length],
+            [minter],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
+        )
+      })
+
+      it('reverts when the value is the same', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([minter], [true], fromCreator),
+          'ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters(
+            [user, minter],
+            [true, true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0],
+            [minter],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsMinters(
+            [0, 1, 0],
+            [user, minter, minter],
+            [true, true, true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME'
+        )
+      })
+    })
+
+    describe('managers', function () {
+      it('should add global managers', async function () {
+        let isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(false)
+
+        const { logs } = await collectionContract.setManagers(
+          [manager],
+          [true],
+          fromCreator
+        )
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('SetGlobalManager')
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(true)
+
+        await collectionContract.setManagers([manager], [false], fromCreator)
+        isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(false)
+      })
+
+      it('should add global managers in batch', async function () {
+        let isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.globalManagers(user)
+        expect(isManager).to.be.equal(false)
+
+        let res = await collectionContract.setManagers(
+          [manager, user],
+          [true, true],
+          fromCreator
+        )
+        let logs = res.logs
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('SetGlobalManager')
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        expect(logs[1].event).to.be.equal('SetGlobalManager')
+        expect(logs[1].args._manager).to.be.equal(user)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        res = await collectionContract.setManagers(
+          [manager, anotherUser, user],
+          [false, true, false],
+          fromCreator
+        )
+        logs = res.logs
+
+        expect(logs.length).to.be.equal(3)
+        expect(logs[0].event).to.be.equal('SetGlobalManager')
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(false)
+
+        expect(logs[1].event).to.be.equal('SetGlobalManager')
+        expect(logs[1].args._manager).to.be.equal(anotherUser)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        expect(logs[2].event).to.be.equal('SetGlobalManager')
+        expect(logs[2].args._manager).to.be.equal(user)
+        expect(logs[2].args._value).to.be.equal(false)
+
+        isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.globalManagers(user)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.globalManagers(anotherUser)
+        expect(isManager).to.be.equal(true)
+      })
+
+      it('should add items managers', async function () {
+        let isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(false)
+
+        const { logs } = await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('SetItemManager')
+        expect(logs[0].args._itemId).to.be.eq.BN(0)
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(true)
+
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [false],
+          fromCreator
+        )
+        isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(false)
+      })
+
+      it('should add items managers in batch', async function () {
+        let isManager = await collectionContract.itemManagers(1, manager)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.itemManagers(1, user)
+        expect(isManager).to.be.equal(false)
+
+        let res = await collectionContract.setItemsManagers(
+          [1, 1],
+          [manager, user],
+          [true, true],
+          fromCreator
+        )
+        let logs = res.logs
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('SetItemManager')
+        expect(logs[0].args._itemId).to.be.eq.BN(1)
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(true)
+
+        expect(logs[1].event).to.be.equal('SetItemManager')
+        expect(logs[1].args._itemId).to.be.eq.BN(1)
+        expect(logs[1].args._manager).to.be.equal(user)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        res = await collectionContract.setItemsManagers(
+          [1, 1, 1],
+          [manager, anotherUser, user],
+          [false, true, false],
+          fromCreator
+        )
+        logs = res.logs
+
+        expect(logs.length).to.be.equal(3)
+        expect(logs[0].event).to.be.equal('SetItemManager')
+        expect(logs[0].args._itemId).to.be.eq.BN(1)
+        expect(logs[0].args._manager).to.be.equal(manager)
+        expect(logs[0].args._value).to.be.equal(false)
+
+        expect(logs[1].event).to.be.equal('SetItemManager')
+        expect(logs[1].args._itemId).to.be.eq.BN(1)
+        expect(logs[1].args._manager).to.be.equal(anotherUser)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        expect(logs[2].event).to.be.equal('SetItemManager')
+        expect(logs[2].args._itemId).to.be.eq.BN(1)
+        expect(logs[2].args._manager).to.be.equal(user)
+        expect(logs[2].args._value).to.be.equal(false)
+
+        isManager = await collectionContract.itemManagers(1, manager)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.itemManagers(1, user)
+        expect(isManager).to.be.equal(false)
+
+        isManager = await collectionContract.itemManagers(1, anotherUser)
+        expect(isManager).to.be.equal(true)
+      })
+
+      it("reverts when params' length missmath", async function () {
+        await assertRevert(
+          collectionContract.setManagers([manager], [true, false], fromCreator),
+          'ERC721BaseCollectionV2#setManagers: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([manager, user], [true], fromCreator),
+          'ERC721BaseCollectionV2#setManagers: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0, 0],
+            [manager],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0],
+            [manager, user],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0],
+            [manager],
+            [true, false],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+        )
+      })
+
+      it('reverts when not the creator trying to set a manager', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([user], [false], fromDeployer),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([user], [false], fromManager),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([user], [false], fromMinter),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([user], [false], fromHacker),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [1],
+            [user],
+            [false],
+            fromDeployer
+          ),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers([1], [user], [false], fromMinter),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [1],
+            [user],
+            [false],
+            fromManager
+          ),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers([1], [user], [false], fromHacker),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when the using an invalid address', async function () {
+        await assertRevert(
+          collectionContract.setManagers([ZERO_ADDRESS], [true], fromCreator),
+          'ERC721BaseCollectionV2#setManagers: INVALID_MANAGER_ADDRESS'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0],
+            [ZERO_ADDRESS],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: INVALID_MANAGER_ADDRESS'
+        )
+      })
+
+      it('reverts when the itemId is invalid', async function () {
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [items.length],
+            [manager],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: ITEM_DOES_NOT_EXIST'
+        )
+      })
+
+      it('reverts when the value is the same', async function () {
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.setManagers([manager], [true], fromCreator),
+          'ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setManagers(
+            [user, manager],
+            [true, true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0],
+            [manager],
+            [true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME'
+        )
+
+        await assertRevert(
+          collectionContract.setItemsManagers(
+            [0, 1, 0],
+            [user, manager, manager],
+            [true, true, true],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME'
+        )
+      })
+    })
+
+    describe('addItem', function () {
       it('should add an item', async function () {
         const newItem = [
           '10',
@@ -468,7 +1258,22 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to add an item by hacker', async function () {
+      it('reverts when trying to add an item by not the creator', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
         const newItem = [
           '10',
           '0',
@@ -477,6 +1282,21 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
           EMPTY_HASH,
         ]
+
+        await assertRevert(
+          collectionContract.addItems([newItem], fromDeployer),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.addItems([newItem], fromMinter),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.addItems([newItem], fromManager),
+          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
 
         await assertRevert(
           collectionContract.addItems([newItem], fromHacker),
@@ -503,7 +1323,7 @@ export function doTest(
       })
     })
 
-    xdescribe('editItems', function () {
+    describe('editItems', function () {
       const itemPrice0 = web3.utils.toWei('10')
       const itemPrice1 = web3.utils.toWei('100')
 
@@ -752,7 +1572,43 @@ export function doTest(
       })
 
       it('should allow managers to edit items', async function () {
+        await assertRevert(
+          collectionContract.editItems(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            fromManager
+          ),
+          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        // Set global Manager
         await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.editItems(
+          [itemId0],
+          [itemPrice0],
+          [itemBeneficiary0],
+          fromManager
+        )
+
+        await collectionContract.setManagers([manager], [false], fromCreator)
+        await assertRevert(
+          collectionContract.editItems(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            fromManager
+          ),
+          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        // Set item Manager
+        await collectionContract.setItemsManagers(
+          [itemId0],
+          [manager],
+          [true],
+          fromCreator
+        )
 
         await collectionContract.editItems(
           [itemId0],
@@ -803,7 +1659,35 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to edit by hacker', async function () {
+      it('reverts when trying to edit by not the creator or manager', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.editItems(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            fromDeployer
+          ),
+          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        await assertRevert(
+          collectionContract.editItems(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            fromMinter
+          ),
+          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
         await assertRevert(
           collectionContract.editItems(
             [itemId0],
@@ -829,7 +1713,6 @@ export function doTest(
       })
 
       it('reverts when trying to edit an item with price 0 and without beneficiary', async function () {
-        const itemLength = await collectionContract.itemsCount()
         await assertRevert(
           collectionContract.editItems(
             [itemId0],
@@ -842,7 +1725,6 @@ export function doTest(
       })
 
       it('reverts when trying to edit an item without price but beneficiary', async function () {
-        const itemLength = await collectionContract.itemsCount()
         await assertRevert(
           collectionContract.editItems(
             [itemId0],
@@ -855,7 +1737,7 @@ export function doTest(
       })
     })
 
-    xdescribe('rescueItems', function () {
+    describe('rescueItems', function () {
       let itemId0
       let item0
       let itemId1
@@ -1147,7 +2029,52 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to edit by hacker', async function () {
+      it('reverts when trying to rescue by not the owner', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.rescueItems(
+            [itemId0],
+            [EMPTY_HASH],
+            [''],
+            fromCreator
+          ),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          collectionContract.rescueItems(
+            [itemId0],
+            [EMPTY_HASH],
+            [''],
+            fromMinter
+          ),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          collectionContract.rescueItems(
+            [itemId0],
+            [EMPTY_HASH],
+            [''],
+            fromManager
+          ),
+          'Ownable: caller is not the owner'
+        )
+
         await assertRevert(
           collectionContract.rescueItems(
             [itemId0],
@@ -1159,7 +2086,7 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to edit an invalid item', async function () {
+      it('reverts when trying to rescue an invalid item', async function () {
         const itemLength = await collectionContract.itemsCount()
         await assertRevert(
           collectionContract.rescueItems(
@@ -1173,9 +2100,510 @@ export function doTest(
       })
     })
 
-    xdescribe('issueToken', function () {})
+    describe('issueToken', function () {
+      let newItem
+      let newItemId
+      beforeEach(async () => {
+        newItem = [
+          '10',
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
 
-    xdescribe('transferBatch', function () {
+        await collectionContract.addItems([newItem], fromCreator)
+        newItemId = (await collectionContract.itemsCount()).sub(
+          web3.utils.toBN(1)
+        )
+      })
+
+      it('should issue a token', async function () {
+        let item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        const currentTotalSupply = await collectionContract.totalSupply()
+
+        const { logs } = await collectionContract.issueToken(
+          anotherHolder,
+          newItemId,
+          fromCreator
+        )
+
+        const tokenId = encodeTokenId(newItemId, 1)
+
+        // match issuance
+        item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[1].event).to.be.equal('Issue')
+        expect(logs[1].args._beneficiary).to.be.equal(anotherHolder)
+        expect(logs[1].args._tokenId).to.be.eq.BN(tokenId)
+        expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
+        expect(logs[1].args._issuedId).to.eq.BN(1)
+
+        // match total supply
+        const totalSupply = await collectionContract.totalSupply()
+        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
+
+        // match owner
+        const owner = await collectionContract.ownerOf(tokenId)
+        expect(owner).to.be.equal(anotherHolder)
+
+        // match URI
+        const uri = await collectionContract.tokenURI(tokenId)
+        const uriArr = uri.split('/')
+        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+      })
+
+      it('should issue a token and increase item total supply', async function () {
+        let item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        const currentTotalSupply = await collectionContract.totalSupply()
+
+        await collectionContract.issueToken(
+          anotherHolder,
+          newItemId,
+          fromCreator
+        )
+
+        // match issuance
+        item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        // match URI
+        let tokenId = encodeTokenId(newItemId, 1)
+        let uri = await collectionContract.tokenURI(tokenId)
+        let uriArr = uri.split('/')
+        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        await Promise.all([
+          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
+          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
+          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
+        ])
+
+        // match issuance
+        item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(4)
+
+        // match URI
+        tokenId = encodeTokenId(newItemId, 3)
+        uri = await collectionContract.tokenURI(tokenId)
+        uriArr = uri.split('/')
+        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(3).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        const totalSupply = await collectionContract.totalSupply()
+        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(4)))
+      })
+
+      it('should issue a token by minter', async function () {
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, newItemId, fromMinter),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        // Set global Minter
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.issueToken(
+          anotherHolder,
+          newItemId,
+          fromMinter
+        )
+
+        await collectionContract.setMinters([minter], [false], fromCreator)
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, newItemId, fromMinter),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        // Set item Minter
+        await collectionContract.setItemsMinters(
+          [newItemId],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await collectionContract.issueToken(
+          anotherHolder,
+          newItemId,
+          fromMinter
+        )
+      })
+
+      it('reverts when issuing a token by not the creator or minter', async function () {
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, newItemId, fromDeployer),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, newItemId, fromManager),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, newItemId, fromHacker),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+      })
+
+      it('reverts when issuing a token to an invalid address', async function () {
+        await assertRevert(
+          collectionContract.issueToken(ZERO_ADDRESS, newItemId, fromCreator),
+          'ERC721: mint to the zero address'
+        )
+      })
+
+      it('reverts when trying to issue an invalid item option id', async function () {
+        const length = await collectionContract.itemsCount()
+        await assertRevert(
+          collectionContract.issueToken(holder, length, fromCreator),
+          'ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST'
+        )
+      })
+
+      it('reverts when trying to issue an exhausted item', async function () {
+        for (let i = 0; i < newItem[0]; i++) {
+          await collectionContract.issueToken(
+            anotherHolder,
+            newItemId,
+            fromCreator
+          )
+        }
+        await assertRevert(
+          collectionContract.issueToken(holder, newItemId, fromCreator),
+          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+        )
+      })
+    })
+
+    describe('issueTokens', function () {
+      let newItem
+      let newItemId
+      let anotherNewItem
+      let anotherNewItemId
+      beforeEach(async () => {
+        newItem = [
+          '10',
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        anotherNewItem = [
+          '100',
+          '0',
+          '1',
+          beneficiary,
+          '1:turtle_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        await collectionContract.addItems(
+          [newItem, anotherNewItem],
+          fromCreator
+        )
+        newItemId = (await collectionContract.itemsCount()).sub(
+          web3.utils.toBN(2)
+        )
+        anotherNewItemId = (await collectionContract.itemsCount()).sub(
+          web3.utils.toBN(1)
+        )
+      })
+
+      it('should issue multiple token', async function () {
+        let item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        item = await collectionContract.items(anotherNewItemId)
+        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        const currentTotalSupply = await collectionContract.totalSupply()
+
+        const { logs } = await collectionContract.issueTokens(
+          [holder, anotherHolder],
+          [newItemId, anotherNewItemId],
+          fromCreator
+        )
+
+        // New Item
+        // match issueance
+        item = await collectionContract.items(newItemId)
+        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        expect(logs.length).to.be.equal(4)
+
+        const newItemTokenId = encodeTokenId(newItemId, 1)
+        expect(logs[1].event).to.be.equal('Issue')
+        expect(logs[1].args._beneficiary).to.be.equal(holder)
+        expect(logs[1].args._tokenId).to.be.eq.BN(newItemTokenId)
+        expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
+        expect(logs[1].args._issuedId).to.eq.BN(1)
+
+        // match owner
+        let owner = await collectionContract.ownerOf(newItemTokenId)
+        expect(owner).to.be.equal(holder)
+
+        // match token id
+        let uri = await collectionContract.tokenURI(newItemTokenId)
+        let uriArr = uri.split('/')
+        expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        // Another new Item
+        // match issued
+        item = await collectionContract.items(anotherNewItemId)
+        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        const anotherNewItemTokenId = encodeTokenId(anotherNewItemId, 1)
+        expect(logs[3].event).to.be.equal('Issue')
+        expect(logs[3].args._beneficiary).to.be.equal(anotherHolder)
+        expect(logs[3].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
+        expect(logs[3].args._itemId).to.be.eq.BN(anotherNewItemId)
+        expect(logs[3].args._issuedId).to.eq.BN(1)
+
+        // match owner
+        owner = await collectionContract.ownerOf(anotherNewItemTokenId)
+        expect(owner).to.be.equal(anotherHolder)
+
+        // match token id
+        uri = await collectionContract.tokenURI(anotherNewItemTokenId)
+        uriArr = uri.split('/')
+        expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        // Match total supply
+        const totalSupply = await collectionContract.totalSupply()
+        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
+      })
+
+      it('should issue multiple token for the same item id :: gas estimation', async function () {
+        const itemsInTheSameTx = 70
+        const beneficiaries = []
+        const ids = []
+
+        for (let i = 0; i < itemsInTheSameTx; i++) {
+          ids.push(anotherNewItemId)
+          beneficiaries.push(beneficiary)
+        }
+
+        await collectionContract.issueTokens(beneficiaries, ids, fromCreator)
+
+        // match issueance
+        const item = await collectionContract.items(anotherNewItemId)
+        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.totalSupply).to.eq.BN(itemsInTheSameTx)
+
+        // User
+        const balance = await collectionContract.balanceOf(beneficiary)
+        expect(balance).to.eq.BN(itemsInTheSameTx)
+      })
+
+      it('should issue multiple tokens by minter', async function () {
+        await assertRevert(
+          collectionContract.issueTokens(
+            [anotherHolder],
+            [newItemId],
+            fromMinter
+          ),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        // Set global Minter
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.issueTokens(
+          [anotherHolder],
+          [newItemId],
+          fromMinter
+        )
+
+        await collectionContract.setMinters([minter], [false], fromCreator)
+        await assertRevert(
+          collectionContract.issueTokens(
+            [anotherHolder],
+            [newItemId],
+            fromMinter
+          ),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        // Set item Minter
+        await collectionContract.setItemsMinters(
+          [newItemId],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await collectionContract.issueTokens(
+          [anotherHolder],
+          [newItemId],
+          fromMinter
+        )
+      })
+
+      it('reverts when issuing a token by not allowed user', async function () {
+        await assertRevert(
+          collectionContract.issueTokens(
+            [holder, anotherHolder],
+            [newItemId, anotherNewItemId],
+            fromDeployer
+          ),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        await assertRevert(
+          collectionContract.issueTokens(
+            [holder, anotherHolder],
+            [newItemId, anotherNewItemId],
+            fromManager
+          ),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+
+        await assertRevert(
+          collectionContract.issueTokens(
+            [holder, anotherHolder],
+            [newItemId, anotherNewItemId],
+            fromHacker
+          ),
+          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        )
+      })
+
+      it('reverts if trying to issue tokens with invalid argument length', async function () {
+        await assertRevert(
+          collectionContract.issueTokens(
+            [user],
+            [newItemId, anotherNewItemId],
+            fromUser
+          ),
+          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH'
+        )
+
+        await assertRevert(
+          collectionContract.issueTokens(
+            [user, anotherUser],
+            [anotherNewItemId],
+            fromUser
+          ),
+          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH'
+        )
+      })
+
+      it('reverts when issuing a token to an invalid address', async function () {
+        await assertRevert(
+          collectionContract.issueTokens(
+            [anotherHolder, ZERO_ADDRESS],
+            [newItemId, anotherNewItemId],
+            fromCreator
+          ),
+          'ERC721: mint to the zero address'
+        )
+      })
+
+      it('reverts when trying to issue an invalid item id', async function () {
+        const length = await collectionContract.itemsCount()
+        await assertRevert(
+          collectionContract.issueTokens(
+            [holder, anotherHolder],
+            [length, newItemId],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST'
+        )
+      })
+
+      it('reverts when trying to issue an exhausted item', async function () {
+        const itemsInTheSameTx = parseInt(newItem[0], 10)
+        const beneficiaries = []
+        const ids = []
+
+        for (let i = 0; i < itemsInTheSameTx + 1; i++) {
+          beneficiaries.push(beneficiary)
+          ids.push(newItemId)
+        }
+
+        await assertRevert(
+          collectionContract.issueTokens(beneficiaries, ids, fromCreator),
+          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+        )
+
+        await collectionContract.issueTokens(
+          beneficiaries.slice(1),
+          ids.slice(1),
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.issueTokens(
+            [holder, anotherHolder],
+            [newItemId, anotherNewItemId],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+        )
+      })
+    })
+
+    describe('tokenURI', function () {
+      it('should return the correct token URI', async function () {
+        const newItem = [
+          '10',
+          '0',
+          web3.utils.toWei('10'),
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        await collectionContract.addItems([newItem], fromCreator)
+        const itemsLength = await collectionContract.itemsCount()
+        const itemId = itemsLength.sub(web3.utils.toBN(1))
+        await collectionContract.issueToken(holder, itemId, fromCreator)
+
+        // match token id
+        let uri = await collectionContract.tokenURI(
+          encodeTokenId(itemId.toString(), 1)
+        )
+        let uriArr = uri.split('/') // [...]/8/1
+        expect(itemId.toString()).to.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect('1').to.be.equal(uri.split('/')[uriArr.length - 1])
+      })
+
+      it('reverts if the token does not exist', async function () {
+        await assertRevert(
+          collectionContract.tokenURI(encodeTokenId(0, 100)),
+          'ERC721Metadata: received a URI query for a nonexistent token'
+        )
+
+        await assertRevert(
+          collectionContract.tokenURI(encodeTokenId(100, 1)),
+          'ERC721Metadata: received a URI query for a nonexistent token'
+        )
+      })
+    })
+
+    describe('transferBatch', function () {
       it('should transfer in batch', async function () {
         let ownerToken1 = await collectionContract.ownerOf(token1)
         let ownerToken2 = await collectionContract.ownerOf(token2)
@@ -1345,7 +2773,7 @@ export function doTest(
       })
     })
 
-    xdescribe('setEditable', function () {
+    describe('setEditable', function () {
       it('should set editable', async function () {
         let isEditable = await collectionContract.isEditable()
         expect(isEditable).to.be.equal(true)
@@ -1364,7 +2792,37 @@ export function doTest(
         expect(isEditable).to.be.equal(false)
       })
 
-      it('reverts when trying to change values by hacker', async function () {
+      it('reverts when trying to change values by not the owner', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.setEditable(false, fromCreator),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          collectionContract.setEditable(false, fromMinter),
+          'Ownable: caller is not the owner'
+        )
+
+        await assertRevert(
+          collectionContract.setEditable(false, fromManager),
+          'Ownable: caller is not the owner'
+        )
+
         await assertRevert(
           collectionContract.setEditable(false, fromHacker),
           'Ownable: caller is not the owner'
@@ -1379,7 +2837,7 @@ export function doTest(
       })
     })
 
-    xdescribe('setBaseURI', function () {
+    describe('setBaseURI', function () {
       it('should set Base URI', async function () {
         const newBaseURI = 'https://new-api.io/'
 
@@ -1416,10 +2874,10 @@ export function doTest(
       })
     })
 
-    xdescribe('completeCollection', function () {
+    describe('completeCollection', function () {
       it('should complete collection', async function () {
-        let isComplete = await collectionContract.isComplete()
-        expect(isComplete).to.be.equal(false)
+        let isCompleted = await collectionContract.isCompleted()
+        expect(isCompleted).to.be.equal(false)
 
         const { logs } = await collectionContract.completeCollection(
           fromCreator
@@ -1428,8 +2886,8 @@ export function doTest(
         expect(logs.length).to.equal(1)
         expect(logs[0].event).to.equal('Complete')
 
-        isComplete = await collectionContract.isComplete()
-        expect(isComplete).to.be.equal(true)
+        isCompleted = await collectionContract.isCompleted()
+        expect(isCompleted).to.be.equal(true)
       })
 
       it('should issue tokens after complete the collection', async function () {
@@ -1441,13 +2899,13 @@ export function doTest(
       })
 
       it('reverts when trying to add an item after the collection is completed', async function () {
-        let isComplete = await collectionContract.isComplete()
-        expect(isComplete).to.be.equal(false)
+        let isCompleted = await collectionContract.isCompleted()
+        expect(isCompleted).to.be.equal(false)
 
         await collectionContract.completeCollection(fromCreator)
 
-        isComplete = await collectionContract.isComplete()
-        expect(isComplete).to.be.equal(true)
+        isCompleted = await collectionContract.isCompleted()
+        expect(isCompleted).to.be.equal(true)
 
         const newItem = [
           '10',
@@ -1492,6 +2950,171 @@ export function doTest(
           collectionContract.completeCollection(fromHacker),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
+      })
+    })
+
+    describe('transferCreatorship', function () {
+      it('should transfer creator role by creator', async function () {
+        let creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(creator)
+
+        const { logs } = await collectionContract.transferCreatorship(
+          user,
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('CreatorshipTransferred')
+        expect(logs[0].args._previousCreator).to.be.equal(creator)
+        expect(logs[0].args._newCreator).to.be.equal(user)
+
+        creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(user)
+      })
+
+      it('should transfer creator role by owner', async function () {
+        let creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(creator)
+
+        const { logs } = await collectionContract.transferCreatorship(
+          user,
+          fromDeployer
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('CreatorshipTransferred')
+        expect(logs[0].args._previousCreator).to.be.equal(creator)
+        expect(logs[0].args._newCreator).to.be.equal(user)
+
+        creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(user)
+      })
+
+      it('reverts when trying to transfer creator role by not the owner or creator', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          collectionContract.transferCreatorship(user, fromMinter),
+          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.transferCreatorship(user, fromManager),
+          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.transferCreatorship(user, fromHacker),
+          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+        )
+      })
+
+      it('reverts when trying to transfer creator role to an invalid address', async function () {
+        await assertRevert(
+          collectionContract.transferCreatorship(ZERO_ADDRESS, fromDeployer),
+          'ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS'
+        )
+      })
+    })
+
+    describe('encodeTokenId', function () {
+      it('should encode a token id', async function () {
+        let expectedId = await collectionContract.encodeTokenId(0, 1)
+        let decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(0, 1))
+        expect(0).to.eq.BN(decoded[0])
+        expect(1).to.eq.BN(decoded[1])
+
+        expectedId = await collectionContract.encodeTokenId(1, 0)
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(1, 0))
+        expect(1).to.eq.BN(decoded[0])
+        expect(0).to.eq.BN(decoded[1])
+
+        expectedId = await collectionContract.encodeTokenId(
+          11232232,
+          1123123123
+        )
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(11232232, 1123123123))
+        expect(11232232).to.eq.BN(decoded[0])
+        expect(1123123123).to.eq.BN(decoded[1])
+
+        expectedId = await collectionContract.encodeTokenId(
+          4569428193,
+          90893249234
+        )
+        decoded = decodeTokenId(expectedId)
+        expect(expectedId).to.eq.BN(encodeTokenId(4569428193, 90893249234))
+        expect(4569428193).to.eq.BN(decoded[0])
+        expect(90893249234).to.eq.BN(decoded[1])
+      })
+
+      it('revert when the first value is greater than 5 bytes', async function () {
+        const max = web3.utils.toBN(web3.utils.padLeft('0xff', 10, 'f'))
+        const one = web3.utils.toBN(1)
+
+        const expectedId = await collectionContract.encodeTokenId(max, 0)
+        expect(expectedId).to.eq.BN(encodeTokenId(max, 0))
+
+        await assertRevert(
+          collectionContract.encodeTokenId(max.add(one), 0),
+          'ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID'
+        )
+      })
+
+      it('revert when the second value is greater than 27 bytes', async function () {
+        const max = web3.utils.toBN(web3.utils.padLeft('0xff', 54, 'f'))
+        const one = web3.utils.toBN(1)
+
+        const expectedId = await collectionContract.encodeTokenId(0, max)
+        expect(expectedId).to.eq.BN(encodeTokenId(0, max))
+
+        await assertRevert(
+          collectionContract.encodeTokenId(0, max.add(one)),
+          'ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID'
+        )
+      })
+    })
+
+    describe('decodeTokenId', function () {
+      it('should decode a token id', async function () {
+        let expectedValues = await collectionContract.decodeTokenId(
+          encodeTokenId(0, 1)
+        )
+        expect(expectedValues[0]).to.eq.BN(0)
+        expect(expectedValues[1]).to.eq.BN(1)
+
+        expectedValues = await collectionContract.decodeTokenId(
+          encodeTokenId(1, 0)
+        )
+        expect(expectedValues[0]).to.eq.BN(1)
+        expect(expectedValues[1]).to.eq.BN(0)
+
+        expectedValues = await collectionContract.decodeTokenId(
+          encodeTokenId(124, 123212)
+        )
+        expect(expectedValues[0]).to.eq.BN(124)
+        expect(expectedValues[1]).to.eq.BN(123212)
+
+        expectedValues = await collectionContract.decodeTokenId(
+          encodeTokenId(4569428193, 90893249234)
+        )
+        expect(expectedValues[0]).to.eq.BN(4569428193)
+        expect(expectedValues[1]).to.eq.BN(90893249234)
       })
     })
   })
