@@ -83,7 +83,7 @@ A collection contract is ready to use with the [minimal proxy pattern](https://e
 
 ### Items
 
-A collection has items reflecting different assets. Each option is represented by a unique identifier (ID) stored on-chain. E.g: If the collection has `red_hat`; `awesome_pants`; `dracula_t_shirt`; `decentraland_shoes` it means that it has 4 items. Also, each item will have a URI stored on-chain. That URI will point to the content of that item, in short, how the item looks and its metadata. This URI can be queried on-chain. It will be useful for Decentraland and other third parties to know how a token looks like.
+A collection has items reflecting different assets. Each item is represented by a unique identifier (ID) stored on-chain. E.g: If the collection has `red_hat`; `awesome_pants`; `dracula_t_shirt`; `decentraland_shoes` it means that it has 4 items. Also, each item will have a URI stored on-chain. That URI will point to the content of that item, in short, how the item looks and its metadata. This URI can be queried on-chain. It will be useful for Decentraland and other third parties to know how a token looks like.
 
 The collection owner can add items along with its rarity, price, beneficiary and metadata until he explicitly completes the collection. This action will be done on-chain and once the collection is complete, no more items can be added but edited ONLY in terms of its price by the collection [_creator_](#creator) and content off-chain by [_managers_](#manager) or the [_creator_](#creator). This means that its id and rarity (maximum total supply available) never change.
 
