@@ -48,7 +48,7 @@ start_ganache() {
   )
 
   # Gas limit of 7,000,000
-  node_modules/.bin/ganache-cli --gasLimit 0x6acfc0 "${accounts[@]}" --port "$ganache_port" > /dev/null &
+  node_modules/.bin/ganache-cli --gasLimit 0x989680 "${accounts[@]}" --port "$ganache_port" > /dev/null &
 
   ganache_pid=$!
 }

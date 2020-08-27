@@ -156,7 +156,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     */
 
      /**
-     * @dev Set allowed account to manage items.
+     * @notice Set allowed account to manage items.
      * @param _minters - minter addresses
      * @param _values - values array
      */
@@ -178,7 +178,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /**
-     * @dev Set allowed account to manage items.
+     * @notice Set allowed account to manage items.
      * @param _itemIds - item ids
      * @param _minters - minter addresses
      * @param _values - values array
@@ -207,7 +207,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /**
-     * @dev Set allowed account to manage items.
+     * @notice Set allowed account to manage items.
      * @param _managers - Address allowed to manage items
      * @param _values - Whether is allowed or not
      */
@@ -229,7 +229,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /**
-     * @dev Set allowed account to manage items.
+     * @notice Set allowed account to manage items.
      * @param _itemIds - item ids to set managers
      * @param _managers - Addresses allowed to manage items
      * @param _values - Whether is allowed or not
@@ -584,7 +584,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _to address to receive the ownership of the given token ID
      * @param _tokenIds uint256 ID of the token to be transferred
      */
-    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external {
+    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) public {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             transferFrom(_from, _to, _tokenIds[i]);
         }
