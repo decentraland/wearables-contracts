@@ -1,6 +1,6 @@
 # Decentralanad Collection Contracts
 
-[Collection v2 Specs](https://github.com/decentraland/wearables-contracts/Collections_V2.md)
+[Collection v2 Specs](https://github.com/decentraland/wearables-contracts/blob/master/Collections_V2.md)
 
 ## Install
 
