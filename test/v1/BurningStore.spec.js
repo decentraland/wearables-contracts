@@ -1,8 +1,8 @@
 import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
-import assertRevert from './helpers/assertRevert'
-import { balanceSnap } from './helpers/balanceSnap'
-import { createDummyCollection, WEARABLES } from './helpers/collection'
+import assertRevert from '../helpers/assertRevert'
+import { balanceSnap } from '../helpers/balanceSnap'
+import { createDummyCollection, WEARABLES } from '../helpers/collection'
 import { expect } from 'chai'
 
 const Store = artifacts.require('DummyBurningStore')

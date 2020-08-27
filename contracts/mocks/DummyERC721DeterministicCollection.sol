@@ -1,7 +1,9 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
 
 
-import "../../contracts/ERC721DeterministicCollection.sol";
+import "../collections/v1/ERC721DeterministicCollection.sol";
 
 contract DummyERC721DeterministicCollection is ERC721DeterministicCollection {
 

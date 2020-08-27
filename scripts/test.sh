@@ -19,6 +19,12 @@ else
   ganache_port=8545
 fi
 
+if [ "$NETWORK" != '' ]; then
+  network=$NETWORK
+else
+  network='buidlerevm'
+fi
+
 ganache_running() {
   nc -z localhost "$ganache_port"
 }
@@ -42,7 +48,7 @@ start_ganache() {
   )
 
   # Gas limit of 7,000,000
-  node_modules/.bin/ganache-cli --gasLimit 0x6acfc0 "${accounts[@]}" --port "$ganache_port" > /dev/null &
+  node_modules/.bin/ganache-cli --gasLimit 0x989680 "${accounts[@]}" --port "$ganache_port" > /dev/null &
 
   ganache_pid=$!
 }
@@ -57,4 +63,4 @@ fi
 
 
 #npx buidler test
-npx buidler test
+npx buidler --network "$network"  test

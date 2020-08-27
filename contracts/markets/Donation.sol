@@ -1,11 +1,12 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 
-
-interface ERC721Collection {
+interface IERC721Collection {
     function issueToken(address _beneficiary, string calldata _wearableId) external;
     function getWearableKey(string calldata _wearableId) external view returns (bytes32);
     function issued(bytes32 _wearableKey) external view returns (uint256);
@@ -16,7 +17,7 @@ interface ERC721Collection {
 contract Donation {
     using SafeMath for uint256;
 
-    ERC721Collection public erc721Collection;
+    IERC721Collection public erc721Collection;
 
     address payable public fundsRecipient;
 
@@ -42,7 +43,7 @@ contract Donation {
      */
     constructor(
         address payable _fundsRecipient,
-        ERC721Collection _erc721Collection,
+        IERC721Collection _erc721Collection,
         uint256 _price,
         uint256 _maxNFTsPerCall
       )

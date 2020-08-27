@@ -1,4 +1,6 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
 
 library String {
 
@@ -27,7 +29,7 @@ library String {
     /**
      * @dev Convert uint to string.
      * @param _i - uint256 to be converted to string.
-     * @return uint in string
+     * @return _uintAsString uint in string
      */
     function uintToString(uint _i) internal pure returns (string memory _uintAsString) {
         uint i = _i;
@@ -48,5 +50,27 @@ library String {
             i /= 10;
         }
         return string(bstr);
+    }
+
+    /**
+     * @dev Convert an address to string.
+     * @param _x - address to be converted to string.
+     * @return string representation of the address
+     */
+    function addressToString(address _x) internal pure returns (string memory) {
+        bytes memory s = new bytes(40);
+        for (uint i = 0; i < 20; i++) {
+            byte b = byte(uint8(uint(_x) / (2**(8*(19 - i)))));
+            byte hi = byte(uint8(b) / 16);
+            byte lo = byte(uint8(b) - 16 * uint8(hi));
+            s[2*i] = char(hi);
+            s[2*i+1] = char(lo);
+        }
+        return string(s);
+    }
+
+    function char(byte b) private pure returns (byte c) {
+        if (uint8(b) < 10) return byte(uint8(b) + 0x30);
+        else return byte(uint8(b) + 0x57);
     }
 }

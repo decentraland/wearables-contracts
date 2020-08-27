@@ -1,22 +1,22 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
+pragma solidity ^0.6.12;
 
-import "./libs/String.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ERC721BaseCollection is Ownable, ERC721Full {
+import "../../tokens/ERC721.sol";
+import "../../libs/String.sol";
+
+contract ERC721BaseCollection is Ownable, ERC721 {
     using String for bytes32;
     using String for uint256;
 
     mapping(bytes32 => uint256) public maxIssuance;
     mapping(bytes32 => uint) public issued;
-    mapping(uint256 => string) internal _tokenPaths;
     mapping(address => bool) public allowed;
 
     string[] public wearables;
 
-    string public baseURI;
     bool public isComplete;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
@@ -33,7 +33,7 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
      * @param _operator - Address allowed to mint tokens
      * @param _baseURI - base URI for token URIs
      */
-    constructor(string memory _name, string memory _symbol, address _operator, string memory _baseURI) public ERC721Full(_name, _symbol) {
+    constructor(string memory _name, string memory _symbol, address _operator, string memory _baseURI) public ERC721(_name, _symbol) {
         setAllowed(_operator, true);
         setBaseURI(_baseURI);
     }
@@ -49,8 +49,8 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
      * @param _baseURI - base URI for token URIs
      */
     function setBaseURI(string memory _baseURI) public onlyOwner {
-        emit BaseURI(baseURI, _baseURI);
-        baseURI = _baseURI;
+        emit BaseURI(baseURI(), _baseURI);
+        _setBaseURI(_baseURI);
     }
 
     /**
@@ -65,19 +65,6 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
         allowed[_operator] = _allowed;
         emit Allowed(_operator, _allowed);
     }
-
-
-    /**
-     * @dev Returns an URI for a given token ID.
-     * Throws if the token ID does not exist. May return an empty string.
-     * @param _tokenId - uint256 ID of the token queried
-     * @return token URI
-     */
-    function tokenURI(uint256 _tokenId) external view returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
-        return string(abi.encodePacked(baseURI, _tokenPaths[_tokenId]));
-    }
-
 
     /**
      * @dev Transfers the ownership of given tokens ID to another address.
@@ -133,7 +120,7 @@ contract ERC721BaseCollection is Ownable, ERC721Full {
      * @param _wearableId - wearable id
      * @param _maxIssuance - total supply for the wearable
      */
-    function addWearable(string memory _wearableId, uint256 _maxIssuance) public onlyOwner {
+    function addWearable(string memory _wearableId, uint256 _maxIssuance) public virtual onlyOwner {
         require(!isComplete, "The collection is complete");
         bytes32 key = getWearableKey(_wearableId);
 

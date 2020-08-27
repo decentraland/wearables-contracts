@@ -1,5 +1,5 @@
-import assertRevert from './helpers/assertRevert'
-import { doTest } from './helpers/baseCollection'
+import assertRevert from '../helpers/assertRevert'
+import { doTest } from '../helpers/baseCollection'
 import {
   CONTRACT_NAME,
   CONTRACT_SYMBOL,
@@ -7,7 +7,7 @@ import {
   setupWearables,
   ZERO_ADDRESS,
   BASE_URI as URI,
-} from './helpers/collection'
+} from '../helpers/collection'
 
 const ERC721DeterministicCollection = artifacts.require(
   'DummyERC721DeterministicCollection'
