@@ -98,7 +98,7 @@ On-chain, every token will have a URI, queried by `tokenURI` (ERC721 standard fu
 #### Content Dispute
 
 <p align="center">
-<img width="565" alt="Screen Shot 2020-08-27 at 17 47 26" src="https://user-images.githubusercontent.com/7549152/91493509-cf0d2780-e88d-11ea-817e-e13376295e4f.png">
+<img width="646" alt="Screen Shot 2020-08-27 at 20 35 40" src="https://user-images.githubusercontent.com/7549152/91504980-e277bd00-e8a4-11ea-8cc7-e948a4b5c44c.png">
 <p>
 
 In case of a dispute about the content of an item, the [_owner of the collection_](#owner) will be able to set a _content hash_. Every item at the content server has its own entity id which is a deterministic hash based on its content as IPFS does. So, if for some reason an item was corrupted, the owner of the collection will be able to set this hash on-chain. If an item has the _content hash_ property filled, not zero, the content server will return that instead of the current content.
