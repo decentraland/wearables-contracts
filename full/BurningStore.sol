@@ -322,9 +322,10 @@ interface IERC721Collection {
     function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external;
     function owner() external view returns (address);
     function wearables(uint256 _index) external view returns (string memory);
+    function wearablesCount() external view returns (uint256);
 }
 
-// File: contracts/BurningStore.sol
+// File: contracts/markets/BurningStore.sol
 
 // SPDX-License-Identifier: MIT
 
