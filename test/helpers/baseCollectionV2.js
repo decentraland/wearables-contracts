@@ -3,6 +3,7 @@ import {
   EMPTY_HASH,
   ZERO_ADDRESS,
   BASE_URI,
+  RARITIES,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
@@ -138,7 +139,7 @@ export function doTest(
 
         for (let i = 0; i < items.length; i++) {
           const {
-            maxSupply,
+            rarity,
             totalSupply,
             price,
             beneficiary,
@@ -146,7 +147,7 @@ export function doTest(
             contentHash,
           } = await contract.items(i)
 
-          expect(maxSupply).to.be.eq.BN(items[i][0])
+          expect(rarity).to.be.eq.BN(items[i][0])
           expect(totalSupply).to.be.eq.BN(items[i][1])
           expect(price).to.be.eq.BN(items[i][2])
           expect(beneficiary.toLowerCase()).to.be.equal(
@@ -995,7 +996,7 @@ export function doTest(
     describe('addItem', function () {
       it('should add an item', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1019,7 +1020,7 @@ export function doTest(
           itemLength.sub(web3.utils.toBN(1))
         )
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1030,7 +1031,7 @@ export function doTest(
 
       it('should add items', async function () {
         const newItem1 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1039,7 +1040,7 @@ export function doTest(
         ]
 
         const newItem2 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1070,7 +1071,7 @@ export function doTest(
           itemLength.sub(web3.utils.toBN(2))
         )
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1082,7 +1083,7 @@ export function doTest(
           itemLength.sub(web3.utils.toBN(1))
         )
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1094,7 +1095,7 @@ export function doTest(
       it('should add an item with price 0 and no beneficiary', async function () {
         let itemLength = await collectionContract.itemsCount()
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           '0',
           ZERO_ADDRESS,
@@ -1118,7 +1119,7 @@ export function doTest(
           itemLength.sub(web3.utils.toBN(1))
         )
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1129,7 +1130,7 @@ export function doTest(
 
       it('reverts when one of the item is invalid', async function () {
         const newItem1 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1138,7 +1139,7 @@ export function doTest(
         ]
 
         const newItem2 = [
-          '0',
+          Object.values(RARITIES).length, // invalid rarity
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1147,14 +1148,13 @@ export function doTest(
         ]
 
         await assertRevert(
-          collectionContract.addItems([newItem1, newItem2], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_MAX_SUPPLY'
+          collectionContract.addItems([newItem1, newItem2], fromCreator)
         )
       })
 
       it('reverts when trying to add an item with current supply > 0', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '1',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1167,24 +1167,9 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to add an item with max supply = 0 or greather than MAX_SUPPLY', async function () {
+      it('reverts when trying to add an item with invalid rarity', async function () {
         let newItem = [
-          '0',
-          '0',
-          web3.utils.toWei('10'),
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_MAX_SUPPLY'
-        )
-
-        const maxSupply = web3.utils.toBN(web3.utils.padLeft('0xff', 54, 'f'))
-        newItem = [
-          maxSupply.add(web3.utils.toBN(1)),
+          Object.values(RARITIES).length, // Invalid rarity
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1192,15 +1177,12 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_MAX_SUPPLY'
-        )
+        await assertRevert(collectionContract.addItems([newItem], fromCreator))
       })
 
       it('reverts when trying to add an item with price and no beneficiary', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           ZERO_ADDRESS,
@@ -1215,7 +1197,7 @@ export function doTest(
 
       it('reverts when trying to add an item without price but beneficiary', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('0'),
           beneficiary,
@@ -1230,7 +1212,7 @@ export function doTest(
 
       it('reverts when trying to add an item without metadata', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1245,7 +1227,7 @@ export function doTest(
 
       it('reverts when trying to add an item with content hash', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1275,7 +1257,7 @@ export function doTest(
         )
 
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1308,7 +1290,7 @@ export function doTest(
         await collectionContract.completeCollection(fromCreator)
 
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -1339,7 +1321,7 @@ export function doTest(
         itemBeneficiary1 = beneficiary
 
         item0 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           itemPrice0,
           itemBeneficiary0,
@@ -1348,7 +1330,7 @@ export function doTest(
         ]
 
         item1 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           itemPrice1,
           itemBeneficiary1,
@@ -1365,7 +1347,7 @@ export function doTest(
       it('should edit an item', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1390,7 +1372,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1409,7 +1391,7 @@ export function doTest(
       it('should edit items', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1419,7 +1401,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId1)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1452,7 +1434,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1469,7 +1451,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId1)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1488,7 +1470,7 @@ export function doTest(
       it('should edit an item with price and beneficiary', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1511,7 +1493,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1530,7 +1512,7 @@ export function doTest(
       it('should edit an item without price and beneficiary', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1555,7 +1537,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1745,7 +1727,7 @@ export function doTest(
 
       this.beforeEach(async () => {
         item0 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toBN(10).toString(),
           beneficiary,
@@ -1754,7 +1736,7 @@ export function doTest(
         ]
 
         item1 = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toBN(10).toString(),
           beneficiary,
@@ -1775,7 +1757,7 @@ export function doTest(
 
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1798,7 +1780,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1817,7 +1799,7 @@ export function doTest(
       it('should rescue items', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1827,7 +1809,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId1)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1860,7 +1842,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1877,7 +1859,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId1)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1896,7 +1878,7 @@ export function doTest(
       it('should rescue an item without changings its metadata', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1920,7 +1902,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1939,7 +1921,7 @@ export function doTest(
       it('should rescue an item cleaning its content hash', async function () {
         let item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1957,7 +1939,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -1981,7 +1963,7 @@ export function doTest(
 
         item = await collectionContract.items(itemId0)
         expect([
-          item.maxSupply.toString(),
+          item.rarity.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2105,7 +2087,7 @@ export function doTest(
       let newItemId
       beforeEach(async () => {
         newItem = [
-          '10',
+          RARITIES.mythic.index,
           '0',
           '1',
           beneficiary,
@@ -2121,7 +2103,7 @@ export function doTest(
 
       it('should issue a token', async function () {
         let item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await collectionContract.totalSupply()
@@ -2136,7 +2118,7 @@ export function doTest(
 
         // match issuance
         item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(2)
@@ -2163,7 +2145,7 @@ export function doTest(
 
       it('should issue a token and increase item total supply', async function () {
         let item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await collectionContract.totalSupply()
@@ -2176,7 +2158,7 @@ export function doTest(
 
         // match issuance
         item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         // match URI
@@ -2194,7 +2176,7 @@ export function doTest(
 
         // match issuance
         item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(4)
 
         // match URI
@@ -2276,7 +2258,7 @@ export function doTest(
       })
 
       it('reverts when trying to issue an exhausted item', async function () {
-        for (let i = 0; i < newItem[0]; i++) {
+        for (let i = 0; i < RARITIES.mythic.value; i++) {
           await collectionContract.issueToken(
             anotherHolder,
             newItemId,
@@ -2297,7 +2279,7 @@ export function doTest(
       let anotherNewItemId
       beforeEach(async () => {
         newItem = [
-          '10',
+          RARITIES.mythic.index.toString(),
           '0',
           '1',
           beneficiary,
@@ -2306,7 +2288,7 @@ export function doTest(
         ]
 
         anotherNewItem = [
-          '100',
+          RARITIES.common.index.toString(),
           '0',
           '1',
           beneficiary,
@@ -2328,11 +2310,11 @@ export function doTest(
 
       it('should issue multiple token', async function () {
         let item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await collectionContract.items(anotherNewItemId)
-        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await collectionContract.totalSupply()
@@ -2346,7 +2328,7 @@ export function doTest(
         // New Item
         // match issueance
         item = await collectionContract.items(newItemId)
-        expect(item.maxSupply).to.eq.BN(newItem[0])
+        expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(4)
@@ -2371,7 +2353,7 @@ export function doTest(
         // Another new Item
         // match issued
         item = await collectionContract.items(anotherNewItemId)
-        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         const anotherNewItemTokenId = encodeTokenId(anotherNewItemId, 1)
@@ -2410,7 +2392,7 @@ export function doTest(
 
         // match issueance
         const item = await collectionContract.items(anotherNewItemId)
-        expect(item.maxSupply).to.eq.BN(anotherNewItem[0])
+        expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(itemsInTheSameTx)
 
         // User
@@ -2534,7 +2516,8 @@ export function doTest(
       })
 
       it('reverts when trying to issue an exhausted item', async function () {
-        const itemsInTheSameTx = parseInt(newItem[0], 10)
+        const itemsInTheSameTx = RARITIES.mythic.value
+
         const beneficiaries = []
         const ids = []
 
@@ -2568,7 +2551,7 @@ export function doTest(
     describe('tokenURI', function () {
       it('should return the correct token URI', async function () {
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -2908,7 +2891,7 @@ export function doTest(
         expect(isCompleted).to.be.equal(true)
 
         const newItem = [
-          '10',
+          RARITIES.common.index.toString(),
           '0',
           web3.utils.toWei('10'),
           beneficiary,
@@ -3115,6 +3098,37 @@ export function doTest(
         )
         expect(expectedValues[0]).to.eq.BN(4569428193)
         expect(expectedValues[1]).to.eq.BN(90893249234)
+      })
+    })
+
+    describe.only('rarity', function () {
+      it('should get rarity values', async function () {
+        const values = Object.values(RARITIES)
+
+        for (let rarity of values) {
+          let expectedValue = await collectionContract.getRarityValue(
+            rarity.index
+          )
+          expect(expectedValue).to.eq.BN(rarity.value)
+        }
+      })
+
+      it('should get rarity names', async function () {
+        const values = Object.values(RARITIES)
+
+        for (let rarity of values) {
+          let expectedValue = await collectionContract.getRarityName(
+            rarity.index
+          )
+          expect(expectedValue).to.eq.BN(rarity.name)
+        }
+      })
+
+      it('reverts when rarity is invalid', async function () {
+        const values = Object.values(RARITIES)
+        await assertRevert(collectionContract.getRarityValue(values.length))
+
+        await assertRevert(collectionContract.getRarityName(values.length))
       })
     })
   })

@@ -16,6 +16,7 @@
 - [Design](#design)
   - [Collection](#collection)
   - [Items](#items)
+    - [Rarity](#rarity)
     - [Content](#edit-items)
     - [Metadata](#item-metadata)
   - [Tokens](#tokens)
@@ -66,7 +67,7 @@ Its implementation could be find [here](https://github.com/decentraland/wearable
 
 **Collection**: group/registry of items.
 
-**Item**: an object is something that can be minted as a token. Each object has its own maximum supply (defined by its rarity), total supply, price & beneficiary for each sale, metadata, and its content hash. Each item is represented by its unique id.
+**Item**: an object is something that can be minted as a token. Each object has its own maximum supply (defined by its [rarity](#rarity)), total supply, price & beneficiary for each sale, metadata, and its content hash. Each item is represented by its unique id.
 
 **Token**: an item emission, a ERC721 token.
 
@@ -89,6 +90,45 @@ A collection has items reflecting different assets. Each item is represented by 
 The collection owner can add items along with its rarity, price, beneficiary and metadata until he explicitly completes the collection. This action will be done on-chain and once the collection is complete, no more items can be added but edited ONLY in terms of its price by the collection [_creator_](#creator) and content off-chain by [_managers_](#manager) or the [_creator_](#creator). This means that its id and rarity (maximum total supply available) never change.
 
 The emission order of each item is a key important concept called _issued id_. It means that if a collection has an item with rarity Legendary (max supply 100) every emission will be auto-incremented following: 1/100; 2/100; 3/100;...; 100/100.
+
+The item in the collection is an `Struct` with the following properties:
+
+```solidity
+struct Item {
+    RARITY rarity;
+    uint256 totalSupply; // current supply
+    uint256 price;
+    address beneficiary;
+    string metadata;
+    bytes32 contentHash;
+}
+```
+
+#### Rarity
+
+Each item has a rarity. The rarity represents the maximum supply available of minting for an item. The rarities available are:
+
+- **common**: Max supply 100000
+- **uncommon**: Max supply 10000
+- **rare**: Max supply 5000
+- **epic**: Max supply 1000
+- **legendary**: Max supply 100
+- **mythic**: Max supply 10
+- **unique**: Max supply 1
+
+The rarity in the collection contract is an `Enum` with values from 0 to 6.
+
+```solidity
+enum RARITY {
+    common,
+    uncommon,
+    rare,
+    epic,
+    legendary,
+    mythic,
+    unique
+}
+```
 
 #### Content
 
