@@ -14,7 +14,7 @@
 - [Compatibility](#compatibility)
 - [Terminology](#terminology)
 - [Design](#design)
-  - [Contract](#contract)
+  - [Collection](#collection)
   - [Items](#items)
     - [Content](#edit-items)
     - [Metadata](#item-metadata)
@@ -29,6 +29,7 @@
     - [Approved](#approved)
     - [Completed](#completed)
     - [Editable](#editable)
+  - [Factory](#factory)
 - [Specification](#specification)
   - [Events](#events)
   - [Functions](#functions)
@@ -168,6 +169,16 @@ Once the collection is _approved_, tokens can start being minted. There is no ro
 #### Editable
 
 The status _editable_ is used off-chain to allow the creator and/or managers to edit the content of an item.
+
+### Factory
+
+<p align="center">
+<img width="766" alt="Screen Shot 2020-08-27 at 21 54 48" src="https://user-images.githubusercontent.com/7549152/91509192-ef4dde00-e8af-11ea-967a-57029c2efdf2.png">
+</p>
+
+In order to reduce costs deploying the same contract multiple times, we have decided to implement the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Every time a collection is created, it is being created as minimal contract which use the collection implementation storage slot. Even the collections are using a proxy patter, they can not be upgraded. There is not way to modify the code of the already deployed collection, but new collections can be deployed with a new implementation by deploying another one on-chain, and set that implementation in the factory contract.
+
+The factory is using [`CREATE2`](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md) to deploy every collection, so everyone can know in advance the address of the collection without the need of deploying it.
 
 ## Specification
 
