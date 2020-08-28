@@ -19,8 +19,19 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
+    // Rarity
+    enum RARITY {
+        common,
+        uncommon,
+        rare,
+        epic,
+        legendary,
+        mythic,
+        unique
+    }
+
     struct Item {
-        uint256 maxSupply; // rarity
+        RARITY rarity;
         uint256 totalSupply; // current supply
         uint256 price;
         address beneficiary;
@@ -327,7 +338,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= item.maxSupply, "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= getRarityValue(item.rarity), "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -388,7 +399,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     /**
      * @notice Add a new item to the collection.
      * @dev The item should follow:
-     * maxSupply: Shouldn't be 0
+     * rarity: Should be one of the RARITY enum
      * totalSupply: Should starts in 0
      * metadata: Shouldn't be empty
      * price & beneficiary: Is the price is > 0, a beneficiary should be passed. If not, price and
@@ -397,9 +408,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _item - item to add
      */
     function _addItem(Item memory _item) internal {
+        uint256 rarity = getRarityValue(_item.rarity);
         require(
-            _item.maxSupply > 0 && _item.maxSupply <= MAX_ISSUED_ID,
-            "ERC721BaseCollectionV2#_addItem: INVALID_MAX_SUPPLY"
+           rarity > 0 && rarity <= MAX_ISSUED_ID,
+            "ERC721BaseCollectionV2#_addItem: INVALID_RARITY"
         );
         require(
             _item.totalSupply == 0,
@@ -621,5 +633,45 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             safeTransferFrom(_from, _to, _tokenIds[i], _data);
         }
+    }
+
+    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
+           if (_rarity == RARITY.common) {
+               return 100000;
+            } else  if (_rarity == RARITY.uncommon) {
+               return 10000;
+            } else  if (_rarity == RARITY.rare) {
+               return 5000;
+            } else  if (_rarity == RARITY.epic) {
+               return 1000;
+            } else  if (_rarity == RARITY.legendary) {
+               return 100;
+            } else  if (_rarity == RARITY.mythic) {
+               return 10;
+            } else  if (_rarity == RARITY.unique) {
+               return 1;
+            }
+
+            revert("#ERC721BaseCollectionV2#getRarityValue: INVALID_RARITY");
+    }
+
+    function getRarityName(RARITY _rarity) public pure returns (string memory) {
+           if (_rarity == RARITY.common) {
+               return "common";
+            } else  if (_rarity == RARITY.uncommon) {
+               return "uncommon";
+            } else  if (_rarity == RARITY.rare) {
+               return "rare";
+            } else  if (_rarity == RARITY.epic) {
+               return "epic";
+            } else  if (_rarity == RARITY.legendary) {
+               return "legendary";
+            } else  if (_rarity == RARITY.mythic) {
+               return "mythic";
+            } else  if (_rarity == RARITY.unique) {
+               return "unique";
+            }
+
+            revert("#ERC721BaseCollectionV2#getRarityName: INVALID_RARITY");
     }
 }

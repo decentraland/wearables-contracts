@@ -7,9 +7,19 @@ export const BASE_URI =
 
 export const CONTRACT_NAME = 'DummyCollection'
 export const CONTRACT_SYMBOL = 'SymbolCollection'
+export const RARITIES = {
+  common: { name: 'common', index: 0, value: 100000 },
+  uncommon: { name: 'uncommon', index: 1, value: 10000 },
+  rare: { name: 'rare', index: 2, value: 5000 },
+  epic: { name: 'epic', index: 3, value: 1000 },
+  legendary: { name: 'legendary', index: 4, value: 100 },
+  mythic: { name: 'mythic', index: 5, value: 10 },
+  unique: { name: 'unique', index: 6, value: 1 },
+}
+
 export const ITEMS = [
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -17,7 +27,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -25,7 +35,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -33,7 +43,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -41,7 +51,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -49,7 +59,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -57,7 +67,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
@@ -65,7 +75,7 @@ export const ITEMS = [
     EMPTY_HASH,
   ],
   [
-    10,
+    RARITIES.common.index,
     0,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
