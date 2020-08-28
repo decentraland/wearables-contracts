@@ -144,6 +144,8 @@ On-chain, every token will have a URI, queried by `tokenURI` (ERC721 standard fu
 
 In case of a dispute about the content of an item, the [_owner of the collection_](#owner) will be able to set a _content hash_. Every item at the content server has its own entity id which is a deterministic hash based on its content as IPFS does. So, if for some reason an item was corrupted, the owner of the collection will be able to set this hash on-chain. If an item has the _content hash_ property filled, not zero, the content server will return that instead of the current content.
 
+Also, the owner can set the collection as `not editable` and therefore creators and managers won't be able to update new content for the collection's items.
+
 #### Metadata
 
 Each item will have metadata on-chain describing important aspects. The metadata will follow a protocol: `version:type:name:data`. Where data could be useful information about the type. In the case of Decentraland wearables an example can be:
