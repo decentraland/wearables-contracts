@@ -36,7 +36,7 @@
   - [Functions](#functions)
     - [Init](#init)
     - [Roles](#roles-1)
-    - [Items](#tems-1)
+    - [Items](#items-1)
     - [Status](#status-1)
     - [URI](#uri)
     - [batch-transfers](#batch-transfer)
@@ -462,6 +462,22 @@ Get the amount of items in the collection.
 function itemsCount() external view returns (uint256)
 ```
 
+_**getRarityValue**_
+
+Get the rarity max supply value.
+
+```solidity
+function getRarityValue(RARITY _rarity) public pure returns (uint256)
+```
+
+_**getRarityName**_
+
+Get the rarity name.
+
+```solidity
+function getRarityName(RARITY _rarity) public pure returns (string memory)
+```
+
 ### Status
 
 _**completeCollection**_
@@ -512,7 +528,7 @@ _**batchTransferFrom**_
 
 Transfer a batch of tokens to another address. Discourage method, please use `safeTransferFrom`
 
-```
+```solidity
 function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external
 ```
 
@@ -520,7 +536,7 @@ _**safeTransferFrom**_
 
 Safe transfer a batch of tokens to another address.
 
-```
+```solidity
 function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds) public
 ```
 

@@ -1857,6 +1857,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     event SetEditable(bool _previousValue, bool _newValue);
     event Complete();
 
+   /*
+    * Init functions
+    */
+
     constructor() internal {}
 
     /**
@@ -1950,10 +1954,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /*
-    * Creator methods
+    * Role functions
     */
 
-     /**
+    /**
      * @notice Set allowed account to manage items.
      * @param _minters - minter addresses
      * @param _values - values array
@@ -2056,23 +2060,22 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /**
-     * @notice Complete the collection.
-     * @dev Disable forever the possibility of adding new items in the collection.
-     * The issuance is still allowed.
+     * @notice Transfers ownership of the contract to a new account (`newOwner`).
      */
-    function completeCollection() external onlyCreator {
-        require(!isCompleted, "ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+    function transferCreatorship(address _newCreator) public virtual {
+        require(msg.sender == owner() || msg.sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        require(_newCreator != address(0), "ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
 
-        _completeCollection();
+        emit CreatorshipTransferred(creator, _newCreator);
+        creator = _newCreator;
     }
 
-    function _completeCollection() internal {
-        isCompleted = true;
-        emit Complete();
-    }
+    /*
+    * Items functions
+    */
 
     /**
-     * @dev Add items to the collection.
+     * @notice Add items to the collection.
      * @param _items - items to add
      */
     function addItems(Item[] memory _items) external virtual onlyCreator {
@@ -2083,63 +2086,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         }
     }
 
-    /*
-    * Manager & Minters methods
-    */
-
     /**
-     * @dev Issue a new token of the specified item.
-     * @notice that will throw if the item has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _itemId - item id
+     * @notice Edit the price and beneficiary of multiple items
+     * @param _itemIds - items ids to edit
+     * @param _prices - new prices
+     * @param _beneficiaries - new beneficiaries
      */
-    function issueToken(address _beneficiary,  uint256 _itemId) external virtual whenIsApproved() {
-        _issueToken(_beneficiary, _itemId);
-    }
-
-    /**
-     * @notice Issue tokens by item ids.
-     * @dev Will throw if the items have reached its maximum or is invalid
-     * @param _beneficiaries - owner of the tokens
-     * @param _itemIds - item ids
-     */
-    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual whenIsApproved() {
-        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH");
-
-        for (uint256 i = 0; i < _itemIds.length; i++) {
-            _issueToken(_beneficiaries[i], _itemIds[i]);
-        }
-    }
-
-    /**
-     * @notice Issue a new token of the specified item.
-     * @dev Will throw if the item has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _itemId - item id
-     */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual canMint(_itemId) {
-        // Check item id
-        require(_itemId < items.length, "ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST");
-
-        Item storage item = items[_itemId];
-        uint256 currentIssuance = item.totalSupply.add(1);
-
-        // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
-
-        // Encode token id
-        uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
-
-        // Increase issuance
-        item.totalSupply = currentIssuance;
-
-        // Mint token to beneficiary
-        super._mint(_beneficiary, tokenId);
-
-        // Log
-        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance);
-    }
-
     function editItems(
         uint256[] calldata _itemIds,
         uint256[] calldata _prices,
@@ -2219,29 +2171,68 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         emit AddItem(newItemId, _item);
     }
 
-    /*
-    * Owner Methods
-    */
 
     /**
-    * @notice Approve a collection
-    * @notice Once the collection is approved, items can be minted and transferred
-    */
-    function approveCollection() external virtual onlyOwner {
-        require(!isApproved, "ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED");
-
-        isApproved = true;
-        emit Approve();
+     * @notice Issue a new token of the specified item.
+     * @notice that will throw if the item has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _itemId - item id
+     */
+    function issueToken(address _beneficiary,  uint256 _itemId) external virtual whenIsApproved() {
+        _issueToken(_beneficiary, _itemId);
     }
 
     /**
-    * @notice Rescue an item by providing new metadata and/or content hash
-    * @dev Only the owner can rescue an item. This function should be used
-    * to resolve a dispute or fix a broken metadata or hashContent item
-    * @param _itemIds - Item ids to be fixed
-    * @param _contentHashes - New items content hash
-    * @param _metadatas - New items metadata
-    */
+     * @notice Issue tokens by item ids.
+     * @dev Will throw if the items have reached its maximum or is invalid
+     * @param _beneficiaries - owner of the tokens
+     * @param _itemIds - item ids
+     */
+    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual whenIsApproved() {
+        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH");
+
+        for (uint256 i = 0; i < _itemIds.length; i++) {
+            _issueToken(_beneficiaries[i], _itemIds[i]);
+        }
+    }
+
+    /**
+     * @notice Issue a new token of the specified item.
+     * @dev Will throw if the item has reached its maximum or is invalid
+     * @param _beneficiary - owner of the token
+     * @param _itemId - item id
+     */
+    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual canMint(_itemId) {
+        // Check item id
+        require(_itemId < items.length, "ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST");
+
+        Item storage item = items[_itemId];
+        uint256 currentIssuance = item.totalSupply.add(1);
+
+        // Check issuance
+        require(currentIssuance <= getRarityValue(item.rarity), "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
+
+        // Encode token id
+        uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
+
+        // Increase issuance
+        item.totalSupply = currentIssuance;
+
+        // Mint token to beneficiary
+        super._mint(_beneficiary, tokenId);
+
+        // Log
+        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance);
+    }
+
+    /**
+     * @notice Rescue an item by providing new metadata and/or content hash
+     * @dev Only the owner can rescue an item. This function should be used
+     * to resolve a dispute or fix a broken metadata or hashContent item
+     * @param _itemIds - Item ids to be fixed
+     * @param _contentHashes - New items content hash
+     * @param _metadatas - New items metadata
+     */
     function rescueItems(
         uint256[] calldata _itemIds,
         bytes32[] calldata _contentHashes,
@@ -2273,23 +2264,97 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /**
-     * @notice Transfers ownership of the contract to a new account (`newOwner`).
+     * @notice Returns the amount of item in the collection
+     * @return Amount of items in the collection
      */
-    function transferCreatorship(address _newCreator) public virtual {
-        require(msg.sender == owner() || msg.sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
-        require(_newCreator != address(0), "ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
-
-        emit CreatorshipTransferred(creator, _newCreator);
-        creator = _newCreator;
+    function itemsCount() external view returns (uint256) {
+        return items.length;
     }
 
     /**
-     * @notice Set Base URI
-     * @param _baseURI - base URI for token URIs
+     * @notice Returns a rarity's maximum supply
+     * @dev will revert if the rarity is out of the RARITY enum bounds
+     * @return Max supply of the rarity given
      */
-    function setBaseURI(string memory _baseURI) public onlyOwner {
-        emit BaseURI(baseURI(), _baseURI);
-        _setBaseURI(_baseURI);
+    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
+        if (_rarity == RARITY.common) {
+            return 100000;
+        } else  if (_rarity == RARITY.uncommon) {
+            return 10000;
+        } else  if (_rarity == RARITY.rare) {
+            return 5000;
+        } else  if (_rarity == RARITY.epic) {
+            return 1000;
+        } else  if (_rarity == RARITY.legendary) {
+            return 100;
+        } else  if (_rarity == RARITY.mythic) {
+            return 10;
+        } else  if (_rarity == RARITY.unique) {
+            return 1;
+        }
+
+        revert("#ERC721BaseCollectionV2#getRarityValue: INVALID_RARITY");
+    }
+
+    /**
+     * @notice Returns a rarity's name
+     * @dev will revert if the rarity is out of the RARITY enum bounds
+     * @return Name of the rarity given
+     */
+    function getRarityName(RARITY _rarity) public pure returns (string memory) {
+        if (_rarity == RARITY.common) {
+            return "common";
+        } else  if (_rarity == RARITY.uncommon) {
+            return "uncommon";
+        } else  if (_rarity == RARITY.rare) {
+            return "rare";
+        } else  if (_rarity == RARITY.epic) {
+            return "epic";
+        } else  if (_rarity == RARITY.legendary) {
+            return "legendary";
+        } else  if (_rarity == RARITY.mythic) {
+            return "mythic";
+        } else  if (_rarity == RARITY.unique) {
+            return "unique";
+        }
+
+        revert("#ERC721BaseCollectionV2#getRarityName: INVALID_RARITY");
+    }
+
+    /*
+    * Status functions
+    */
+
+    /**
+     * @notice Complete the collection.
+     * @dev Disable forever the possibility of adding new items in the collection.
+     * The issuance is still allowed.
+     */
+    function completeCollection() external onlyCreator {
+        require(!isCompleted, "ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+
+        _completeCollection();
+    }
+
+    /**
+     * @notice Complete the collection.
+     * @dev Internal. Disable forever the possibility of adding new items in the collection.
+     * The issuance is still allowed.
+     */
+    function _completeCollection() internal {
+        isCompleted = true;
+        emit Complete();
+    }
+
+    /**
+     * @notice Approve a collection
+     * @notice Once the collection is approved, items can be minted and transferred
+     */
+    function approveCollection() external virtual onlyOwner {
+        require(!isApproved, "ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED");
+
+        isApproved = true;
+        emit Approve();
     }
 
     /**
@@ -2307,11 +2372,20 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /*
-    * User base methods
+    * URI functions
     */
 
-     /**
-     * @dev Returns an URI for a given token ID.
+    /**
+     * @notice Set Base URI
+     * @param _baseURI - base URI for token URIs
+     */
+    function setBaseURI(string memory _baseURI) public onlyOwner {
+        emit BaseURI(baseURI(), _baseURI);
+        _setBaseURI(_baseURI);
+    }
+
+    /**
+     * @notice Returns an URI for a given token ID.
      * Throws if the token ID does not exist. May return an empty string.
      * @param _tokenId - uint256 ID of the token queried
      * @return token URI
@@ -2334,46 +2408,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         );
     }
 
-     /**
-     * @notice Encode token id
-     * @dev itemId (`itemIdBits` bits) + issuedId (`issuedIdBits` bits)
-     * @param _itemId - item id
-     * @param _issuedId - issued id
-     * @return id uint256 of the encoded id
-     */
-    function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
-        require(_itemId <= MAX_ITEM_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID");
-        require(_issuedId <= MAX_ISSUED_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID");
+    /*
+    * Batch Transfer functions
+    */
 
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            id := or(shl(ISSUED_ID_BITS, _itemId), _issuedId)
-        }
-    }
 
-    /**
-     * @notice Decode token id
-     * @dev itemId (`itemIdBits` bits) + issuedId (`issuedIdBits` bits)
-     * @param _id - token id
-     * @return itemId uint256 of the item id
-     * @return issuedId uint256 of the issued id
-     */
-    function decodeTokenId(uint256 _id) public pure returns (uint256 itemId, uint256 issuedId) {
-        uint256 mask = MAX_ISSUED_ID;
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            itemId := shr(ISSUED_ID_BITS, _id)
-            issuedId := and(mask, _id)
-        }
-    }
-
-    /**
-     * @notice Returns the amount of item in the collection
-     * @return Amount of items in the collection
-     */
-    function itemsCount() external view returns (uint256) {
-        return items.length;
-    }
 
     /**
      * @notice Transfers the ownership of given tokens ID to another address.
@@ -2422,44 +2461,41 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         }
     }
 
-    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
-           if (_rarity == RARITY.common) {
-               return 100000;
-            } else  if (_rarity == RARITY.uncommon) {
-               return 10000;
-            } else  if (_rarity == RARITY.rare) {
-               return 5000;
-            } else  if (_rarity == RARITY.epic) {
-               return 1000;
-            } else  if (_rarity == RARITY.legendary) {
-               return 100;
-            } else  if (_rarity == RARITY.mythic) {
-               return 10;
-            } else  if (_rarity == RARITY.unique) {
-               return 1;
-            }
+    /*
+    * Token Utils functions
+    */
 
-            revert("#ERC721BaseCollectionV2#getRarityValue: INVALID_RARITY");
+    /**
+     * @notice Encode token id
+     * @dev itemId (`itemIdBits` bits) + issuedId (`issuedIdBits` bits)
+     * @param _itemId - item id
+     * @param _issuedId - issued id
+     * @return id uint256 of the encoded id
+     */
+    function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
+        require(_itemId <= MAX_ITEM_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID");
+        require(_issuedId <= MAX_ISSUED_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID");
+
+        // solium-disable-next-line security/no-inline-assembly
+        assembly {
+            id := or(shl(ISSUED_ID_BITS, _itemId), _issuedId)
+        }
     }
 
-    function getRarityName(RARITY _rarity) public pure returns (string memory) {
-           if (_rarity == RARITY.common) {
-               return "common";
-            } else  if (_rarity == RARITY.uncommon) {
-               return "uncommon";
-            } else  if (_rarity == RARITY.rare) {
-               return "rare";
-            } else  if (_rarity == RARITY.epic) {
-               return "epic";
-            } else  if (_rarity == RARITY.legendary) {
-               return "legendary";
-            } else  if (_rarity == RARITY.mythic) {
-               return "mythic";
-            } else  if (_rarity == RARITY.unique) {
-               return "unique";
-            }
-
-            revert("#ERC721BaseCollectionV2#getRarityName: INVALID_RARITY");
+    /**
+     * @notice Decode token id
+     * @dev itemId (`itemIdBits` bits) + issuedId (`issuedIdBits` bits)
+     * @param _id - token id
+     * @return itemId uint256 of the item id
+     * @return issuedId uint256 of the issued id
+     */
+    function decodeTokenId(uint256 _id) public pure returns (uint256 itemId, uint256 issuedId) {
+        uint256 mask = MAX_ISSUED_ID;
+        // solium-disable-next-line security/no-inline-assembly
+        assembly {
+            itemId := shr(ISSUED_ID_BITS, _id)
+            issuedId := and(mask, _id)
+        }
     }
 }
 
