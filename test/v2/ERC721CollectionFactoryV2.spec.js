@@ -3,12 +3,7 @@ import { randomBytes } from '@ethersproject/random'
 import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
-import {
-  createDummyCollection,
-  getInitData,
-  ZERO_ADDRESS,
-  ITEMS,
-} from '../helpers/collectionV2'
+import { getInitData, ZERO_ADDRESS, ITEMS } from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
@@ -53,9 +48,9 @@ function encodeERC721Initialize(
         {
           components: [
             {
-              internalType: 'uint256',
-              name: 'maxSupply',
-              type: 'uint256',
+              internalType: 'enum ERC721BaseCollectionV2.RARITY',
+              name: 'rarity',
+              type: 'uint8',
             },
             {
               internalType: 'uint256',
@@ -97,7 +92,7 @@ function encodeERC721Initialize(
   )
 }
 
-describe('Factory', function () {
+describe('Factory V2', function () {
   let collectionImplementation
   let factoryContract
 
@@ -110,7 +105,6 @@ describe('Factory', function () {
   let fromUser
   let fromHacker
   let fromFactoryOwner
-  let fromDeployer
 
   let creationParams
 
@@ -124,10 +118,10 @@ describe('Factory', function () {
     fromUser = { from: user }
     fromHacker = { from: hacker }
 
-    fromDeployer = { from: deployer }
+    fromFactoryOwner = { from: factoryOwner }
 
     creationParams = {
-      ...fromDeployer,
+      ...fromFactoryOwner,
       gas: 9e6,
       gasPrice: 21e9,
     }
@@ -351,14 +345,20 @@ describe('Factory', function () {
       const owner_ = await collection.owner()
       const name_ = await collection.name()
       const symbol_ = await collection.symbol()
-      const isComplete_ = await collection.isComplete()
+      const isInitialized_ = await collection.isInitialized()
+      const isApproved_ = await collection.isApproved()
+      const isCompleted_ = await collection.isCompleted()
+      const isEditable_ = await collection.isEditable()
 
       expect(baseURI_).to.be.equal(baseURI)
       expect(creator_).to.be.equal(user)
       expect(owner_).to.be.equal(factoryOwner)
       expect(name_).to.be.equal(name)
       expect(symbol_).to.be.equal(symbol)
-      expect(isComplete_).to.be.equal(shouldComplete)
+      expect(isInitialized_).to.be.equal(true)
+      expect(isApproved_).to.be.equal(false)
+      expect(isCompleted_).to.be.equal(shouldComplete)
+      expect(isEditable_).to.be.equal(true)
 
       const itemLength = await collection.itemsCount()
 

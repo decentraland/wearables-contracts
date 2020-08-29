@@ -132,9 +132,9 @@ export function getInitData(options) {
         {
           components: [
             {
-              internalType: 'uint256',
-              name: 'maxSupply',
-              type: 'uint256',
+              internalType: 'enum ERC721BaseCollectionV2.RARITY',
+              name: 'rarity',
+              type: 'uint8',
             },
             {
               internalType: 'uint256',

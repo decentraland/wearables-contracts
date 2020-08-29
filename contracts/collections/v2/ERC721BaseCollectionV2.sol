@@ -178,7 +178,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setMinters(address[] calldata _minters, bool[] calldata _values) external onlyCreator {
         require(
             _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setMinters: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
@@ -205,7 +205,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
@@ -229,7 +229,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setManagers(address[] calldata _managers, bool[] calldata _values) external onlyCreator {
         require(
             _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setManagers: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
@@ -256,7 +256,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _managers.length && _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
@@ -313,7 +313,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "ERC721BaseCollectionV2#editItems: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -402,7 +402,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual whenIsApproved() {
-        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH");
+        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             _issueToken(_beneficiaries[i], _itemIds[i]);
@@ -454,7 +454,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _contentHashes.length && _contentHashes.length == _metadatas.length,
-            "ERC721BaseCollectionV2#rescueItems: LENGTH_MISSMATCH"
+            "ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _itemIds.length; i++) {

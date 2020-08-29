@@ -470,12 +470,12 @@ export function doTest(
       it("reverts when params' length missmath", async function () {
         await assertRevert(
           collectionContract.setMinters([minter], [true, false], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setMinters([minter, user], [true], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -485,7 +485,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -495,7 +495,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -505,7 +505,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
         )
       })
 
@@ -813,12 +813,12 @@ export function doTest(
       it("reverts when params' length missmath", async function () {
         await assertRevert(
           collectionContract.setManagers([manager], [true, false], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setManagers([manager, user], [true], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -828,7 +828,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -838,7 +838,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -848,7 +848,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
         )
       })
 
@@ -1617,7 +1617,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1627,7 +1627,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1637,7 +1637,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
         )
       })
 
@@ -1987,7 +1987,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1997,7 +1997,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2007,7 +2007,7 @@ export function doTest(
             [''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
         )
       })
 
@@ -2479,7 +2479,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromUser
           ),
-          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2488,7 +2488,7 @@ export function doTest(
             [anotherNewItemId],
             fromUser
           ),
-          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISSMATCH'
+          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH'
         )
       })
 
@@ -3101,7 +3101,7 @@ export function doTest(
       })
     })
 
-    describe.only('rarity', function () {
+    describe('rarity', function () {
       it('should get rarity values', async function () {
         const values = Object.values(RARITIES)
 
