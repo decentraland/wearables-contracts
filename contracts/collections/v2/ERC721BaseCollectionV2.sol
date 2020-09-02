@@ -19,7 +19,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
-    // Rarity
     enum RARITY {
         common,
         uncommon,
@@ -564,6 +563,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @notice Once the collection is approved, items can be minted and transferred
      */
     function approveCollection() external virtual onlyOwner {
+        require(isCompleted, "ERC721BaseCollectionV2#approveCollection: NOT_COMPLETED");
         require(!isApproved, "ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED");
 
         isApproved = true;

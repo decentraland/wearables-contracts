@@ -28,13 +28,13 @@ describe('Collection V2', function () {
 
   doTest(
     ERC721CollectionV2,
-    async (creator, creationParams) => {
+    async (creator, shouldComplete, creationParams) => {
       const collectionContract = await ERC721CollectionV2.new()
       await collectionContract.initialize(
         CONTRACT_NAME,
         CONTRACT_SYMBOL,
         creator,
-        false,
+        shouldComplete,
         BASE_URI,
         ITEMS,
         creationParams
