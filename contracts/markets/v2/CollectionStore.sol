@@ -39,7 +39,7 @@ contract CollectionStore is Ownable {
     }
 
     /**
-    * @notice Buy items from collections.
+    * @notice Buy collection's items.
     * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
     * @param _itemsToBuy - items to buy
     * @param _beneficiary - beneficiary address
@@ -95,8 +95,6 @@ contract CollectionStore is Ownable {
      * @return address of the item's beneficiary
      */
     function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-       // IERC721CollectionV2.Item memory item = _collection.items(_itemId);
-      //   return (item.price, item.beneficiary);
       (,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
        return (price, beneficiary);
     }
@@ -104,7 +102,7 @@ contract CollectionStore is Ownable {
     // Owner functions
 
     /**
-     * @notice Sets the fee of the contract that's charged to the seller on a successful sale
+     * @notice Sets the fee of the contract that's charged to the seller on each sale
      * @param _newFee - Fee from 0 to 999,999
      */
     function setFee(uint256 _newFee) public onlyOwner {
@@ -116,8 +114,8 @@ contract CollectionStore is Ownable {
     }
 
     /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
+     * @notice Set a new fee owner.
+    * @param _newFeeOwner - Address of the new fee owner
      */
     function setFeeOwner(address _newFeeOwner) external onlyOwner {
         require(_newFeeOwner != address(0), "CollectionStore#setFeeOwner: INVALID_ADDRESS");
