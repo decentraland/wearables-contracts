@@ -1,4 +1,6 @@
 export const BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
+export const OTHER_BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
+
 export const EMPTY_HASH =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -84,6 +86,17 @@ export const ITEMS = [
   ],
 ]
 
+export async function createDummyFactory(owner) {
+  const ERC721CollectionFactoryV2 = artifacts.require(
+    'ERC721CollectionFactoryV2'
+  )
+  const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
+
+  const collectionImplementation = await ERC721CollectionV2.new()
+
+  return ERC721CollectionFactoryV2.new(collectionImplementation.address, owner)
+}
+
 export async function createDummyCollection(factory, options) {
   const { logs } = await factory.createCollection(
     web3.utils.randomHex(32),
@@ -93,6 +106,10 @@ export async function createDummyCollection(factory, options) {
   const ERC721Collection = artifacts.require('ERC721CollectionV2')
   const contract = logs[0].args._address
   const collection = await ERC721Collection.at(contract)
+
+  if (options.shouldApprove) {
+    await collection.approveCollection()
+  }
   return collection
 }
 

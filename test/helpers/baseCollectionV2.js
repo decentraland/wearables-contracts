@@ -83,7 +83,7 @@ export function doTest(
       }
 
       // Create collection and set up wearables
-      collectionContract = await createContract(creator, creationParams)
+      collectionContract = await createContract(creator, true, creationParams)
 
       // Approve the collection to mint items
       await collectionContract.approveCollection(fromDeployer)
@@ -246,7 +246,7 @@ export function doTest(
           contractName,
           contractSymbol,
           creator,
-          false,
+          true,
           BASE_URI,
           items,
           creationParams
@@ -289,6 +289,24 @@ export function doTest(
         await assertRevert(
           contract.approveCollection(fromHacker),
           'Ownable: caller is not the owner'
+        )
+      })
+
+      it('reverts when trying to approve a not completed collection', async function () {
+        const notCompletedCollection = await Contract.new()
+        await notCompletedCollection.initialize(
+          contractName,
+          contractSymbol,
+          creator,
+          false,
+          BASE_URI,
+          items,
+          creationParams
+        )
+
+        await assertRevert(
+          notCompletedCollection.approveCollection(fromDeployer),
+          'ERC721BaseCollectionV2#approveCollection: NOT_COMPLETED'
         )
       })
 
@@ -994,6 +1012,12 @@ export function doTest(
     })
 
     describe('addItem', function () {
+      let contract
+      beforeEach(async () => {
+        // Create collection and set up wearables
+        contract = await createContract(creator, false, creationParams)
+      })
+
       it('should add an item', async function () {
         const newItem = [
           RARITIES.common.index.toString(),
@@ -1003,22 +1027,17 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
           EMPTY_HASH,
         ]
-        let itemLength = await collectionContract.itemsCount()
-        const { logs } = await collectionContract.addItems(
-          [newItem],
-          fromCreator
-        )
+        let itemLength = await contract.itemsCount()
+        const { logs } = await contract.addItems([newItem], fromCreator)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
         expect(logs[0].args._item).to.be.eql(newItem)
 
-        itemLength = await collectionContract.itemsCount()
+        itemLength = await contract.itemsCount()
 
-        const item = await collectionContract.items(
-          itemLength.sub(web3.utils.toBN(1))
-        )
+        const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1048,8 +1067,8 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        let itemLength = await collectionContract.itemsCount()
-        const { logs } = await collectionContract.addItems(
+        let itemLength = await contract.itemsCount()
+        const { logs } = await contract.addItems(
           [newItem1, newItem2],
           fromCreator
         )
@@ -1065,11 +1084,9 @@ export function doTest(
         )
         expect(logs[1].args._item).to.be.eql(newItem2)
 
-        itemLength = await collectionContract.itemsCount()
+        itemLength = await contract.itemsCount()
 
-        let item = await collectionContract.items(
-          itemLength.sub(web3.utils.toBN(2))
-        )
+        let item = await contract.items(itemLength.sub(web3.utils.toBN(2)))
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1079,9 +1096,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(newItem1)
 
-        item = await collectionContract.items(
-          itemLength.sub(web3.utils.toBN(1))
-        )
+        item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1093,7 +1108,7 @@ export function doTest(
       })
 
       it('should add an item with price 0 and no beneficiary', async function () {
-        let itemLength = await collectionContract.itemsCount()
+        let itemLength = await contract.itemsCount()
         const newItem = [
           RARITIES.common.index.toString(),
           '0',
@@ -1103,21 +1118,16 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        const { logs } = await collectionContract.addItems(
-          [newItem],
-          fromCreator
-        )
+        const { logs } = await contract.addItems([newItem], fromCreator)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
         expect(logs[0].args._item).to.be.eql(newItem)
 
-        itemLength = await collectionContract.itemsCount()
+        itemLength = await contract.itemsCount()
 
-        const item = await collectionContract.items(
-          itemLength.sub(web3.utils.toBN(1))
-        )
+        const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1147,9 +1157,7 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await assertRevert(
-          collectionContract.addItems([newItem1, newItem2], fromCreator)
-        )
+        await assertRevert(contract.addItems([newItem1, newItem2], fromCreator))
       })
 
       it('reverts when trying to add an item with current supply > 0', async function () {
@@ -1162,7 +1170,7 @@ export function doTest(
           EMPTY_HASH,
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: INVALID_TOTAL_SUPPLY'
         )
       })
@@ -1177,7 +1185,7 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await assertRevert(collectionContract.addItems([newItem], fromCreator))
+        await assertRevert(contract.addItems([newItem], fromCreator))
       })
 
       it('reverts when trying to add an item with price and no beneficiary', async function () {
@@ -1190,7 +1198,7 @@ export function doTest(
           EMPTY_HASH,
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
@@ -1205,7 +1213,7 @@ export function doTest(
           EMPTY_HASH,
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
@@ -1220,7 +1228,7 @@ export function doTest(
           EMPTY_HASH,
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: EMPTY_METADATA'
         )
       })
@@ -1235,26 +1243,16 @@ export function doTest(
           '0x01',
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY'
         )
       })
 
       it('reverts when trying to add an item by not the creator', async function () {
-        await collectionContract.setMinters([minter], [true], fromCreator)
-        await collectionContract.setManagers([manager], [true], fromCreator)
-        await collectionContract.setItemsMinters(
-          [0],
-          [minter],
-          [true],
-          fromCreator
-        )
-        await collectionContract.setItemsManagers(
-          [0],
-          [manager],
-          [true],
-          fromCreator
-        )
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
           RARITIES.common.index.toString(),
@@ -1266,28 +1264,28 @@ export function doTest(
         ]
 
         await assertRevert(
-          collectionContract.addItems([newItem], fromDeployer),
+          contract.addItems([newItem], fromDeployer),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.addItems([newItem], fromMinter),
+          contract.addItems([newItem], fromMinter),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.addItems([newItem], fromManager),
+          contract.addItems([newItem], fromManager),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.addItems([newItem], fromHacker),
+          contract.addItems([newItem], fromHacker),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
       it('reverts when trying to add an item to a completed collection', async function () {
-        await collectionContract.completeCollection(fromCreator)
+        await contract.completeCollection(fromCreator)
 
         const newItem = [
           RARITIES.common.index.toString(),
@@ -1299,7 +1297,7 @@ export function doTest(
         ]
 
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED'
         )
       })
@@ -1309,6 +1307,7 @@ export function doTest(
       const itemPrice0 = web3.utils.toWei('10')
       const itemPrice1 = web3.utils.toWei('100')
 
+      let contract
       let itemId0
       let item0
       let itemBeneficiary0
@@ -1337,15 +1336,17 @@ export function doTest(
           '1:turtle_mask:hat:female,male',
           EMPTY_HASH,
         ]
-        await collectionContract.addItems([item0, item1], fromCreator)
 
-        const itemLength = await collectionContract.itemsCount()
+        contract = await createContract(creator, false, creationParams)
+        await contract.addItems([item0, item1], fromCreator)
+
+        const itemLength = await contract.itemsCount()
         itemId0 = itemLength.sub(web3.utils.toBN(2))
         itemId1 = itemLength.sub(web3.utils.toBN(1))
       })
 
       it('should edit an item', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1357,7 +1358,7 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
-        const { logs } = await collectionContract.editItems(
+        const { logs } = await contract.editItems(
           [itemId0],
           [newItemPrice0],
           [newItemBeneficiary0],
@@ -1370,7 +1371,7 @@ export function doTest(
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1389,7 +1390,7 @@ export function doTest(
       })
 
       it('should edit items', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1399,7 +1400,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(item0)
 
-        item = await collectionContract.items(itemId1)
+        item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1414,7 +1415,7 @@ export function doTest(
         const newItemPrice1 = web3.utils.toWei('1')
         const newItemBeneficiary1 = anotherHolder
 
-        const { logs } = await collectionContract.editItems(
+        const { logs } = await contract.editItems(
           [itemId0, itemId1],
           [newItemPrice0, newItemPrice1],
           [newItemBeneficiary0, newItemBeneficiary1],
@@ -1432,7 +1433,7 @@ export function doTest(
         expect(logs[1].args._price).to.be.eq.BN(newItemPrice1)
         expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary1)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1449,7 +1450,7 @@ export function doTest(
           item0[5],
         ])
 
-        item = await collectionContract.items(itemId1)
+        item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1468,7 +1469,7 @@ export function doTest(
       })
 
       it('should edit an item with price and beneficiary', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1478,7 +1479,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(item0)
 
-        const { logs } = await collectionContract.editItems(
+        const { logs } = await contract.editItems(
           [itemId0],
           [0],
           [ZERO_ADDRESS],
@@ -1491,7 +1492,7 @@ export function doTest(
         expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
         expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1510,7 +1511,7 @@ export function doTest(
       })
 
       it('should edit an item without price and beneficiary', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1522,7 +1523,7 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1')
         const newItemBeneficiary0 = anotherHolder
-        const { logs } = await collectionContract.editItems(
+        const { logs } = await contract.editItems(
           [itemId0],
           [newItemPrice0],
           [newItemBeneficiary0],
@@ -1535,7 +1536,7 @@ export function doTest(
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1555,7 +1556,7 @@ export function doTest(
 
       it('should allow managers to edit items', async function () {
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1565,17 +1566,17 @@ export function doTest(
         )
 
         // Set global Manager
-        await collectionContract.setManagers([manager], [true], fromCreator)
-        await collectionContract.editItems(
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.editItems(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
           fromManager
         )
 
-        await collectionContract.setManagers([manager], [false], fromCreator)
+        await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1585,14 +1586,14 @@ export function doTest(
         )
 
         // Set item Manager
-        await collectionContract.setItemsManagers(
+        await contract.setItemsManagers(
           [itemId0],
           [manager],
           [true],
           fromCreator
         )
 
-        await collectionContract.editItems(
+        await contract.editItems(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
@@ -1601,7 +1602,7 @@ export function doTest(
       })
 
       it('should allow the creator to edit items', async function () {
-        await collectionContract.editItems(
+        await contract.editItems(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
@@ -1611,7 +1612,7 @@ export function doTest(
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
@@ -1621,7 +1622,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0, itemId1],
             [itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
@@ -1631,7 +1632,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0, itemId1],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0],
@@ -1642,16 +1643,11 @@ export function doTest(
       })
 
       it('reverts when trying to edit by not the creator or manager', async function () {
-        await collectionContract.setMinters([minter], [true], fromCreator)
-        await collectionContract.setItemsMinters(
-          [0],
-          [minter],
-          [true],
-          fromCreator
-        )
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
 
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1661,7 +1657,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1671,7 +1667,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1682,9 +1678,9 @@ export function doTest(
       })
 
       it('reverts when trying to edit an invalid item', async function () {
-        const itemLength = await collectionContract.itemsCount()
+        const itemLength = await contract.itemsCount()
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemLength],
             [itemPrice0],
             [itemBeneficiary0],
@@ -1696,7 +1692,7 @@ export function doTest(
 
       it('reverts when trying to edit an item with price 0 and without beneficiary', async function () {
         await assertRevert(
-          collectionContract.editItems(
+          contract.editItems(
             [itemId0],
             [itemPrice0],
             [ZERO_ADDRESS],
@@ -1708,18 +1704,14 @@ export function doTest(
 
       it('reverts when trying to edit an item without price but beneficiary', async function () {
         await assertRevert(
-          collectionContract.editItems(
-            [itemId0],
-            [0],
-            [itemBeneficiary0],
-            fromCreator
-          ),
+          contract.editItems([itemId0], [0], [itemBeneficiary0], fromCreator),
           'ERC721BaseCollectionV2#editItems: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
     })
 
     describe('rescueItems', function () {
+      let contract
       let itemId0
       let item0
       let itemId1
@@ -1743,9 +1735,11 @@ export function doTest(
           '1:turtle_mask:hat:female,male',
           EMPTY_HASH,
         ]
-        await collectionContract.addItems([item0, item1], fromCreator)
 
-        const itemLength = await collectionContract.itemsCount()
+        contract = await createContract(creator, false, creationParams)
+        await contract.addItems([item0, item1], fromCreator)
+
+        const itemLength = await contract.itemsCount()
 
         itemId0 = itemLength.sub(web3.utils.toBN(2))
         itemId1 = itemLength.sub(web3.utils.toBN(1))
@@ -1755,7 +1749,7 @@ export function doTest(
         const newContentHash = web3.utils.randomHex(32)
         const newMetadata = '1:crocodile_mask:earrings:female'
 
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1765,7 +1759,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(item0)
 
-        const { logs } = await collectionContract.rescueItems(
+        const { logs } = await contract.rescueItems(
           [itemId0],
           [newContentHash],
           [newMetadata],
@@ -1778,7 +1772,7 @@ export function doTest(
         expect(logs[0].args._contentHash).to.be.equal(newContentHash)
         expect(logs[0].args._metadata).to.be.equal(newMetadata)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1797,7 +1791,7 @@ export function doTest(
       })
 
       it('should rescue items', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1807,7 +1801,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(item0)
 
-        item = await collectionContract.items(itemId1)
+        item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1822,7 +1816,7 @@ export function doTest(
         const newContentHash1 = web3.utils.randomHex(32)
         const newMetadata1 = '1:turtle_mask:upper_body:female'
 
-        const { logs } = await collectionContract.rescueItems(
+        const { logs } = await contract.rescueItems(
           [itemId0, itemId1],
           [newContentHash0, newContentHash1],
           [newMetadata0, newMetadata1],
@@ -1840,7 +1834,7 @@ export function doTest(
         expect(logs[1].args._contentHash).to.be.equal(newContentHash1)
         expect(logs[1].args._metadata).to.be.equal(newMetadata1)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1857,7 +1851,7 @@ export function doTest(
           newContentHash0,
         ])
 
-        item = await collectionContract.items(itemId1)
+        item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1876,7 +1870,7 @@ export function doTest(
       })
 
       it('should rescue an item without changings its metadata', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1887,7 +1881,7 @@ export function doTest(
         ]).to.be.eql(item0)
 
         const newContentHash0 = web3.utils.randomHex(32)
-        const { logs } = await collectionContract.rescueItems(
+        const { logs } = await contract.rescueItems(
           [itemId0],
           [newContentHash0],
           [''],
@@ -1900,7 +1894,7 @@ export function doTest(
         expect(logs[0].args._contentHash).to.be.equal(newContentHash0)
         expect(logs[0].args._metadata).to.be.equal(item.metadata)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1919,7 +1913,7 @@ export function doTest(
       })
 
       it('should rescue an item cleaning its content hash', async function () {
-        let item = await collectionContract.items(itemId0)
+        let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1930,14 +1924,14 @@ export function doTest(
         ]).to.be.eql(item0)
 
         const newContentHash0 = web3.utils.randomHex(32)
-        await collectionContract.rescueItems(
+        await contract.rescueItems(
           [itemId0],
           [newContentHash0],
           [''],
           fromDeployer
         )
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1954,14 +1948,9 @@ export function doTest(
           newContentHash0,
         ])
 
-        await collectionContract.rescueItems(
-          [itemId0],
-          [EMPTY_HASH],
-          [''],
-          fromDeployer
-        )
+        await contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromDeployer)
 
-        item = await collectionContract.items(itemId0)
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
           item.totalSupply.toString(),
@@ -1981,7 +1970,7 @@ export function doTest(
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
-          collectionContract.rescueItems(
+          contract.rescueItems(
             [itemId0],
             [EMPTY_HASH, EMPTY_HASH],
             ['', ''],
@@ -1991,7 +1980,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.rescueItems(
+          contract.rescueItems(
             [itemId0, itemId1],
             [EMPTY_HASH],
             ['', ''],
@@ -2001,7 +1990,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.rescueItems(
+          contract.rescueItems(
             [itemId0, itemId1],
             [EMPTY_HASH, EMPTY_HASH],
             [''],
@@ -2012,79 +2001,46 @@ export function doTest(
       })
 
       it('reverts when trying to rescue by not the owner', async function () {
-        await collectionContract.setMinters([minter], [true], fromCreator)
-        await collectionContract.setManagers([manager], [true], fromCreator)
-        await collectionContract.setItemsMinters(
-          [0],
-          [minter],
-          [true],
-          fromCreator
-        )
-        await collectionContract.setItemsManagers(
-          [0],
-          [manager],
-          [true],
-          fromCreator
-        )
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
-          collectionContract.rescueItems(
-            [itemId0],
-            [EMPTY_HASH],
-            [''],
-            fromCreator
-          ),
+          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromCreator),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          collectionContract.rescueItems(
-            [itemId0],
-            [EMPTY_HASH],
-            [''],
-            fromMinter
-          ),
+          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromMinter),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          collectionContract.rescueItems(
-            [itemId0],
-            [EMPTY_HASH],
-            [''],
-            fromManager
-          ),
+          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromManager),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          collectionContract.rescueItems(
-            [itemId0],
-            [EMPTY_HASH],
-            [''],
-            fromHacker
-          ),
+          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromHacker),
           'Ownable: caller is not the owner'
         )
       })
 
       it('reverts when trying to rescue an invalid item', async function () {
-        const itemLength = await collectionContract.itemsCount()
+        const itemLength = await contract.itemsCount()
         await assertRevert(
-          collectionContract.rescueItems(
-            [itemLength],
-            [EMPTY_HASH],
-            [''],
-            fromDeployer
-          ),
+          contract.rescueItems([itemLength], [EMPTY_HASH], [''], fromDeployer),
           'ERC721BaseCollectionV2#rescueItems: ITEM_DOES_NOT_EXIST'
         )
       })
     })
 
     describe('issueToken', function () {
+      let contract
       let newItem
       let newItemId
+
       beforeEach(async () => {
         newItem = [
           RARITIES.mythic.index,
@@ -2095,20 +2051,23 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await collectionContract.addItems([newItem], fromCreator)
-        newItemId = (await collectionContract.itemsCount()).sub(
-          web3.utils.toBN(1)
-        )
+        contract = await createContract(creator, false, creationParams)
+        await contract.addItems([newItem], fromCreator)
+
+        await contract.completeCollection(fromCreator)
+        await contract.approveCollection(fromDeployer)
+
+        newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
       })
 
       it('should issue a token', async function () {
-        let item = await collectionContract.items(newItemId)
+        let item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
-        const currentTotalSupply = await collectionContract.totalSupply()
+        const currentTotalSupply = await contract.totalSupply()
 
-        const { logs } = await collectionContract.issueToken(
+        const { logs } = await contract.issueToken(
           anotherHolder,
           newItemId,
           fromCreator
@@ -2117,7 +2076,7 @@ export function doTest(
         const tokenId = encodeTokenId(newItemId, 1)
 
         // match issuance
-        item = await collectionContract.items(newItemId)
+        item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
@@ -2129,154 +2088,140 @@ export function doTest(
         expect(logs[1].args._issuedId).to.eq.BN(1)
 
         // match total supply
-        const totalSupply = await collectionContract.totalSupply()
+        const totalSupply = await contract.totalSupply()
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
 
         // match owner
-        const owner = await collectionContract.ownerOf(tokenId)
+        const owner = await contract.ownerOf(tokenId)
         expect(owner).to.be.equal(anotherHolder)
 
         // match URI
-        const uri = await collectionContract.tokenURI(tokenId)
+        const uri = await contract.tokenURI(tokenId)
         const uriArr = uri.split('/')
         expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
       })
 
       it('should issue a token and increase item total supply', async function () {
-        let item = await collectionContract.items(newItemId)
+        let item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
-        const currentTotalSupply = await collectionContract.totalSupply()
+        const currentTotalSupply = await contract.totalSupply()
 
-        await collectionContract.issueToken(
-          anotherHolder,
-          newItemId,
-          fromCreator
-        )
+        await contract.issueToken(anotherHolder, newItemId, fromCreator)
 
         // match issuance
-        item = await collectionContract.items(newItemId)
+        item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         // match URI
         let tokenId = encodeTokenId(newItemId, 1)
-        let uri = await collectionContract.tokenURI(tokenId)
+        let uri = await contract.tokenURI(tokenId)
         let uriArr = uri.split('/')
         expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
         await Promise.all([
-          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
-          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
-          collectionContract.issueToken(anotherHolder, newItemId, fromCreator),
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
         ])
 
         // match issuance
-        item = await collectionContract.items(newItemId)
+        item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(4)
 
         // match URI
         tokenId = encodeTokenId(newItemId, 3)
-        uri = await collectionContract.tokenURI(tokenId)
+        uri = await contract.tokenURI(tokenId)
         uriArr = uri.split('/')
         expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(3).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
-        const totalSupply = await collectionContract.totalSupply()
+        const totalSupply = await contract.totalSupply()
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(4)))
       })
 
       it('should issue a token by minter', async function () {
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, newItemId, fromMinter),
+          contract.issueToken(anotherHolder, newItemId, fromMinter),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
-        await collectionContract.setMinters([minter], [true], fromCreator)
-        await collectionContract.issueToken(
-          anotherHolder,
-          newItemId,
-          fromMinter
-        )
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.issueToken(anotherHolder, newItemId, fromMinter)
 
-        await collectionContract.setMinters([minter], [false], fromCreator)
+        await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, newItemId, fromMinter),
+          contract.issueToken(anotherHolder, newItemId, fromMinter),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
-        await collectionContract.setItemsMinters(
+        await contract.setItemsMinters(
           [newItemId],
           [minter],
           [true],
           fromCreator
         )
 
-        await collectionContract.issueToken(
-          anotherHolder,
-          newItemId,
-          fromMinter
-        )
+        await contract.issueToken(anotherHolder, newItemId, fromMinter)
       })
 
       it('reverts when issuing a token by not the creator or minter', async function () {
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, newItemId, fromDeployer),
+          contract.issueToken(anotherHolder, newItemId, fromDeployer),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, newItemId, fromManager),
+          contract.issueToken(anotherHolder, newItemId, fromManager),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, newItemId, fromHacker),
+          contract.issueToken(anotherHolder, newItemId, fromHacker),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
       })
 
       it('reverts when issuing a token to an invalid address', async function () {
         await assertRevert(
-          collectionContract.issueToken(ZERO_ADDRESS, newItemId, fromCreator),
+          contract.issueToken(ZERO_ADDRESS, newItemId, fromCreator),
           'ERC721: mint to the zero address'
         )
       })
 
       it('reverts when trying to issue an invalid item option id', async function () {
-        const length = await collectionContract.itemsCount()
+        const length = await contract.itemsCount()
         await assertRevert(
-          collectionContract.issueToken(holder, length, fromCreator),
+          contract.issueToken(holder, length, fromCreator),
           'ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST'
         )
       })
 
       it('reverts when trying to issue an exhausted item', async function () {
         for (let i = 0; i < RARITIES.mythic.value; i++) {
-          await collectionContract.issueToken(
-            anotherHolder,
-            newItemId,
-            fromCreator
-          )
+          await contract.issueToken(anotherHolder, newItemId, fromCreator)
         }
         await assertRevert(
-          collectionContract.issueToken(holder, newItemId, fromCreator),
+          contract.issueToken(holder, newItemId, fromCreator),
           'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
         )
       })
     })
 
     describe('issueTokens', function () {
+      let contract
       let newItem
       let newItemId
       let anotherNewItem
       let anotherNewItemId
+
       beforeEach(async () => {
         newItem = [
           RARITIES.mythic.index.toString(),
@@ -2296,30 +2241,28 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await collectionContract.addItems(
-          [newItem, anotherNewItem],
-          fromCreator
-        )
-        newItemId = (await collectionContract.itemsCount()).sub(
-          web3.utils.toBN(2)
-        )
-        anotherNewItemId = (await collectionContract.itemsCount()).sub(
-          web3.utils.toBN(1)
-        )
+        contract = await createContract(creator, false, creationParams)
+        await contract.addItems([newItem, anotherNewItem], fromCreator)
+
+        await contract.completeCollection(fromCreator)
+        await contract.approveCollection(fromDeployer)
+
+        newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(2))
+        anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
       })
 
       it('should issue multiple token', async function () {
-        let item = await collectionContract.items(newItemId)
+        let item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
-        item = await collectionContract.items(anotherNewItemId)
+        item = await contract.items(anotherNewItemId)
         expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
-        const currentTotalSupply = await collectionContract.totalSupply()
+        const currentTotalSupply = await contract.totalSupply()
 
-        const { logs } = await collectionContract.issueTokens(
+        const { logs } = await contract.issueTokens(
           [holder, anotherHolder],
           [newItemId, anotherNewItemId],
           fromCreator
@@ -2327,7 +2270,7 @@ export function doTest(
 
         // New Item
         // match issueance
-        item = await collectionContract.items(newItemId)
+        item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
@@ -2341,18 +2284,18 @@ export function doTest(
         expect(logs[1].args._issuedId).to.eq.BN(1)
 
         // match owner
-        let owner = await collectionContract.ownerOf(newItemTokenId)
+        let owner = await contract.ownerOf(newItemTokenId)
         expect(owner).to.be.equal(holder)
 
         // match token id
-        let uri = await collectionContract.tokenURI(newItemTokenId)
+        let uri = await contract.tokenURI(newItemTokenId)
         let uriArr = uri.split('/')
         expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
         // Another new Item
         // match issued
-        item = await collectionContract.items(anotherNewItemId)
+        item = await contract.items(anotherNewItemId)
         expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
@@ -2364,17 +2307,17 @@ export function doTest(
         expect(logs[3].args._issuedId).to.eq.BN(1)
 
         // match owner
-        owner = await collectionContract.ownerOf(anotherNewItemTokenId)
+        owner = await contract.ownerOf(anotherNewItemTokenId)
         expect(owner).to.be.equal(anotherHolder)
 
         // match token id
-        uri = await collectionContract.tokenURI(anotherNewItemTokenId)
+        uri = await contract.tokenURI(anotherNewItemTokenId)
         uriArr = uri.split('/')
         expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
         // Match total supply
-        const totalSupply = await collectionContract.totalSupply()
+        const totalSupply = await contract.totalSupply()
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
       })
 
@@ -2388,64 +2331,48 @@ export function doTest(
           beneficiaries.push(beneficiary)
         }
 
-        await collectionContract.issueTokens(beneficiaries, ids, fromCreator)
+        await contract.issueTokens(beneficiaries, ids, fromCreator)
 
         // match issueance
-        const item = await collectionContract.items(anotherNewItemId)
+        const item = await contract.items(anotherNewItemId)
         expect(item.rarity).to.eq.BN(anotherNewItem[0])
         expect(item.totalSupply).to.eq.BN(itemsInTheSameTx)
 
         // User
-        const balance = await collectionContract.balanceOf(beneficiary)
+        const balance = await contract.balanceOf(beneficiary)
         expect(balance).to.eq.BN(itemsInTheSameTx)
       })
 
       it('should issue multiple tokens by minter', async function () {
         await assertRevert(
-          collectionContract.issueTokens(
-            [anotherHolder],
-            [newItemId],
-            fromMinter
-          ),
+          contract.issueTokens([anotherHolder], [newItemId], fromMinter),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
-        await collectionContract.setMinters([minter], [true], fromCreator)
-        await collectionContract.issueTokens(
-          [anotherHolder],
-          [newItemId],
-          fromMinter
-        )
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.issueTokens([anotherHolder], [newItemId], fromMinter)
 
-        await collectionContract.setMinters([minter], [false], fromCreator)
+        await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
-          collectionContract.issueTokens(
-            [anotherHolder],
-            [newItemId],
-            fromMinter
-          ),
+          contract.issueTokens([anotherHolder], [newItemId], fromMinter),
           'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
-        await collectionContract.setItemsMinters(
+        await contract.setItemsMinters(
           [newItemId],
           [minter],
           [true],
           fromCreator
         )
 
-        await collectionContract.issueTokens(
-          [anotherHolder],
-          [newItemId],
-          fromMinter
-        )
+        await contract.issueTokens([anotherHolder], [newItemId], fromMinter)
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [holder, anotherHolder],
             [newItemId, anotherNewItemId],
             fromDeployer
@@ -2454,7 +2381,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [holder, anotherHolder],
             [newItemId, anotherNewItemId],
             fromManager
@@ -2463,7 +2390,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [holder, anotherHolder],
             [newItemId, anotherNewItemId],
             fromHacker
@@ -2474,16 +2401,12 @@ export function doTest(
 
       it('reverts if trying to issue tokens with invalid argument length', async function () {
         await assertRevert(
-          collectionContract.issueTokens(
-            [user],
-            [newItemId, anotherNewItemId],
-            fromUser
-          ),
+          contract.issueTokens([user], [newItemId, anotherNewItemId], fromUser),
           'ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [user, anotherUser],
             [anotherNewItemId],
             fromUser
@@ -2494,7 +2417,7 @@ export function doTest(
 
       it('reverts when issuing a token to an invalid address', async function () {
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [anotherHolder, ZERO_ADDRESS],
             [newItemId, anotherNewItemId],
             fromCreator
@@ -2504,9 +2427,9 @@ export function doTest(
       })
 
       it('reverts when trying to issue an invalid item id', async function () {
-        const length = await collectionContract.itemsCount()
+        const length = await contract.itemsCount()
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [holder, anotherHolder],
             [length, newItemId],
             fromCreator
@@ -2527,18 +2450,18 @@ export function doTest(
         }
 
         await assertRevert(
-          collectionContract.issueTokens(beneficiaries, ids, fromCreator),
+          contract.issueTokens(beneficiaries, ids, fromCreator),
           'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
         )
 
-        await collectionContract.issueTokens(
+        await contract.issueTokens(
           beneficiaries.slice(1),
           ids.slice(1),
           fromCreator
         )
 
         await assertRevert(
-          collectionContract.issueTokens(
+          contract.issueTokens(
             [holder, anotherHolder],
             [newItemId, anotherNewItemId],
             fromCreator
@@ -2559,15 +2482,19 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        await collectionContract.addItems([newItem], fromCreator)
-        const itemsLength = await collectionContract.itemsCount()
+        const contract = await createContract(creator, false, creationParams)
+
+        await contract.addItems([newItem], fromCreator)
+
+        await contract.completeCollection(fromCreator)
+        await contract.approveCollection(fromDeployer)
+
+        const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
-        await collectionContract.issueToken(holder, itemId, fromCreator)
+        await contract.issueToken(holder, itemId, fromCreator)
 
         // match token id
-        let uri = await collectionContract.tokenURI(
-          encodeTokenId(itemId.toString(), 1)
-        )
+        let uri = await contract.tokenURI(encodeTokenId(itemId.toString(), 1))
         let uriArr = uri.split('/') // [...]/8/1
         expect(itemId.toString()).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect('1').to.be.equal(uri.split('/')[uriArr.length - 1])
@@ -2858,36 +2785,41 @@ export function doTest(
     })
 
     describe('completeCollection', function () {
+      let contract
+      beforeEach(async () => {
+        // Create collection and set up wearables
+        contract = await createContract(creator, false, creationParams)
+      })
+
       it('should complete collection', async function () {
-        let isCompleted = await collectionContract.isCompleted()
+        let isCompleted = await contract.isCompleted()
         expect(isCompleted).to.be.equal(false)
 
-        const { logs } = await collectionContract.completeCollection(
-          fromCreator
-        )
+        const { logs } = await contract.completeCollection(fromCreator)
 
         expect(logs.length).to.equal(1)
         expect(logs[0].event).to.equal('Complete')
 
-        isCompleted = await collectionContract.isCompleted()
+        isCompleted = await contract.isCompleted()
         expect(isCompleted).to.be.equal(true)
       })
 
       it('should issue tokens after complete the collection', async function () {
-        await collectionContract.completeCollection(fromCreator)
+        await contract.completeCollection(fromCreator)
+        await contract.approveCollection(fromDeployer)
 
-        await issueItem(collectionContract, holder, 0, fromCreator)
-        await issueItem(collectionContract, anotherHolder, 0, fromCreator)
-        await issueItem(collectionContract, anotherHolder, 1, fromCreator)
+        await issueItem(contract, holder, 0, fromCreator)
+        await issueItem(contract, anotherHolder, 0, fromCreator)
+        await issueItem(contract, anotherHolder, 1, fromCreator)
       })
 
       it('reverts when trying to add an item after the collection is completed', async function () {
-        let isCompleted = await collectionContract.isCompleted()
+        let isCompleted = await contract.isCompleted()
         expect(isCompleted).to.be.equal(false)
 
-        await collectionContract.completeCollection(fromCreator)
+        await contract.completeCollection(fromCreator)
 
-        isCompleted = await collectionContract.isCompleted()
+        isCompleted = await contract.isCompleted()
         expect(isCompleted).to.be.equal(true)
 
         const newItem = [
@@ -2899,38 +2831,38 @@ export function doTest(
           EMPTY_HASH,
         ]
         await assertRevert(
-          collectionContract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromCreator),
           'ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED'
         )
       })
 
       it('reverts when completing collection twice', async function () {
-        await collectionContract.completeCollection(fromCreator)
+        await contract.completeCollection(fromCreator)
 
         await assertRevert(
-          collectionContract.completeCollection(fromCreator),
+          contract.completeCollection(fromCreator),
           'ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED'
         )
       })
 
       it('reverts when completing collection by other than the creator', async function () {
         await assertRevert(
-          collectionContract.completeCollection(fromDeployer),
+          contract.completeCollection(fromDeployer),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.completeCollection(fromManager),
+          contract.completeCollection(fromManager),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.completeCollection(fromMinter),
+          contract.completeCollection(fromMinter),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.completeCollection(fromHacker),
+          contract.completeCollection(fromHacker),
           'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
