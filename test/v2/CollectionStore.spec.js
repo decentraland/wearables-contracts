@@ -11,13 +11,10 @@ import {
   createDummyFactory,
   createDummyCollection,
   encodeTokenId,
+  ZERO_ADDRESS,
 } from '../helpers/collectionV2'
 
 const Store = artifacts.require('DummyCollectionStore')
-
-async function issueItem(contract, beneficiary, index, from) {
-  await contract.issueToken(beneficiary, index, from)
-}
 
 describe.only('Collection Store', function () {
   const ONE_MILLION = web3.utils.toBN(1000000)
@@ -39,7 +36,15 @@ describe.only('Collection Store', function () {
       0,
       web3.utils.toWei('20'),
       OTHER_BENEFICIARY_ADDRESS,
-      '1:banan_mask:hat:female,male',
+      '1:banana_mask:hat:female,male',
+      EMPTY_HASH,
+    ],
+    [
+      RARITIES.common.index.toString(),
+      0,
+      0,
+      ZERO_ADDRESS,
+      '1:apple_mask:hat:female,male',
       EMPTY_HASH,
     ],
   ]
@@ -144,6 +149,23 @@ describe.only('Collection Store', function () {
       const fee_ = await contract.fee()
       expect(fee_).to.be.eq.BN(FEE)
     })
+
+    it('reverts when deploying with fee >= ONE_MILLION', async function () {
+      await assertRevert(
+        Store.new(manaContract.address, feeOwner, ONE_MILLION, fromStoreOwner),
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+      )
+
+      await assertRevert(
+        Store.new(
+          manaContract.address,
+          feeOwner,
+          ONE_MILLION.add(web3.utils.toBN(1)),
+          fromStoreOwner
+        ),
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+      )
+    })
   })
 
   describe('buy', function () {
@@ -230,6 +252,76 @@ describe.only('Collection Store', function () {
       const uri = await collection1.tokenURI(itemId)
       const uriArr = uri.split('/')
       expect(0).to.eq.BN(uriArr[uriArr.length - 2])
+    })
+
+    it('should buy an item with price 0', async function () {
+      let totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(0)
+
+      let totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(0)
+
+      const buyerBalance = await balanceSnap(manaContract, buyer, 'buyer')
+      const beneficiaryBalance = await balanceSnap(
+        manaContract,
+        BENEFICIARY_ADDRESS,
+        'beneficiary'
+      )
+      const feeOwnerBalance = await balanceSnap(
+        manaContract,
+        feeOwner,
+        'fee owner'
+      )
+      const storeBalance = await balanceSnap(
+        manaContract,
+        storeContract.address,
+        'store'
+      )
+
+      let itemsBalanceOfBuyer = await collection2.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
+
+      const { logs } = await storeContract.buy(
+        [[collection2.address, [2], [0]]],
+        buyer,
+        fromBuyer
+      )
+
+      totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(0)
+
+      totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(1)
+
+      const item2 = await collection2.items(2)
+      expect(item2.totalSupply).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('Issue')
+      expect(logs[0].args._beneficiary).to.be.equal(buyer)
+      expect(logs[0].args._tokenId).to.be.eq.BN(encodeTokenId(2, 1))
+      expect(logs[0].args._itemId).to.be.eq.BN(2)
+      expect(logs[0].args._issuedId).to.be.eq.BN(1)
+
+      expect(logs[1].event).to.be.equal('Bought')
+      expect(logs[1].args._itemsToBuy).to.be.eql([
+        [collection2.address, ['2'], ['0']],
+      ])
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+
+      await buyerBalance.requireConstant()
+      await beneficiaryBalance.requireConstant()
+      await feeOwnerBalance.requireConstant()
+      await storeBalance.requireConstant()
+
+      itemsBalanceOfBuyer = await collection2.balanceOf(buyer)
+      expect(itemsBalanceOfBuyer).to.be.eq.BN(1)
+
+      const itemId = await collection2.tokenOfOwnerByIndex(buyer, 0)
+      const uri = await collection2.tokenURI(itemId)
+      const uriArr = uri.split('/')
+      expect(2).to.eq.BN(uriArr[uriArr.length - 2])
     })
 
     it('should buy more than 1 item from different collections', async function () {
@@ -463,7 +555,7 @@ describe.only('Collection Store', function () {
       )
     })
 
-    xit('reverts when trying to buy an item not part of the collection', async function () {
+    it('reverts when trying to buy an item not part of the collection', async function () {
       const itemsCount = await collection1.itemsCount()
       await assertRevert(
         storeContract.buy(
@@ -476,7 +568,8 @@ describe.only('Collection Store', function () {
           ],
           buyer,
           fromBuyer
-        )
+        ),
+        'invalid opcode'
       )
     })
 
@@ -584,6 +677,245 @@ describe.only('Collection Store', function () {
           fromBuyer
         ),
         'CollectionStore#buy: LENGTH_MISMATCH'
+      )
+
+      await assertRevert(
+        storeContract.buy(
+          [
+            [
+              collection1.address,
+              [0], // id
+              [ITEMS[0][2], ITEMS[0][2]], // price
+            ],
+          ],
+          buyer,
+          fromBuyer
+        ),
+        'CollectionStore#buy: LENGTH_MISMATCH'
+      )
+    })
+
+    it('reverts when trying to buy an item from an invalid collection', async function () {
+      await assertRevert(
+        storeContract.buy(
+          [
+            [
+              storeContract.address,
+              [0], // id
+              [ITEMS[0][2]], // price
+            ],
+          ],
+          buyer,
+          fromBuyer
+        )
+      )
+    })
+  })
+
+  describe('setFee', function () {
+    it('should set fee', async function () {
+      const newFee = web3.utils.toBN(10)
+      let currentFee = await storeContract.fee()
+      expect(currentFee).to.be.eq.BN(FEE)
+
+      let res = await storeContract.setFee(newFee, fromStoreOwner)
+      let logs = res.logs
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('SetFee')
+      expect(logs[0].args._oldFee).to.be.eq.BN(FEE)
+      expect(logs[0].args._newFee).to.be.eq.BN(newFee)
+
+      currentFee = await storeContract.fee()
+      expect(currentFee).to.be.eq.BN(newFee)
+
+      const price = web3.utils.toBN(ITEMS[0][2])
+      res = await storeContract.buy(
+        [[collection1.address, [0], [price]]],
+        buyer,
+        fromBuyer
+      )
+      logs = res.logs
+
+      const item0 = await collection1.items(0)
+      expect(item0.totalSupply).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(4)
+
+      const feeCharged = price.mul(newFee).div(ONE_MILLION)
+
+      expect(logs[0].event).to.be.equal('Transfer')
+      expect(logs[0].args._from).to.be.equal(buyer)
+      expect(logs[0].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[0].args._value).to.be.eq.BN(price.sub(feeCharged))
+
+      expect(logs[1].event).to.be.equal('Issue')
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
+      expect(logs[1].args._itemId).to.be.eq.BN(0)
+      expect(logs[1].args._issuedId).to.be.eq.BN(1)
+
+      expect(logs[2].event).to.be.equal('Transfer')
+      expect(logs[2].args._from).to.be.equal(buyer)
+      expect(logs[2].args._to).to.be.equal(feeOwner)
+      expect(logs[2].args._value).to.be.eq.BN(feeCharged)
+
+      expect(logs[3].event).to.be.equal('Bought')
+      expect(logs[3].args._itemsToBuy).to.be.eql([
+        [collection1.address, ['0'], [price.toString()]],
+      ])
+      expect(logs[3].args._beneficiary).to.be.equal(buyer)
+    })
+
+    it('should set fee = 0', async function () {
+      let currentFee = await storeContract.fee()
+      expect(currentFee).to.be.eq.BN(FEE)
+
+      await storeContract.setFee(0, fromStoreOwner)
+
+      currentFee = await storeContract.fee()
+      expect(currentFee).to.be.eq.BN(0)
+
+      const price = web3.utils.toBN(ITEMS[0][2])
+      const { logs } = await storeContract.buy(
+        [[collection1.address, [0], [price]]],
+        buyer,
+        fromBuyer
+      )
+
+      const item0 = await collection1.items(0)
+      expect(item0.totalSupply).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(3)
+
+      expect(logs[0].event).to.be.equal('Transfer')
+      expect(logs[0].args._from).to.be.equal(buyer)
+      expect(logs[0].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[0].args._value).to.be.eq.BN(price)
+
+      expect(logs[1].event).to.be.equal('Issue')
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
+      expect(logs[1].args._itemId).to.be.eq.BN(0)
+      expect(logs[1].args._issuedId).to.be.eq.BN(1)
+
+      expect(logs[2].event).to.be.equal('Bought')
+      expect(logs[2].args._itemsToBuy).to.be.eql([
+        [collection1.address, ['0'], [price.toString()]],
+      ])
+      expect(logs[2].args._beneficiary).to.be.equal(buyer)
+    })
+
+    it('reverts when set the fee >= ONE_MILLION', async function () {
+      await assertRevert(
+        storeContract.setFee(ONE_MILLION, fromStoreOwner),
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+      )
+
+      await assertRevert(
+        storeContract.setFee(
+          ONE_MILLION.add(web3.utils.toBN(1)),
+          fromStoreOwner
+        ),
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+      )
+    })
+
+    it('reverts when tryng to set the same fee', async function () {
+      await assertRevert(
+        storeContract.setFee(FEE, fromStoreOwner),
+        'CollectionStore#setFee: SAME_FEE'
+      )
+    })
+
+    it('reverts when trying to set the fee by hacker', async function () {
+      await assertRevert(
+        storeContract.setFee(10, fromHacker),
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
+  describe('setFeeOwner', function () {
+    it('should set fee owner', async function () {
+      let currentFeeOwner = await storeContract.feeOwner()
+      expect(currentFeeOwner).to.be.equal(feeOwner)
+
+      let res = await storeContract.setFeeOwner(user, fromStoreOwner)
+      let logs = res.logs
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('SetFeeOwner')
+      expect(logs[0].args._oldFeeOwner).to.be.equal(feeOwner)
+      expect(logs[0].args._newFeeOwner).to.be.equal(user)
+
+      currentFeeOwner = await storeContract.feeOwner()
+      expect(currentFeeOwner).to.be.equal(user)
+
+      const price = web3.utils.toBN(ITEMS[0][2])
+      res = await storeContract.buy(
+        [[collection1.address, [0], [price]]],
+        buyer,
+        fromBuyer
+      )
+      logs = res.logs
+
+      const item0 = await collection1.items(0)
+      expect(item0.totalSupply).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(4)
+
+      const feeCharged = price.mul(FEE).div(ONE_MILLION)
+
+      expect(logs[0].event).to.be.equal('Transfer')
+      expect(logs[0].args._from).to.be.equal(buyer)
+      expect(logs[0].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[0].args._value).to.be.eq.BN(price.sub(feeCharged))
+
+      expect(logs[1].event).to.be.equal('Issue')
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
+      expect(logs[1].args._itemId).to.be.eq.BN(0)
+      expect(logs[1].args._issuedId).to.be.eq.BN(1)
+
+      expect(logs[2].event).to.be.equal('Transfer')
+      expect(logs[2].args._from).to.be.equal(buyer)
+      expect(logs[2].args._to).to.be.equal(user)
+      expect(logs[2].args._value).to.be.eq.BN(feeCharged)
+
+      expect(logs[3].event).to.be.equal('Bought')
+      expect(logs[3].args._itemsToBuy).to.be.eql([
+        [collection1.address, ['0'], [price.toString()]],
+      ])
+      expect(logs[3].args._beneficiary).to.be.equal(buyer)
+    })
+
+    it('reverts when set the ZERO_ADDRESS as the fee owner', async function () {
+      await assertRevert(
+        storeContract.setFeeOwner(ZERO_ADDRESS, fromStoreOwner),
+        'CollectionStore#setFeeOwner: INVALID_ADDRESS'
+      )
+    })
+
+    it('reverts when tryng to set the same fee owner', async function () {
+      await assertRevert(
+        storeContract.setFeeOwner(feeOwner, fromStoreOwner),
+        'CollectionStore#setFeeOwner: SAME_FEE_OWNER'
+      )
+    })
+
+    it('reverts when trying to set the fee owner by hacker', async function () {
+      await assertRevert(
+        storeContract.setFeeOwner(user, fromHacker),
+        'Ownable: caller is not the owner'
       )
     })
   })

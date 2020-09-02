@@ -23,9 +23,8 @@ contract CollectionStore is Ownable {
     address public feeOwner;
 
     event Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
-    event Bought(address _collection, uint256 _itemId, uint256 _price, address _beneficiary);
-    event FeeChanged(uint256 _oldFee, uint256 _newFee);
-    event FeeOwnerChanged(address _oldFeePwner, address _newFeeOwner);
+    event SetFee(uint256 _oldFee, uint256 _newFee);
+    event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
 
     /**
     * @notice Constructor of the contract.
@@ -36,7 +35,7 @@ contract CollectionStore is Ownable {
     constructor(IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
         acceptedToken = _acceptedToken;
         feeOwner = _feeOwner;
-        fee = _fee;
+        setFee(_fee);
     }
 
     /**
@@ -105,14 +104,14 @@ contract CollectionStore is Ownable {
     // Owner functions
 
     /**
-     * @notice Sets the fee of the contract that's
-     *  charged to the seller on a successful sale
+     * @notice Sets the fee of the contract that's charged to the seller on a successful sale
      * @param _newFee - Fee from 0 to 999,999
      */
-    function setFeePerMillion(uint256 _newFee) external onlyOwner {
-        require(_newFee < 1000000, "The fee should be between 0 and 999,999");
+    function setFee(uint256 _newFee) public onlyOwner {
+        require(_newFee < 1000000, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000");
+        require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
 
-        emit FeeChanged(fee, _newFee);
+        emit SetFee(fee, _newFee);
         fee = _newFee;
     }
 
@@ -120,9 +119,11 @@ contract CollectionStore is Ownable {
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function changeFeeOwner(address _newFeeOwner) public virtual onlyOwner {
-        require(_newFeeOwner != address(0), "#changeFeeOwner: INVALID_ADDRESS");
-        emit FeeOwnerChanged(feeOwner, _newFeeOwner);
+    function setFeeOwner(address _newFeeOwner) external onlyOwner {
+        require(_newFeeOwner != address(0), "CollectionStore#setFeeOwner: INVALID_ADDRESS");
+        require(_newFeeOwner != feeOwner, "CollectionStore#setFeeOwner: SAME_FEE_OWNER");
+
+        emit SetFeeOwner(feeOwner, _newFeeOwner);
         feeOwner = _newFeeOwner;
     }
 }
