@@ -96,7 +96,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
         require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
         // Ownable init
-        //@TODO: check if ownable needs to inherit from Context and this event should be emitted
         _initOwnable();
         // ERC721 init
         _initERC721(_name, _symbol);

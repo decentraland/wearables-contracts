@@ -145,7 +145,6 @@ library Address {
 
 // File: @openzeppelin/contracts/GSN/Context.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -172,7 +171,6 @@ abstract contract Context {
 
 // File: @openzeppelin/contracts/access/Ownable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -242,7 +240,6 @@ contract Ownable is Context {
 
 // File: contracts/commons/MinimalProxyFactory.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 
@@ -322,7 +319,6 @@ contract MinimalProxyFactory is Ownable {
 
 // File: contracts/factories/v2/ERC721CollectionFactoryV2.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 

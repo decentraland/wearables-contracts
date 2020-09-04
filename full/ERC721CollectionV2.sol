@@ -28,7 +28,6 @@ abstract contract Context {
 
 // File: contracts/commons/OwnableInitializable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -101,7 +100,6 @@ contract OwnableInitializable is Context {
 
 // File: @openzeppelin/contracts/introspection/IERC165.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -128,7 +126,6 @@ interface IERC165 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.2;
 
@@ -259,7 +256,6 @@ interface IERC721 is IERC165 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.2;
 
@@ -288,7 +284,6 @@ interface IERC721Metadata is IERC721 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.2;
 
@@ -319,7 +314,6 @@ interface IERC721Enumerable is IERC721 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -344,7 +338,6 @@ interface IERC721Receiver {
 
 // File: @openzeppelin/contracts/introspection/ERC165.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -400,7 +393,6 @@ contract ERC165 is IERC165 {
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -562,7 +554,6 @@ library SafeMath {
 
 // File: @openzeppelin/contracts/utils/Address.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.2;
 
@@ -706,7 +697,6 @@ library Address {
 
 // File: @openzeppelin/contracts/utils/EnumerableSet.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -952,7 +942,6 @@ library EnumerableSet {
 
 // File: @openzeppelin/contracts/utils/EnumerableMap.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -1192,7 +1181,6 @@ library EnumerableMap {
 
 // File: @openzeppelin/contracts/utils/Strings.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -1229,7 +1217,6 @@ library Strings {
 
 // File: contracts/tokens/ERC721Initializable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -1707,7 +1694,6 @@ contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC7
 
 // File: contracts/libs/String.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 
@@ -1786,7 +1772,6 @@ library String {
 
 // File: contracts/collections/v2/ERC721BaseCollectionV2.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
@@ -1883,7 +1868,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
         require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
         // Ownable init
-        //@TODO: check if ownable needs to inherit from Context and this event should be emitted
         _initOwnable();
         // ERC721 init
         _initERC721(_name, _symbol);
@@ -2501,7 +2485,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
 // File: contracts/collections/v2/ERC721CollectionV2.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
