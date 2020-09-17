@@ -1952,6 +1952,15 @@ export function doTest(
           'ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA'
         )
       })
+
+      it('reverts when trying to edit when the collection is not editable', async function () {
+        await contract.setEditable(false, fromDeployer)
+
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromCreator),
+          'ERC721BaseCollectionV2#isCollectionEditable: NOT_EDITABLE'
+        )
+      })
     })
 
     describe('rescueItems', function () {

@@ -130,6 +130,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         return globalManagers[msg.sender] || itemManagers[_itemId][msg.sender];
     }
 
+    modifier isCollectionEditable() {
+        require(isEditable, "ERC721BaseCollectionV2#isCollectionEditable: NOT_EDITABLE");
+        _;
+    }
 
     modifier whenNotInitialized() {
         require(!isInitialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
@@ -344,7 +348,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function editItemsMetadata(
         uint256[] calldata _itemIds,
         string[] calldata _metadatas
-    ) external virtual {
+    ) isCollectionEditable external virtual {
         // Check lengths
         require(
             _itemIds.length == _metadatas.length,
