@@ -1303,7 +1303,7 @@ export function doTest(
       })
     })
 
-    describe('editItems', function () {
+    describe('editItemsSalesData', function () {
       const itemPrice0 = web3.utils.toWei('10')
       const itemPrice1 = web3.utils.toWei('100')
 
@@ -1345,7 +1345,7 @@ export function doTest(
         itemId1 = itemLength.sub(web3.utils.toBN(1))
       })
 
-      it('should edit an item', async function () {
+      it('should edit an item sales data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
@@ -1358,7 +1358,7 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
-        const { logs } = await contract.editItems(
+        const { logs } = await contract.editItemsSalesData(
           [itemId0],
           [newItemPrice0],
           [newItemBeneficiary0],
@@ -1366,7 +1366,7 @@ export function doTest(
         )
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItem')
+        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
@@ -1389,7 +1389,7 @@ export function doTest(
         ])
       })
 
-      it('should edit items', async function () {
+      it('should edit items sales data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
@@ -1415,7 +1415,7 @@ export function doTest(
         const newItemPrice1 = web3.utils.toWei('1')
         const newItemBeneficiary1 = anotherHolder
 
-        const { logs } = await contract.editItems(
+        const { logs } = await contract.editItemsSalesData(
           [itemId0, itemId1],
           [newItemPrice0, newItemPrice1],
           [newItemBeneficiary0, newItemBeneficiary1],
@@ -1423,12 +1423,12 @@ export function doTest(
         )
 
         expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('UpdateItem')
+        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
 
-        expect(logs[1].event).to.be.equal('UpdateItem')
+        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
         expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
         expect(logs[1].args._price).to.be.eq.BN(newItemPrice1)
         expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary1)
@@ -1479,7 +1479,7 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql(item0)
 
-        const { logs } = await contract.editItems(
+        const { logs } = await contract.editItemsSalesData(
           [itemId0],
           [0],
           [ZERO_ADDRESS],
@@ -1487,7 +1487,7 @@ export function doTest(
         )
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItem')
+        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
         expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
@@ -1523,7 +1523,7 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1')
         const newItemBeneficiary0 = anotherHolder
-        const { logs } = await contract.editItems(
+        const { logs } = await contract.editItemsSalesData(
           [itemId0],
           [newItemPrice0],
           [newItemBeneficiary0],
@@ -1531,7 +1531,7 @@ export function doTest(
         )
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItem')
+        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
@@ -1554,20 +1554,20 @@ export function doTest(
         ])
       })
 
-      it('should allow managers to edit items', async function () {
+      it('should allow managers to edit items sales data', async function () {
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
             fromManager
           ),
-          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.editItems(
+        await contract.editItemsSalesData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
@@ -1576,13 +1576,13 @@ export function doTest(
 
         await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
             fromManager
           ),
-          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -1593,7 +1593,7 @@ export function doTest(
           fromCreator
         )
 
-        await contract.editItems(
+        await contract.editItemsSalesData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
@@ -1601,8 +1601,8 @@ export function doTest(
         )
       })
 
-      it('should allow the creator to edit items', async function () {
-        await contract.editItems(
+      it('should allow the creator to edit items sales data', async function () {
+        await contract.editItemsSalesData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
@@ -1612,100 +1612,344 @@ export function doTest(
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
+          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0, itemId1],
             [itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
+          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0, itemId1],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH'
+          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
         )
       })
 
-      it('reverts when trying to edit by not the creator or manager', async function () {
+      it('reverts when trying to edit sales data by not the creator or manager', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setItemsMinters([0], [minter], [true], fromCreator)
 
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
             fromMinter
           ),
-          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
             fromHacker
           ),
-          'ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
       })
 
-      it('reverts when trying to edit an invalid item', async function () {
+      it('reverts when trying to edit an invalid item sales data', async function () {
         const itemLength = await contract.itemsCount()
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemLength],
             [itemPrice0],
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: ITEM_DOES_NOT_EXIST'
+          'ERC721BaseCollectionV2#editItemsSalesData: ITEM_DOES_NOT_EXIST'
         )
       })
 
       it('reverts when trying to edit an item with price 0 and without beneficiary', async function () {
         await assertRevert(
-          contract.editItems(
+          contract.editItemsSalesData(
             [itemId0],
             [itemPrice0],
             [ZERO_ADDRESS],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItems: INVALID_PRICE_AND_BENEFICIARY'
+          'ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
       it('reverts when trying to edit an item without price but beneficiary', async function () {
         await assertRevert(
-          contract.editItems([itemId0], [0], [itemBeneficiary0], fromCreator),
-          'ERC721BaseCollectionV2#editItems: INVALID_PRICE_AND_BENEFICIARY'
+          contract.editItemsSalesData(
+            [itemId0],
+            [0],
+            [itemBeneficiary0],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+        )
+      })
+    })
+
+    describe('editItemsMetadata', function () {
+      const metadata0 = 'metadata:0'
+      const metadata1 = 'metadata:1'
+
+      let contract
+      let itemId0
+      let item0
+      let itemId1
+      let item1
+
+      this.beforeEach(async () => {
+        item0 = [
+          RARITIES.common.index.toString(),
+          '0',
+          web3.utils.toBN(10).toString(),
+          beneficiary,
+          metadata0,
+          EMPTY_HASH,
+        ]
+
+        item1 = [
+          RARITIES.common.index.toString(),
+          '0',
+          web3.utils.toBN(10).toString(),
+          beneficiary,
+          metadata1,
+          EMPTY_HASH,
+        ]
+
+        contract = await createContract(creator, false, creationParams)
+        await contract.addItems([item0, item1], fromCreator)
+
+        const itemLength = await contract.itemsCount()
+        itemId0 = itemLength.sub(web3.utils.toBN(2))
+        itemId1 = itemLength.sub(web3.utils.toBN(1))
+      })
+
+      it('should edit an item metadata', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item0)
+
+        const newMetadata0 = 'new:metadata:0'
+        const { logs } = await contract.editItemsMetadata(
+          [itemId0],
+          [newMetadata0],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          item0[1],
+          item0[2],
+          item0[3],
+          newMetadata0,
+          item0[5],
+        ])
+      })
+
+      it('should edit items metadata', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item0)
+
+        item = await contract.items(itemId1)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item1)
+
+        const newMetadata0 = 'new:metadata:0'
+        const newMetadata1 = 'new:metadata:1'
+
+        const { logs } = await contract.editItemsMetadata(
+          [itemId0, itemId1],
+          [newMetadata0, newMetadata1],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
+
+        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
+        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata1)
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          item0[1],
+          item0[2],
+          item0[3],
+          newMetadata0,
+          item0[5],
+        ])
+
+        item = await contract.items(itemId1)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item1[0],
+          item1[1],
+          item1[2],
+          item1[3],
+          newMetadata1,
+          item1[5],
+        ])
+      })
+
+      it('should allow managers to edit items metadata', async function () {
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
+          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        // Set global Manager
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
+
+        await contract.setManagers([manager], [false], fromCreator)
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
+          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        // Set item Manager
+        await contract.setItemsManagers(
+          [itemId0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
+      })
+
+      it('should allow the creator to edit items', async function () {
+        await contract.editItemsMetadata([itemId0], [metadata0], fromCreator)
+      })
+
+      it('reverts when passing different length parameters', async function () {
+        await assertRevert(
+          contract.editItemsMetadata(
+            [itemId0],
+            [metadata0, metadata1],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH'
+        )
+
+        await assertRevert(
+          contract.editItemsMetadata(
+            [itemId0, itemId1],
+            [metadata0],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH'
+        )
+      })
+
+      it('reverts when trying to edit metadata by not the creator or manager', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
+          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromMinter),
+          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [metadata0], fromHacker),
+          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+      })
+
+      it('reverts when trying to edit an invalid item metadata', async function () {
+        const itemLength = await contract.itemsCount()
+        await assertRevert(
+          contract.editItemsMetadata([itemLength], [metadata0], fromCreator),
+          'ERC721BaseCollectionV2#editItemsMetadata: ITEM_DOES_NOT_EXIST'
+        )
+      })
+
+      it('reverts when trying to edit an item with empty metadata', async function () {
+        await assertRevert(
+          contract.editItemsMetadata([itemId0], [''], fromCreator),
+          'ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA'
         )
       })
     })

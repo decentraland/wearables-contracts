@@ -1835,7 +1835,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     event AddItem(uint256 indexed _itemId, Item _item);
     event RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata);
     event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId);
-    event UpdateItem(uint256 indexed _itemId, uint256 _price, address _beneficiary);
+    event UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
+    event UpdateItemMetadata(uint256 indexed _itemId, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
     event Approve();
     event SetEditable(bool _previousValue, bool _newValue);
@@ -2075,7 +2076,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _prices - new prices
      * @param _beneficiaries - new beneficiaries
      */
-    function editItems(
+    function editItemsSalesData(
         uint256[] calldata _itemIds,
         uint256[] calldata _prices,
         address[] calldata _beneficiaries
@@ -2083,7 +2084,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "ERC721BaseCollectionV2#editItems: LENGTH_MISMATCH"
+            "ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -2092,18 +2093,49 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
 
-            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItems: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "ERC721BaseCollectionV2#editItems: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "ERC721BaseCollectionV2#editItems: INVALID_PRICE_AND_BENEFICIARY"
+                "ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
             );
 
             Item storage item = items[itemId];
             item.price = price;
             item.beneficiary = beneficiary;
 
-            emit UpdateItem(itemId, price, beneficiary);
+            emit UpdateItemSalesData(itemId, price, beneficiary);
+        }
+    }
+
+    /**
+     * @notice Edit the metadata of multiple items
+     * @param _itemIds - items ids to edit
+     * @param _metadatas - new metadatas
+     */
+    function editItemsMetadata(
+        uint256[] calldata _itemIds,
+        string[] calldata _metadatas
+    ) external virtual {
+        // Check lengths
+        require(
+            _itemIds.length == _metadatas.length,
+            "ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH"
+        );
+
+        // Check item id
+        for (uint256 i = 0; i < _itemIds.length; i++) {
+            uint256 itemId = _itemIds[i];
+            string memory metadata = _metadatas[i];
+
+            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
+            require(bytes(metadata).length > 0, "ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA");
+
+            Item storage item = items[itemId];
+            item.metadata = metadata;
+
+            emit UpdateItemMetadata(itemId, metadata);
         }
     }
 

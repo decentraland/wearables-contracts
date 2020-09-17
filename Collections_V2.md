@@ -295,12 +295,20 @@ Issue(
 );
 ```
 
-**UpdateItem**
+**UpdateItemSalesData**
 
 Emitted when the price and beneficiary of an item is updated.
 
 ```solidity
-UpdateItem(uint256 indexed _itemId, uint256 _price, address _beneficiary);
+UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
+```
+
+**UpdateItemMetadata**
+
+Emitted when the metadata an item is updated.
+
+```solidity
+UpdateItemMetadata(uint256 indexed _itemId, string calldata _metadatas);
 ```
 
 **CreatorshipTransferred**
@@ -432,15 +440,26 @@ Mints token of multiple item ids.
  function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external
 ```
 
-_**editItems**_
+_**editItemsSalesData**_
 
 Edit the price and beneficiary of multiple items.
 
 ```solidity
-function editItems(
+function editItemsSalesData(
   uint256[] calldata _itemIds,
   uint256[] calldata _prices,
   address[] calldata _beneficiaries
+) external
+```
+
+_**editItemsMetadata**_
+
+Edit the metadata of multiple items.
+
+```solidity
+function editItemsMetadata(
+  uint256[] calldata _itemIds,
+  string[] calldata _metadatas
 ) external
 ```
 
