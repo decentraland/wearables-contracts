@@ -7,6 +7,8 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const BASE_URI =
   'https://api-wearables.decentraland.org/v1/standards/erc721-metadata/collections/'
 
+export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
+
 export const CONTRACT_NAME = 'DummyCollection'
 export const CONTRACT_SYMBOL = 'SymbolCollection'
 export const RARITIES = {
@@ -107,9 +109,6 @@ export async function createDummyCollection(factory, options) {
   const contract = logs[0].args._address
   const collection = await ERC721Collection.at(contract)
 
-  if (options.shouldApprove) {
-    await collection.approveCollection()
-  }
   return collection
 }
 

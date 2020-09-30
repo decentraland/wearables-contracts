@@ -19,6 +19,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
+    /// @dev time for the collection to be auto approved
+    uint256 constant public GRACE_PERIOD = 60 * 60 * 24 * 7; // 7 days
+
     enum RARITY {
         common,
         uncommon,
@@ -48,10 +51,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     Item[] public items;
 
     // Status
+    uint256 public createdAt;
     bool public isInitialized;
-    bool public isApproved;
     bool public isCompleted;
     bool public isEditable;
+    bool public isApproved;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
 
@@ -66,7 +70,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     event UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
     event UpdateItemMetadata(uint256 indexed _itemId, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
-    event Approve();
+    event SetApproved(bool _previousValue, bool _newValue);
     event SetEditable(bool _previousValue, bool _newValue);
     event Complete();
 
@@ -106,12 +110,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         creator = _creator;
         // Items init
         _initializeItems(_items);
-        // Editable
-        isEditable = true;
 
         if (_shouldComplete) {
             _completeCollection();
         }
+
+        isEditable = true;
+        isApproved = true;
+        createdAt = now;
     }
 
     /*
@@ -137,11 +143,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     modifier whenNotInitialized() {
         require(!isInitialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
-        _;
-    }
-
-    modifier whenIsApproved() {
-        require(isApproved, "ERC721BaseCollectionV2#whenIsApproved: NOT_APPROVED_YET");
         _;
     }
 
@@ -421,11 +422,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     /**
      * @notice Issue a new token of the specified item.
-     * @notice that will throw if the item has reached its maximum or is invalid
+     * @dev that will throw if the item has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
      */
-    function issueToken(address _beneficiary,  uint256 _itemId) external virtual whenIsApproved() {
+    function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
+        require(isMintAllowed(), "ERC721BaseCollectionV2#issueToken: MINT_NOT_ALLOWED");
+
         _issueToken(_beneficiary, _itemId);
     }
 
@@ -435,7 +438,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _beneficiaries - owner of the tokens
      * @param _itemIds - item ids
      */
-    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual whenIsApproved() {
+    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
+        require(isMintAllowed(), "ERC721BaseCollectionV2#issueTokens: MINT_NOT_ALLOWED");
         require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
@@ -573,6 +577,18 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     */
 
     /**
+     * @notice Get whether minting is allowed
+     * @return boolean whether minting is allowed or not
+     */
+    function isMintAllowed() public view returns (bool) {
+        require(createdAt <= now - GRACE_PERIOD, "ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD");
+        require(isCompleted, "ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED");
+        require(isApproved, "ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED");
+
+        return true;
+    }
+
+    /**
      * @notice Complete the collection.
      * @dev Disable forever the possibility of adding new items in the collection.
      * The issuance is still allowed.
@@ -595,14 +611,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     /**
      * @notice Approve a collection
-     * @notice Once the collection is approved, items can be minted and transferred
      */
-    function approveCollection() external virtual onlyOwner {
-        require(isCompleted, "ERC721BaseCollectionV2#approveCollection: NOT_COMPLETED");
-        require(!isApproved, "ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED");
+    function setApproved(bool _value) external virtual onlyOwner {
+        require(isApproved != _value, "ERC721BaseCollectionV2#setApproved: VALUE_IS_THE_SAME");
 
-        isApproved = true;
-        emit Approve();
+        emit SetApproved(isApproved, _value);
+
+        isApproved = _value;
     }
 
     /**

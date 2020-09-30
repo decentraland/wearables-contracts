@@ -1,9 +1,11 @@
+import { increaseTime } from '../helpers/increase'
 import { doTest } from '../helpers/baseCollectionV2'
 import {
   CONTRACT_NAME,
   CONTRACT_SYMBOL,
   ITEMS,
   BASE_URI,
+  GRACE_PERIOD,
   encodeTokenId,
 } from '../helpers/collectionV2'
 
@@ -28,7 +30,7 @@ describe('Collection V2', function () {
 
   doTest(
     ERC721CollectionV2,
-    async (creator, shouldComplete, creationParams) => {
+    async (creator, shouldComplete, shouldPassGracePeriod, creationParams) => {
       const collectionContract = await ERC721CollectionV2.new()
       await collectionContract.initialize(
         CONTRACT_NAME,
@@ -39,6 +41,10 @@ describe('Collection V2', function () {
         ITEMS,
         creationParams
       )
+
+      if (shouldPassGracePeriod) {
+        await increaseTime(GRACE_PERIOD)
+      }
       return collectionContract
     },
     CONTRACT_NAME,

@@ -356,7 +356,7 @@ describe('Factory V2', function () {
       expect(name_).to.be.equal(name)
       expect(symbol_).to.be.equal(symbol)
       expect(isInitialized_).to.be.equal(true)
-      expect(isApproved_).to.be.equal(false)
+      expect(isApproved_).to.be.equal(true)
       expect(isCompleted_).to.be.equal(shouldComplete)
       expect(isEditable_).to.be.equal(true)
 

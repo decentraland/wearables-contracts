@@ -1,9 +1,11 @@
 import assertRevert from './assertRevert'
+import { increaseTime } from './increase'
 import {
   EMPTY_HASH,
   ZERO_ADDRESS,
   BASE_URI,
   RARITIES,
+  GRACE_PERIOD,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
@@ -83,10 +85,12 @@ export function doTest(
       }
 
       // Create collection and set up wearables
-      collectionContract = await createContract(creator, true, creationParams)
-
-      // Approve the collection to mint items
-      await collectionContract.approveCollection(fromDeployer)
+      collectionContract = await createContract(
+        creator,
+        true,
+        true,
+        creationParams
+      )
 
       // Issue some tokens
       await issueItem(collectionContract, holder, 0, fromCreator)
@@ -129,7 +133,7 @@ export function doTest(
         expect(name_).to.be.equal(contractName)
         expect(symbol_).to.be.equal(contractSymbol)
         expect(isInitialized_).to.be.equal(true)
-        expect(isApproved_).to.be.equal(false)
+        expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
 
@@ -186,7 +190,7 @@ export function doTest(
         expect(name_).to.be.equal(contractName)
         expect(symbol_).to.be.equal(contractSymbol)
         expect(isInitialized_).to.be.equal(true)
-        expect(isApproved_).to.be.equal(false)
+        expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
 
@@ -238,7 +242,7 @@ export function doTest(
       })
     })
 
-    describe('approveCollection', function () {
+    describe('setApproved', function () {
       let contract
       beforeEach(async () => {
         contract = await Contract.new()
@@ -252,14 +256,22 @@ export function doTest(
           creationParams
         )
       })
-      it('should approve a collection', async function () {
-        let isApproved = await contract.isApproved()
-        expect(isApproved).to.be.equal(false)
 
-        const { logs } = await contract.approveCollection(fromDeployer)
+      it('should set isApproved', async function () {
+        let isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(true)
+
+        const { logs } = await contract.setApproved(false, fromDeployer)
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('Approve')
+        expect(logs[0].event).to.be.equal('SetApproved')
+        expect(logs[0].args._previousValue).to.be.equal(true)
+        expect(logs[0].args._newValue).to.be.equal(false)
+
+        isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(false)
+
+        await contract.setApproved(true, fromDeployer)
 
         isApproved = await contract.isApproved()
         expect(isApproved).to.be.equal(true)
@@ -272,50 +284,30 @@ export function doTest(
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
-          contract.approveCollection(fromCreator),
+          contract.setApproved(true, fromCreator),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.approveCollection(fromMinter),
+          contract.setApproved(true, fromMinter),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.approveCollection(fromManager),
+          contract.setApproved(true, fromManager),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.approveCollection(fromHacker),
+          contract.setApproved(true, fromHacker),
           'Ownable: caller is not the owner'
         )
       })
 
-      it('reverts when trying to approve a not completed collection', async function () {
-        const notCompletedCollection = await Contract.new()
-        await notCompletedCollection.initialize(
-          contractName,
-          contractSymbol,
-          creator,
-          false,
-          BASE_URI,
-          items,
-          creationParams
-        )
-
+      it('reverts when trying to approve with the same value', async function () {
         await assertRevert(
-          notCompletedCollection.approveCollection(fromDeployer),
-          'ERC721BaseCollectionV2#approveCollection: NOT_COMPLETED'
-        )
-      })
-
-      it('reverts when trying to approve the collection more than once', async function () {
-        await contract.approveCollection(fromDeployer)
-
-        await assertRevert(
-          contract.approveCollection(fromDeployer),
-          'ERC721BaseCollectionV2#approveCollection: ALREADY_APPROVED'
+          contract.setApproved(true, fromDeployer),
+          'ERC721BaseCollectionV2#setApproved: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -1015,7 +1007,7 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
       })
 
       it('should add an item', async function () {
@@ -1337,7 +1329,7 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -1744,7 +1736,7 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -1989,7 +1981,7 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -2304,11 +2296,10 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await contract.approveCollection(fromDeployer)
 
         newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
       })
@@ -2466,6 +2457,65 @@ export function doTest(
           'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
         )
       })
+
+      it('reverts when trying to issue a token when the the collection is not approved', async function () {
+        await contract.setApproved(false, fromDeployer)
+
+        await assertRevert(
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+        )
+      })
+
+      it('reverts when trying to issue a token when the the collection is not completed', async function () {
+        const newItem = [
+          RARITIES.mythic.index,
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        const contract = await createContract(
+          creator,
+          false,
+          true,
+          creationParams
+        )
+        await contract.addItems([newItem], fromCreator)
+
+        await assertRevert(
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED'
+        )
+      })
+
+      it('reverts when trying to issue a token when the grace period has not ended', async function () {
+        const newItem = [
+          RARITIES.mythic.index,
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        const contract = await createContract(
+          creator,
+          false,
+          false,
+          creationParams
+        )
+        await contract.addItems([newItem], fromCreator)
+
+        await contract.completeCollection(fromCreator)
+
+        await assertRevert(
+          contract.issueToken(anotherHolder, newItemId, fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD'
+        )
+      })
     })
 
     describe('issueTokens', function () {
@@ -2494,11 +2544,11 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
         await contract.addItems([newItem, anotherNewItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await contract.approveCollection(fromDeployer)
+        await increaseTime(GRACE_PERIOD)
 
         newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(2))
         anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
@@ -2722,6 +2772,73 @@ export function doTest(
           'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
         )
       })
+
+      it('reverts when trying to issue a token when the the collection is not approved', async function () {
+        await contract.setApproved(false, fromDeployer)
+
+        await assertRevert(
+          contract.issueTokens(
+            [anotherHolder, anotherHolder],
+            [newItemId, anotherNewItemId],
+            fromCreator
+          ),
+          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+        )
+      })
+
+      it('reverts when trying to issue a token when the the collection is not completed', async function () {
+        const newItem = [
+          RARITIES.mythic.index,
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        const contract = await createContract(
+          creator,
+          false,
+          true,
+          creationParams
+        )
+        await contract.addItems([newItem], fromCreator)
+
+        const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
+
+        await assertRevert(
+          contract.issueTokens([anotherHolder], [newItemId], fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED'
+        )
+      })
+
+      it('reverts when trying to issue a token when the grace period has not ended', async function () {
+        const newItem = [
+          RARITIES.mythic.index,
+          '0',
+          '1',
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        const contract = await createContract(
+          creator,
+          false,
+          false,
+          creationParams
+        )
+        await contract.addItems([newItem], fromCreator)
+
+        await contract.completeCollection(fromCreator)
+
+        const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
+
+        await assertRevert(
+          contract.issueTokens([anotherHolder], [newItemId], fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD'
+        )
+      })
     })
 
     describe('tokenURI', function () {
@@ -2735,12 +2852,17 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        const contract = await createContract(creator, false, creationParams)
+        const contract = await createContract(
+          creator,
+          false,
+          true,
+          creationParams
+        )
 
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await contract.approveCollection(fromDeployer)
+        await increaseTime(GRACE_PERIOD)
 
         const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
@@ -2864,6 +2986,46 @@ export function doTest(
       })
 
       it('should safe transfer in batch by approval for all', async function () {
+        let ownerToken1 = await collectionContract.ownerOf(token1)
+        let ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(holder)
+        expect(ownerToken2).to.be.equal(holder)
+
+        await collectionContract.setApprovalForAll(hacker, true, fromHolder)
+
+        const { logs } = await collectionContract.safeBatchTransferFrom(
+          holder,
+          anotherHolder,
+          [token1, token2],
+          fromHacker
+        )
+
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(4)
+        expect(logs[1].event).to.be.equal('Transfer')
+        expect(logs[1].args.from).to.be.equal(holder)
+        expect(logs[1].args.to).to.be.equal(anotherHolder)
+        expect(logs[1].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[3].event).to.be.equal('Transfer')
+        expect(logs[3].args.from).to.be.equal(holder)
+        expect(logs[3].args.to).to.be.equal(anotherHolder)
+        expect(logs[3].args.tokenId).to.eq.BN(token2)
+
+        ownerToken1 = await collectionContract.ownerOf(token1)
+        ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(anotherHolder)
+        expect(ownerToken2).to.be.equal(anotherHolder)
+      })
+
+      it('should tranfer tokens in batch when the collection does not allow minting', async function () {
+        await collectionContract.setApproved(false, fromDeployer)
+
+        await assertRevert(
+          collectionContract.issueToken(anotherHolder, 0, fromCreator),
+          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+        )
+
         let ownerToken1 = await collectionContract.ownerOf(token1)
         let ownerToken2 = await collectionContract.ownerOf(token2)
         expect(ownerToken1).to.be.equal(holder)
@@ -3041,7 +3203,7 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, creationParams)
+        contract = await createContract(creator, false, true, creationParams)
       })
 
       it('should complete collection', async function () {
@@ -3059,7 +3221,6 @@ export function doTest(
 
       it('should issue tokens after complete the collection', async function () {
         await contract.completeCollection(fromCreator)
-        await contract.approveCollection(fromDeployer)
 
         await issueItem(contract, holder, 0, fromCreator)
         await issueItem(contract, anotherHolder, 0, fromCreator)
