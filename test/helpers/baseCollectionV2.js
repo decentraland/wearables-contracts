@@ -2463,7 +2463,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
         )
       })
 
@@ -2487,7 +2487,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED'
+          'ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
 
@@ -2513,7 +2513,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD'
+          'ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -2782,7 +2782,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
         )
       })
 
@@ -2808,7 +2808,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED'
+          'ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
 
@@ -2836,7 +2836,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD'
+          'ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -3023,7 +3023,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.issueToken(anotherHolder, 0, fromCreator),
-          'ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED'
+          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
         )
 
         let ownerToken1 = await collectionContract.ownerOf(token1)

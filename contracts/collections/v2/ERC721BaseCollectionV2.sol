@@ -427,7 +427,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemId - item id
      */
     function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintAllowed(), "ERC721BaseCollectionV2#issueToken: MINT_NOT_ALLOWED");
+        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueToken: MINT_NOT_ALLOWED");
 
         _issueToken(_beneficiary, _itemId);
     }
@@ -439,7 +439,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
-        require(isMintAllowed(), "ERC721BaseCollectionV2#issueTokens: MINT_NOT_ALLOWED");
+        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueTokens: MINT_NOT_ALLOWED");
         require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
@@ -580,10 +580,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @notice Get whether minting is allowed
      * @return boolean whether minting is allowed or not
      */
-    function isMintAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "ERC721BaseCollectionV2#isMintAllowed: IN_GRACE_PERIOD");
-        require(isCompleted, "ERC721BaseCollectionV2#isMintAllowed: NOT_COMPLETED");
-        require(isApproved, "ERC721BaseCollectionV2#isMintAllowed: NOT_APPROVED");
+    function isMintingAllowed() public view returns (bool) {
+        require(createdAt <= now - GRACE_PERIOD, "ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD");
+        require(isCompleted, "ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED");
+        require(isApproved, "ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED");
 
         return true;
     }
