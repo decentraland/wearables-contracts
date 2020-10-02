@@ -4,10 +4,12 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "../../commons//OwnableInitializable.sol";
+import "../../commons//NativeMetaTransaction.sol";
+import "../../commons//ContextMixin.sol";
 import "../../tokens/ERC721Initializable.sol";
 import "../../libs/String.sol";
 
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
+contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, ContextMixin, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
@@ -102,6 +104,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
         // Ownable init
         _initOwnable();
+        // EIP712
+        _initializeEIP712('Decentraland Collection', '1');
         // ERC721 init
         _initERC721(_name, _symbol);
         // Base URI init
@@ -125,15 +129,17 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     */
 
     function _isCreator() internal view returns (bool) {
-        return creator == msg.sender;
+        return creator == _msgSender();
     }
 
     function _isMinter(uint256 _itemId) internal view returns (bool) {
-        return globalMinters[msg.sender] || itemMinters[_itemId][msg.sender];
+        address sender = _msgSender();
+        return globalMinters[sender] || itemMinters[_itemId][sender];
     }
 
     function _isManager(uint256 _itemId) internal view returns (bool) {
-        return globalManagers[msg.sender] || itemManagers[_itemId][msg.sender];
+        address sender = _msgSender();
+        return globalManagers[sender] || itemManagers[_itemId][sender];
     }
 
     modifier isCollectionEditable() {
@@ -278,9 +284,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     /**
      * @notice Transfers ownership of the contract to a new account (`newOwner`).
+     * @dev Forced owner to check against msg.sender always
      */
     function transferCreatorship(address _newCreator) public virtual {
-        require(msg.sender == owner() || msg.sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        address sender = _msgSender();
+        require(msg.sender == owner() || sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
         require(_newCreator != address(0), "ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
 
         emit CreatorshipTransferred(creator, _newCreator);
@@ -674,8 +682,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     /*
     * Batch Transfer functions
     */
-
-
 
     /**
      * @notice Transfers the ownership of given tokens ID to another address.
