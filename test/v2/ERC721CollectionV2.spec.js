@@ -15,7 +15,7 @@ async function issueItem(contract, beneficiary, index, from) {
   await contract.issueToken(beneficiary, index, from)
 }
 
-describe.only('Collection V2', function () {
+describe('Collection V2', function () {
   // option id = 0
   // issued id = 1
   const token1 = encodeTokenId(0, 1)

@@ -1,28 +1,32 @@
 
-// File: @openzeppelin/contracts/GSN/Context.sol
+// File: contracts/commons/ContextMixin.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity 0.6.12;
 
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
-        return msg.sender;
-    }
 
-    function _msgData() internal view virtual returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
+abstract contract ContextMixin {
+    function _msgSender()
+        internal
+        view
+        virtual
+        returns (address payable sender)
+    {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = msg.sender;
+        }
+        return sender;
     }
 }
 
@@ -44,7 +48,7 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is Context {
+contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -278,7 +282,7 @@ contract EIP712Base {
             "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
         )
     );
-    bytes32 internal domainSeperator;
+    bytes32 public domainSeparator;
 
     // supposed to be called once while initializing.
     // one of the contractsa that inherits this contract follows proxy pattern
@@ -289,11 +293,7 @@ contract EIP712Base {
     )
         internal
     {
-        _setDomainSeperator(name, version);
-    }
-
-    function _setDomainSeperator(string memory name, string memory version) internal {
-        domainSeperator = keccak256(
+        domainSeparator = keccak256(
             abi.encode(
                 EIP712_DOMAIN_TYPEHASH,
                 keccak256(bytes(name)),
@@ -302,10 +302,6 @@ contract EIP712Base {
                 bytes32(getChainId())
             )
         );
-    }
-
-    function getDomainSeperator() public view returns (bytes32) {
-        return domainSeperator;
     }
 
     function getChainId() public pure returns (uint256) {
@@ -330,7 +326,7 @@ contract EIP712Base {
     {
         return
             keccak256(
-                abi.encodePacked("\x19\x01", getDomainSeperator(), messageHash)
+                abi.encodePacked("\x19\x01", domainSeparator, messageHash)
             );
     }
 }
@@ -382,7 +378,7 @@ contract NativeMetaTransaction is EIP712Base {
 
         require(
             verify(userAddress, metaTx, sigR, sigS, sigV),
-            "Signer and signature do not match"
+            "NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH"
         );
 
         // increase nonce for user (to avoid re-use)
@@ -398,7 +394,7 @@ contract NativeMetaTransaction is EIP712Base {
         (bool success, bytes memory returnData) = address(this).call(
             abi.encodePacked(functionSignature, userAddress)
         );
-        require(success, "Function call not successful");
+        require(success, "NMT#executeMetaTransaction: CALL_FAILED");
 
         return returnData;
     }
@@ -430,7 +426,7 @@ contract NativeMetaTransaction is EIP712Base {
         bytes32 sigS,
         uint8 sigV
     ) internal view returns (bool) {
-        require(signer != address(0), "NativeMetaTransaction: INVALID_SIGNER");
+        require(signer != address(0), "NMT#verify: INVALID_SIGNER");
         return
             signer ==
             ecrecover(
@@ -439,35 +435,6 @@ contract NativeMetaTransaction is EIP712Base {
                 sigR,
                 sigS
             );
-    }
-}
-
-// File: contracts/commons/ContextMixin.sol
-
-
-pragma solidity 0.6.12;
-
-
-abstract contract ContextMixin {
-    function msgSender()
-        internal
-        view
-        returns (address payable sender)
-    {
-        if (msg.sender == address(this)) {
-            bytes memory array = msg.data;
-            uint256 index = msg.data.length;
-            assembly {
-                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
-                sender := and(
-                    mload(add(array, index)),
-                    0xffffffffffffffffffffffffffffffffffffffff
-                )
-            }
-        } else {
-            sender = msg.sender;
-        }
-        return sender;
     }
 }
 
@@ -1448,7 +1415,7 @@ pragma solidity ^0.6.0;
  * This is the same contract at `openzeppelin/contracts 3.1.0` but `tokenURI` was changed to virtual override
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
+contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -1992,8 +1959,7 @@ pragma experimental ABIEncoderV2;
 
 
 
-
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, ContextMixin, NativeMetaTransaction {
+contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
@@ -2082,14 +2048,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
         bool _shouldComplete,
         string memory _baseURI,
         Item[] memory _items
-    ) public virtual whenNotInitialized {
+    ) public virtual {
+        require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
         require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
         // Ownable init
         _initOwnable();
         // EIP712 init
-        _initializeEIP712('Decentraland Collection', '1');
+        _initializeEIP712('Decentraland Collection', '2');
         // ERC721 init
         _initERC721(_name, _symbol);
         // Base URI init
@@ -2109,7 +2076,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
     }
 
     /*
-    * Modifiers & Roles checkers
+    * Roles checkers
     */
 
     function _isCreator() internal view returns (bool) {
@@ -2126,36 +2093,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
         return globalManagers[sender] || itemManagers[_itemId][sender];
     }
 
-    modifier isCollectionEditable() {
-        require(isEditable, "BCV2#isCollectionEditable: NOT_EDITABLE");
-        _;
-    }
-
-    modifier whenNotInitialized() {
-        require(!isInitialized, "BCV2#whenNotInitialized: ALREADY_INITIALIZED");
-        _;
-    }
-
     modifier onlyCreator() {
         require(
             _isCreator(),
             "BCV2#onlyCreator: CALLER_IS_NOT_CREATOR"
-        );
-        _;
-    }
-
-    modifier canMint(uint256 _itemId) {
-        require(
-            _isCreator() || _isMinter(_itemId),
-            "BCV2#canMint: CALLER_CAN_NOT_MINT"
-        );
-        _;
-    }
-
-    modifier canManage(uint256 _itemId) {
-        require(
-            _isCreator() || _isManager(_itemId),
-            "BCV2#canManage: CALLER_CAN_NOT_MANAGE"
         );
         _;
     }
@@ -2341,8 +2282,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
     function editItemsMetadata(
         uint256[] calldata _itemIds,
         string[] calldata _metadatas
-    ) isCollectionEditable external virtual {
-        // Check lengths
+    ) external virtual {
+        require(isEditable, "BCV2#editItemsMetadata: NOT_EDITABLE");
         require(
             _itemIds.length == _metadatas.length,
             "BCV2#editItemsMetadata: LENGTH_MISMATCH"
@@ -2445,7 +2386,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual canMint(_itemId) {
+    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual {
+        // Check ownership
+        require(
+            _isCreator() || _isMinter(_itemId),
+            "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
+        );
         // Check item id
         require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
 
@@ -2646,7 +2592,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Co
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
+        require(_exists(_tokenId), "BCV2#tokenURI: INVALID_TOKEN_ID");
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
 
