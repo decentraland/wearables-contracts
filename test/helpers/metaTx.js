@@ -1,4 +1,31 @@
-export async function sendMetaTx(contract, functionSignature, signer, relayer) {
+export async function sendMetaTx(
+  contract,
+  functionSignature,
+  signer,
+  relayer,
+  badSigner = null
+) {
+  const signature = await getSignature(
+    contract,
+    functionSignature,
+    signer,
+    badSigner
+  )
+  const r = '0x' + signature.substring(0, 64)
+  const s = '0x' + signature.substring(64, 128)
+  const v = '0x' + signature.substring(128, 130)
+
+  return contract.executeMetaTransaction(signer, functionSignature, r, s, v, {
+    from: relayer,
+  })
+}
+
+export async function getSignature(
+  contract,
+  functionSignature,
+  signer,
+  badSigner
+) {
   const chainId = await contract.getChainId()
 
   const domainType = [
@@ -25,7 +52,7 @@ export async function sendMetaTx(contract, functionSignature, signer, relayer) {
 
   let message = {
     nonce: nonce,
-    from: signer,
+    from: badSigner ? badSigner : signer,
     functionSignature: functionSignature,
   }
 
@@ -39,7 +66,7 @@ export async function sendMetaTx(contract, functionSignature, signer, relayer) {
     message: message,
   }
 
-  let signature = await new Promise((res, rej) =>
+  const signature = await new Promise((res, rej) =>
     web3.currentProvider.send(
       {
         method: 'eth_signTypedData',
@@ -56,12 +83,27 @@ export async function sendMetaTx(contract, functionSignature, signer, relayer) {
     )
   )
 
-  signature = signature.substring(2)
-  const r = '0x' + signature.substring(0, 64)
-  const s = '0x' + signature.substring(64, 128)
-  const v = '0x' + signature.substring(128, 130)
+  return signature.substring(2)
+}
 
-  return contract.executeMetaTransaction(signer, functionSignature, r, s, v, {
-    from: relayer,
+export async function getDomainSeparator(contract) {
+  const chainId = await contract.getChainId()
+
+  return web3.utils.soliditySha3({
+    t: 'bytes',
+    v: web3.eth.abi.encodeParameters(
+      ['bytes32', 'bytes32', 'bytes32', 'address', 'bytes32'],
+      [
+        web3.utils.soliditySha3({
+          t: 'string',
+          v:
+            'EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)',
+        }),
+        web3.utils.soliditySha3({ t: 'string', v: 'Decentraland Collection' }),
+        web3.utils.soliditySha3({ t: 'string', v: '2' }),
+        contract.address,
+        web3.utils.padLeft(web3.utils.toHex(chainId), 64),
+      ]
+    ),
   })
 }
