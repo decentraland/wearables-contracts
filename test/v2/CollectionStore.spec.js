@@ -594,7 +594,7 @@ describe('Collection Store', function () {
           buyer,
           fromBuyer
         ),
-        'BCV2#canMint: CALLER_CAN_NOT_MINT'
+        'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
       )
     })
 

@@ -22,13 +22,13 @@ module.exports = {
   networks: {
     buidlerevm: {
       loggingEnabled: false,
-      blockGasLimit: 1000000000,
-      gas: 1000000000,
+      blockGasLimit: 10000000,
+      gas: 10000000,
     },
     local: {
       url: 'http://127.0.0.1:8545',
-      blockGasLimit: 1000000000,
-      gas: 1000000000,
+      blockGasLimit: 10000000,
+      gas: 10000000,
       network_id: '*', // eslint-disable-line camelcase
     },
   },
