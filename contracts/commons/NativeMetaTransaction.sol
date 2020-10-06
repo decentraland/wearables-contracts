@@ -45,7 +45,7 @@ contract NativeMetaTransaction is EIP712Base {
 
         require(
             verify(userAddress, metaTx, sigR, sigS, sigV),
-            "Signer and signature do not match"
+            "NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH"
         );
 
         // increase nonce for user (to avoid re-use)
@@ -61,7 +61,7 @@ contract NativeMetaTransaction is EIP712Base {
         (bool success, bytes memory returnData) = address(this).call(
             abi.encodePacked(functionSignature, userAddress)
         );
-        require(success, "Function call not successful");
+        require(success, "NMT#executeMetaTransaction: CALL_FAILED");
 
         return returnData;
     }
@@ -93,7 +93,7 @@ contract NativeMetaTransaction is EIP712Base {
         bytes32 sigS,
         uint8 sigV
     ) internal view returns (bool) {
-        require(signer != address(0), "NativeMetaTransaction: INVALID_SIGNER");
+        require(signer != address(0), "NMT#verify: INVALID_SIGNER");
         return
             signer ==
             ecrecover(

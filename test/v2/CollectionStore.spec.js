@@ -594,7 +594,7 @@ describe('Collection Store', function () {
           buyer,
           fromBuyer
         ),
-        'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+        'BCV2#canMint: CALLER_CAN_NOT_MINT'
       )
     })
 
@@ -612,7 +612,7 @@ describe('Collection Store', function () {
           buyer,
           fromBuyer
         ),
-        'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+        'BCV2#_issueToken: ITEM_EXHAUSTED'
       )
 
       // Buy item left
@@ -641,7 +641,7 @@ describe('Collection Store', function () {
           buyer,
           fromBuyer
         ),
-        'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+        'BCV2#_issueToken: ITEM_EXHAUSTED'
       )
     })
 

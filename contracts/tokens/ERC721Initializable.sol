@@ -2,7 +2,6 @@
 
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol";
@@ -14,12 +13,14 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+import "../commons/ContextMixin.sol";
+
 /**
  * @title ERC721 Non-Fungible Token Standard basic implementation
  * This is the same contract at `openzeppelin/contracts 3.1.0` but `tokenURI` was changed to virtual override
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
+contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.UintSet;

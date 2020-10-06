@@ -4,9 +4,10 @@ pragma solidity 0.6.12;
 
 
 abstract contract ContextMixin {
-    function msgSender()
+    function _msgSender()
         internal
         view
+        virtual
         returns (address payable sender)
     {
         if (msg.sender == address(this)) {
