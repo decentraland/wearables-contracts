@@ -9,6 +9,7 @@ import {
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
+import { sendMetaTx, getDomainSeparator, getSignature } from './metaTx'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -45,6 +46,9 @@ export function doTest(
     let creator
     let minter
     let manager
+    let relayer
+    let operator
+    let approvedForAll
     let fromUser
     let fromHolder
     let fromHacker
@@ -52,6 +56,9 @@ export function doTest(
     let fromCreator
     let fromManager
     let fromMinter
+    let fromRelayer
+    let fromOperator
+    let fromApprovedForAll
 
     // Contracts
     let collectionContract
@@ -69,18 +76,23 @@ export function doTest(
       creator = accounts[7]
       minter = accounts[8]
       manager = accounts[9]
+      relayer = accounts[10]
+      operator = accounts[11]
+      approvedForAll = accounts[12]
       fromUser = { from: user }
       fromHolder = { from: holder }
       fromHacker = { from: hacker }
       fromCreator = { from: creator }
       fromManager = { from: manager }
       fromMinter = { from: minter }
+      fromRelayer = { from: relayer }
+      fromOperator = { from: operator }
+      fromApprovedForAll = { from: approvedForAll }
 
       fromDeployer = { from: deployer }
 
       creationParams = {
         ...fromDeployer,
-        gas: 6e6,
         gasPrice: 21e9,
       }
 
@@ -237,7 +249,7 @@ export function doTest(
             [],
             creationParams
           ),
-          'ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED'
+          'BCV2#initialize: ALREADY_INITIALIZED'
         )
       })
     })
@@ -277,6 +289,70 @@ export function doTest(
         expect(isApproved).to.be.equal(true)
       })
 
+      it('should setApproved :: Relayed EIP721', async function () {
+        let isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(true)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetApproved')
+        expect(logs[1].args._previousValue).to.be.equal(true)
+        expect(logs[1].args._newValue).to.be.equal(false)
+
+        isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(false)
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [true]
+        )
+
+        await sendMetaTx(contract, functionSignature, deployer, relayer)
+
+        isApproved = await contract.isApproved()
+        expect(isApproved).to.be.equal(true)
+      })
+
       it('reverts when trying to approve a collection by not the owner', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
@@ -284,30 +360,74 @@ export function doTest(
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
-          contract.setApproved(true, fromCreator),
+          contract.setApproved(false, fromCreator),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.setApproved(true, fromMinter),
+          contract.setApproved(false, fromMinter),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.setApproved(true, fromManager),
+          contract.setApproved(false, fromManager),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.setApproved(true, fromHacker),
+          contract.setApproved(false, fromHacker),
           'Ownable: caller is not the owner'
+        )
+      })
+
+      it('reverts when trying to approve a collection by not the owner :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, creator, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
       it('reverts when trying to approve with the same value', async function () {
         await assertRevert(
           contract.setApproved(true, fromDeployer),
-          'ERC721BaseCollectionV2#setApproved: VALUE_IS_THE_SAME'
+          'BCV2#setApproved: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -477,15 +597,185 @@ export function doTest(
         expect(isMinter).to.be.equal(true)
       })
 
-      it("reverts when params' length missmath", async function () {
+      it('should add global minters :: Relayed EIP721', async function () {
+        let isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[minter], [true]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetGlobalMinter')
+        expect(logs[1].args._minter).to.be.equal(minter)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(true)
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[minter], [false]]
+        )
+
+        await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        isMinter = await collectionContract.globalMinters(minter)
+        expect(isMinter).to.be.equal(false)
+      })
+
+      it('should add items minters :: Relayed EIP721', async function () {
+        let isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(false)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [minter], [true]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetItemMinter')
+        expect(logs[1].args._itemId).to.be.eq.BN(0)
+        expect(logs[1].args._minter).to.be.equal(minter)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(true)
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [minter], [false]]
+        )
+
+        await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        isMinter = await collectionContract.itemMinters(0, minter)
+        expect(isMinter).to.be.equal(false)
+      })
+
+      it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setMinters([minter], [true, false], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH'
+          'BCV2#setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setMinters([minter, user], [true], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH'
+          'BCV2#setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -495,7 +785,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
+          'BCV2#setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -505,7 +795,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
+          'BCV2#setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -515,7 +805,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH'
+          'BCV2#setItemsMinters: LENGTH_MISMATCH'
         )
       })
 
@@ -537,22 +827,22 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromDeployer),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
-        )
-
-        await assertRevert(
-          collectionContract.setMinters([user], [false], fromManager),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+
+        await assertRevert(
+          collectionContract.setMinters([user], [false], fromManager),
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -562,29 +852,175 @@ export function doTest(
             [false],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [false], fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [false], fromManager),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [false], fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when not the creator trying to set a minter :: Relayed EIP721', async function () {
+        const functionSignatureGlobal = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[minter], [false]]
+        )
+
+        const functionSignatureItem = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_minters',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsMinters',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [minter], [false]]
+        )
+
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            deployer,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            minter,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            manager,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            hacker,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            deployer,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            minter,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            manager,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            hacker,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
       it('reverts when the using an invalid address', async function () {
         await assertRevert(
           collectionContract.setMinters([ZERO_ADDRESS], [true], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: INVALID_MINTER_ADDRESS'
+          'BCV2#setMinters: INVALID_MINTER_ADDRESS'
         )
 
         await assertRevert(
@@ -594,7 +1030,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: INVALID_MINTER_ADDRESS'
+          'BCV2#setItemsMinters: INVALID_MINTER_ADDRESS'
         )
       })
 
@@ -606,7 +1042,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
+          'BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -621,7 +1057,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setMinters([minter], [true], fromCreator),
-          'ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME'
+          'BCV2#setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -630,7 +1066,7 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME'
+          'BCV2#setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -640,7 +1076,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME'
+          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -650,7 +1086,7 @@ export function doTest(
             [true, true, true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME'
+          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -820,15 +1256,185 @@ export function doTest(
         expect(isManager).to.be.equal(true)
       })
 
-      it("reverts when params' length missmath", async function () {
+      it('should add global managers :: Relayed EIP721', async function () {
+        let isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(false)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[manager], [true]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetGlobalManager')
+        expect(logs[1].args._manager).to.be.equal(manager)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        isManager = await collectionContract.globalManagers(manager)
+        expect(isManager).to.be.equal(true)
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[manager], [false]]
+        )
+
+        await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        isManager = await collectionContract.globalMinters(manager)
+        expect(isManager).to.be.equal(false)
+      })
+
+      it('should add items managers :: Relayed EIP721', async function () {
+        let isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(false)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [manager], [true]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetItemManager')
+        expect(logs[1].args._itemId).to.be.eq.BN(0)
+        expect(logs[1].args._manager).to.be.equal(manager)
+        expect(logs[1].args._value).to.be.equal(true)
+
+        isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(true)
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [manager], [false]]
+        )
+
+        await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        isManager = await collectionContract.itemManagers(0, manager)
+        expect(isManager).to.be.equal(false)
+      })
+
+      it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setManagers([manager], [true, false], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH'
+          'BCV2#setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setManagers([manager, user], [true], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH'
+          'BCV2#setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -838,7 +1444,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
+          'BCV2#setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -848,7 +1454,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
+          'BCV2#setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -858,7 +1464,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH'
+          'BCV2#setItemsManagers: LENGTH_MISMATCH'
         )
       })
 
@@ -880,22 +1486,22 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromDeployer),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromManager),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -905,12 +1511,12 @@ export function doTest(
             [false],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -920,19 +1526,165 @@ export function doTest(
             [false],
             fromManager
           ),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when not the creator trying to set a manager :: Relayed EIP721', async function () {
+        const functionSignatureGlobal = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[manager], [false]]
+        )
+
+        const functionSignatureItem = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_managers',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setItemsManagers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [manager], [false]]
+        )
+
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            deployer,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            minter,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            manager,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureGlobal,
+            hacker,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            deployer,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            minter,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            manager,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignatureItem,
+            hacker,
+            relayer
+          ),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
       it('reverts when the using an invalid address', async function () {
         await assertRevert(
           collectionContract.setManagers([ZERO_ADDRESS], [true], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: INVALID_MANAGER_ADDRESS'
+          'BCV2#setManagers: INVALID_MANAGER_ADDRESS'
         )
 
         await assertRevert(
@@ -942,7 +1694,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: INVALID_MANAGER_ADDRESS'
+          'BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS'
         )
       })
 
@@ -954,7 +1706,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: ITEM_DOES_NOT_EXIST'
+          'BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -969,7 +1721,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([manager], [true], fromCreator),
-          'ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME'
+          'BCV2#setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -978,7 +1730,7 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME'
+          'BCV2#setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -988,7 +1740,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -998,7 +1750,7 @@ export function doTest(
             [true, true, true],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -1026,6 +1778,97 @@ export function doTest(
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
         expect(logs[0].args._item).to.be.eql(newItem)
+
+        itemLength = await contract.itemsCount()
+
+        const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(newItem)
+      })
+
+      it('should add an item :: Relayed EIP721', async function () {
+        const newItem = [
+          RARITIES.common.index.toString(),
+          '0',
+          web3.utils.toWei('10'),
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+        let itemLength = await contract.itemsCount()
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                components: [
+                  {
+                    internalType: 'enum BaseCollectionV2.RARITY',
+                    name: 'rarity',
+                    type: 'uint8',
+                  },
+                  {
+                    internalType: 'uint256',
+                    name: 'totalSupply',
+                    type: 'uint256',
+                  },
+                  {
+                    internalType: 'uint256',
+                    name: 'price',
+                    type: 'uint256',
+                  },
+                  {
+                    internalType: 'address',
+                    name: 'beneficiary',
+                    type: 'address',
+                  },
+                  {
+                    internalType: 'string',
+                    name: 'metadata',
+                    type: 'string',
+                  },
+                  {
+                    internalType: 'bytes32',
+                    name: 'contentHash',
+                    type: 'bytes32',
+                  },
+                ],
+                internalType: 'struct BaseCollectionV2.Item[]',
+                name: '_items',
+                type: 'tuple[]',
+              },
+            ],
+            name: 'addItems',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[newItem]]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('AddItem')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemLength)
+        expect(logs[1].args._item).to.be.eql(newItem)
 
         itemLength = await contract.itemsCount()
 
@@ -1163,7 +2006,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_TOTAL_SUPPLY'
+          'BCV2#_addItem: INVALID_TOTAL_SUPPLY'
         )
       })
 
@@ -1191,7 +2034,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -1206,7 +2049,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -1221,7 +2064,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: EMPTY_METADATA'
+          'BCV2#_addItem: EMPTY_METADATA'
         )
       })
 
@@ -1236,7 +2079,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY'
+          'BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY'
         )
       })
 
@@ -1257,22 +2100,107 @@ export function doTest(
 
         await assertRevert(
           contract.addItems([newItem], fromDeployer),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromManager),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when trying to add an item by not the creator :: Relayed EIP721', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        const newItem = [
+          RARITIES.common.index.toString(),
+          '0',
+          web3.utils.toWei('10'),
+          beneficiary,
+          '1:crocodile_mask:hat:female,male',
+          EMPTY_HASH,
+        ]
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                components: [
+                  {
+                    internalType: 'enum BaseCollectionV2.RARITY',
+                    name: 'rarity',
+                    type: 'uint8',
+                  },
+                  {
+                    internalType: 'uint256',
+                    name: 'totalSupply',
+                    type: 'uint256',
+                  },
+                  {
+                    internalType: 'uint256',
+                    name: 'price',
+                    type: 'uint256',
+                  },
+                  {
+                    internalType: 'address',
+                    name: 'beneficiary',
+                    type: 'address',
+                  },
+                  {
+                    internalType: 'string',
+                    name: 'metadata',
+                    type: 'string',
+                  },
+                  {
+                    internalType: 'bytes32',
+                    name: 'contentHash',
+                    type: 'bytes32',
+                  },
+                ],
+                internalType: 'struct BaseCollectionV2.Item[]',
+                name: '_items',
+                type: 'tuple[]',
+              },
+            ],
+            name: 'addItems',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[newItem]]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
@@ -1290,7 +2218,7 @@ export function doTest(
 
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED'
+          'BCV2#_addItem: COLLECTION_COMPLETED'
         )
       })
     })
@@ -1362,6 +2290,84 @@ export function doTest(
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          item0[1],
+          newItemPrice0.toString(),
+          newItemBeneficiary0,
+          item0[4],
+          item0[5],
+        ])
+      })
+
+      it('should edit an item sales data :: Relayed EIP721', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item0)
+
+        const newItemPrice0 = web3.utils.toWei('1000')
+        const newItemBeneficiary0 = holder
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_prices',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+            ],
+            name: 'editItemsSalesData',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [newItemPrice0], [newItemBeneficiary0]]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[1].args._price).to.be.eq.BN(newItemPrice0)
+        expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary0)
 
         item = await contract.items(itemId0)
         expect([
@@ -1554,7 +2560,7 @@ export function doTest(
             [itemBeneficiary0],
             fromManager
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
@@ -1574,7 +2580,7 @@ export function doTest(
             [itemBeneficiary0],
             fromManager
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -1591,6 +2597,60 @@ export function doTest(
           [itemBeneficiary0],
           fromManager
         )
+      })
+
+      it('should allow managers to edit items sales data :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_prices',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+            ],
+            name: 'editItemsSalesData',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set global Manager
+        await contract.setManagers([manager], [true], fromCreator)
+        await sendMetaTx(contract, functionSignature, manager, relayer)
+
+        await contract.setManagers([manager], [false], fromCreator)
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set item Manager
+        await contract.setItemsManagers(
+          [itemId0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await sendMetaTx(contract, functionSignature, manager, relayer)
       })
 
       it('should allow the creator to edit items sales data', async function () {
@@ -1610,7 +2670,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
+          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1620,7 +2680,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
+          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1630,7 +2690,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH'
+          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
         )
       })
 
@@ -1645,7 +2705,7 @@ export function doTest(
             [itemBeneficiary0],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
@@ -1655,7 +2715,7 @@ export function doTest(
             [itemBeneficiary0],
             fromMinter
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
@@ -1665,7 +2725,54 @@ export function doTest(
             [itemBeneficiary0],
             fromHacker
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+      })
+
+      it('reverts when trying to edit sales data by not the creator or manager :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_prices',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+            ],
+            name: 'editItemsSalesData',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+        )
+
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
@@ -1678,7 +2785,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: ITEM_DOES_NOT_EXIST'
+          'BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -1690,7 +2797,7 @@ export function doTest(
             [ZERO_ADDRESS],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -1702,7 +2809,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
     })
@@ -1859,10 +2966,81 @@ export function doTest(
         ])
       })
 
+      it('should edit an item metadata :: Relayed EIP721', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item0)
+
+        const newMetadata0 = 'new:metadata:0'
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'editItemsMetadata',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [newMetadata0]]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata0)
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          item0[1],
+          item0[2],
+          item0[3],
+          newMetadata0,
+          item0[5],
+        ])
+      })
+
       it('should allow managers to edit items metadata', async function () {
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
@@ -1872,7 +3050,7 @@ export function doTest(
         await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -1886,6 +3064,55 @@ export function doTest(
         await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
       })
 
+      it('should allow managers to edit items metadata :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'editItemsMetadata',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [metadata0]]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set global Manager
+        await contract.setManagers([manager], [true], fromCreator)
+        await sendMetaTx(contract, functionSignature, manager, relayer)
+
+        await contract.setManagers([manager], [false], fromCreator)
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set item Manager
+        await contract.setItemsManagers(
+          [itemId0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await sendMetaTx(contract, functionSignature, manager, relayer)
+      })
+
       it('should allow the creator to edit items', async function () {
         await contract.editItemsMetadata([itemId0], [metadata0], fromCreator)
       })
@@ -1897,7 +3124,7 @@ export function doTest(
             [metadata0, metadata1],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH'
+          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1906,7 +3133,7 @@ export function doTest(
             [metadata0],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH'
+          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
         )
       })
 
@@ -1916,17 +3143,59 @@ export function doTest(
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
-          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromMinter),
-          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromHacker),
-          'ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+        )
+      })
+
+      it('reverts when trying to edit metadata by not the creator or manager :: Relayed EIP721', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'editItemsMetadata',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [metadata0]]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
@@ -1934,14 +3203,14 @@ export function doTest(
         const itemLength = await contract.itemsCount()
         await assertRevert(
           contract.editItemsMetadata([itemLength], [metadata0], fromCreator),
-          'ERC721BaseCollectionV2#editItemsMetadata: ITEM_DOES_NOT_EXIST'
+          'BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST'
         )
       })
 
       it('reverts when trying to edit an item with empty metadata', async function () {
         await assertRevert(
           contract.editItemsMetadata([itemId0], [''], fromCreator),
-          'ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA'
+          'BCV2#editItemsMetadata: EMPTY_METADATA'
         )
       })
 
@@ -1950,7 +3219,7 @@ export function doTest(
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromCreator),
-          'ERC721BaseCollectionV2#isCollectionEditable: NOT_EDITABLE'
+          'BCV2#editItemsMetadata: NOT_EDITABLE'
         )
       })
     })
@@ -2114,6 +3383,84 @@ export function doTest(
         ])
       })
 
+      it('should rescue an item :: Relayed EIP721', async function () {
+        const newContentHash = web3.utils.randomHex(32)
+        const newMetadata = '1:crocodile_mask:earrings:female'
+
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql(item0)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'bytes32[]',
+                name: '_contentHashes',
+                type: 'bytes32[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'rescueItems',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [newContentHash], [newMetadata]]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('RescueItem')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[1].args._contentHash).to.be.equal(newContentHash)
+        expect(logs[1].args._metadata).to.be.equal(newMetadata)
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          item0[1],
+          item0[2],
+          item0[3],
+          newMetadata,
+          newContentHash,
+        ])
+      })
+
       it('should rescue an item without changings its metadata', async function () {
         let item = await contract.items(itemId0)
         expect([
@@ -2221,7 +3568,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
+          'BCV2#rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2231,7 +3578,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
+          'BCV2#rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2241,7 +3588,7 @@ export function doTest(
             [''],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH'
+          'BCV2#rescueItems: LENGTH_MISMATCH'
         )
       })
 
@@ -2272,11 +3619,65 @@ export function doTest(
         )
       })
 
+      it('reverts when trying to rescue by not the owner :: Relayed EIP721', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'bytes32[]',
+                name: '_contentHashes',
+                type: 'bytes32[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'rescueItems',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[itemId0.toString()], [EMPTY_HASH], ['']]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, creator, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+      })
+
       it('reverts when trying to rescue an invalid item', async function () {
         const itemLength = await contract.itemsCount()
         await assertRevert(
           contract.rescueItems([itemLength], [EMPTY_HASH], [''], fromDeployer),
-          'ERC721BaseCollectionV2#rescueItems: ITEM_DOES_NOT_EXIST'
+          'BCV2#rescueItems: ITEM_DOES_NOT_EXIST'
         )
       })
     })
@@ -2389,10 +3790,81 @@ export function doTest(
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(4)))
       })
 
+      it('should issue a token :: Relayed EIP721', async function () {
+        let item = await contract.items(newItemId)
+        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        const currentTotalSupply = await contract.totalSupply()
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_beneficiary',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256',
+                name: '_itemId',
+                type: 'uint256',
+              },
+            ],
+            name: 'issueToken',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [anotherHolder, newItemId.toString()]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(3)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        const tokenId = encodeTokenId(newItemId, 1)
+
+        // match issuance
+        item = await contract.items(newItemId)
+        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        expect(logs[2].event).to.be.equal('Issue')
+        expect(logs[2].args._beneficiary).to.be.equal(anotherHolder)
+        expect(logs[2].args._tokenId).to.be.eq.BN(tokenId)
+        expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
+        expect(logs[2].args._issuedId).to.eq.BN(1)
+
+        // match total supply
+        const totalSupply = await contract.totalSupply()
+        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
+
+        // match owner
+        const owner = await contract.ownerOf(tokenId)
+        expect(owner).to.be.equal(anotherHolder)
+
+        // match URI
+        const uri = await contract.tokenURI(tokenId)
+        const uriArr = uri.split('/')
+        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+      })
+
       it('should issue a token by minter', async function () {
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
@@ -2402,7 +3874,7 @@ export function doTest(
         await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
@@ -2416,20 +3888,118 @@ export function doTest(
         await contract.issueToken(anotherHolder, newItemId, fromMinter)
       })
 
+      it('should issue a token by minter :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_beneficiary',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256',
+                name: '_itemId',
+                type: 'uint256',
+              },
+            ],
+            name: 'issueToken',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [anotherHolder, newItemId.toString()]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set global Minter
+        await contract.setMinters([minter], [true], fromCreator)
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+
+        await contract.setMinters([minter], [false], fromCreator)
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set item Minter
+        await contract.setItemsMinters(
+          [newItemId],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+      })
+
       it('reverts when issuing a token by not the creator or minter', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromDeployer),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromManager),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromHacker),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+        )
+      })
+
+      it('reverts when issuing a token by not the creator or minter :: Relayed EIP721', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_beneficiaries',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256',
+                name: '_itemIds',
+                type: 'uint256',
+              },
+            ],
+            name: 'issueToken',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [anotherHolder, newItemId.toString()]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
@@ -2444,7 +4014,7 @@ export function doTest(
         const length = await contract.itemsCount()
         await assertRevert(
           contract.issueToken(holder, length, fromCreator),
-          'ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST'
+          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -2454,7 +4024,7 @@ export function doTest(
         }
         await assertRevert(
           contract.issueToken(holder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+          'BCV2#_issueToken: ITEM_EXHAUSTED'
         )
       })
 
@@ -2463,7 +4033,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
+          'BCV2#isMintingAllowed: NOT_APPROVED'
         )
       })
 
@@ -2487,7 +4057,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED'
+          'BCV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
 
@@ -2513,7 +4083,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD'
+          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -2624,6 +4194,107 @@ export function doTest(
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
       })
 
+      it('should issue multiple token :: Relayed EIP721', async function () {
+        let item = await contract.items(newItemId)
+        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        item = await contract.items(anotherNewItemId)
+        expect(item.rarity).to.eq.BN(anotherNewItem[0])
+        expect(item.totalSupply).to.eq.BN(0)
+
+        const currentTotalSupply = await contract.totalSupply()
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'issueTokens',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [
+            [holder, anotherHolder],
+            [newItemId.toString(), anotherNewItemId.toString()],
+          ]
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(5)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        // New Item
+        // match issueance
+        item = await contract.items(newItemId)
+        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        const newItemTokenId = encodeTokenId(newItemId, 1)
+        expect(logs[2].event).to.be.equal('Issue')
+        expect(logs[2].args._beneficiary).to.be.equal(holder)
+        expect(logs[2].args._tokenId).to.be.eq.BN(newItemTokenId)
+        expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
+        expect(logs[2].args._issuedId).to.eq.BN(1)
+
+        // match owner
+        let owner = await contract.ownerOf(newItemTokenId)
+        expect(owner).to.be.equal(holder)
+
+        // match token id
+        let uri = await contract.tokenURI(newItemTokenId)
+        let uriArr = uri.split('/')
+        expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        // Another new Item
+        // match issued
+        item = await contract.items(anotherNewItemId)
+        expect(item.rarity).to.eq.BN(anotherNewItem[0])
+        expect(item.totalSupply).to.eq.BN(1)
+
+        const anotherNewItemTokenId = encodeTokenId(anotherNewItemId, 1)
+        expect(logs[4].event).to.be.equal('Issue')
+        expect(logs[4].args._beneficiary).to.be.equal(anotherHolder)
+        expect(logs[4].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
+        expect(logs[4].args._itemId).to.be.eq.BN(anotherNewItemId)
+        expect(logs[4].args._issuedId).to.eq.BN(1)
+
+        // match owner
+        owner = await contract.ownerOf(anotherNewItemTokenId)
+        expect(owner).to.be.equal(anotherHolder)
+
+        // match token id
+        uri = await contract.tokenURI(anotherNewItemTokenId)
+        uriArr = uri.split('/')
+        expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
+        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
+
+        // Match total supply
+        const totalSupply = await contract.totalSupply()
+        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
+      })
+
       it('should issue multiple token for the same item id :: gas estimation', async function () {
         const itemsInTheSameTx = 70
         const beneficiaries = []
@@ -2649,7 +4320,7 @@ export function doTest(
       it('should issue multiple tokens by minter', async function () {
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
@@ -2659,7 +4330,7 @@ export function doTest(
         await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
@@ -2673,14 +4344,68 @@ export function doTest(
         await contract.issueTokens([anotherHolder], [newItemId], fromMinter)
       })
 
+      it('should issue multiple tokens by minter :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'issueTokens',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[anotherHolder], [newItemId.toString()]]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set global Minter
+        await contract.setMinters([minter], [true], fromCreator)
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+
+        await contract.setMinters([minter], [false], fromCreator)
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        // Set item Minter
+        await contract.setItemsMinters(
+          [newItemId],
+          [minter],
+          [true],
+          fromCreator
+        )
+
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+      })
+
       it('reverts when issuing a token by not allowed user', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
         await assertRevert(
           contract.issueTokens(
             [holder, anotherHolder],
             [newItemId, anotherNewItemId],
             fromDeployer
           ),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -2689,7 +4414,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromManager
           ),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -2698,14 +4423,61 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromHacker
           ),
-          'ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT'
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+        )
+      })
+
+      it('reverts when issuing a token by not the creator or minter :: Relayed EIP721 ', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'issueTokens',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [
+            [holder, anotherHolder],
+            [newItemId.toString(), anotherNewItemId.toString()],
+          ]
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
       it('reverts if trying to issue tokens with invalid argument length', async function () {
         await assertRevert(
           contract.issueTokens([user], [newItemId, anotherNewItemId], fromUser),
-          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH'
+          'BCV2#issueTokens: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2714,7 +4486,7 @@ export function doTest(
             [anotherNewItemId],
             fromUser
           ),
-          'ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH'
+          'BCV2#issueTokens: LENGTH_MISMATCH'
         )
       })
 
@@ -2737,7 +4509,7 @@ export function doTest(
             [length, newItemId],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST'
+          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -2754,7 +4526,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens(beneficiaries, ids, fromCreator),
-          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+          'BCV2#_issueToken: ITEM_EXHAUSTED'
         )
 
         await contract.issueTokens(
@@ -2769,7 +4541,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED'
+          'BCV2#_issueToken: ITEM_EXHAUSTED'
         )
       })
 
@@ -2782,7 +4554,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
+          'BCV2#isMintingAllowed: NOT_APPROVED'
         )
       })
 
@@ -2808,7 +4580,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED'
+          'BCV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
 
@@ -2836,7 +4608,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD'
+          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -2878,12 +4650,12 @@ export function doTest(
       it('reverts if the token does not exist', async function () {
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(0, 100)),
-          'ERC721Metadata: received a URI query for a nonexistent token'
+          'BCV2#tokenURI: INVALID_TOKEN_ID'
         )
 
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(100, 1)),
-          'ERC721Metadata: received a URI query for a nonexistent token'
+          'BCV2#tokenURI: INVALID_TOKEN_ID'
         )
       })
     })
@@ -2913,6 +4685,70 @@ export function doTest(
         expect(logs[3].args.from).to.be.equal(holder)
         expect(logs[3].args.to).to.be.equal(anotherHolder)
         expect(logs[3].args.tokenId).to.eq.BN(token2)
+
+        ownerToken1 = await collectionContract.ownerOf(token1)
+        ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(anotherHolder)
+        expect(ownerToken2).to.be.equal(anotherHolder)
+      })
+
+      it('should transfer in batch :: Relayed EIP721', async function () {
+        let ownerToken1 = await collectionContract.ownerOf(token1)
+        let ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(holder)
+        expect(ownerToken2).to.be.equal(holder)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: '_to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_tokenIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'safeBatchTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          holder,
+          relayer
+        )
+
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(5)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(holder)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[2].event).to.be.equal('Transfer')
+        expect(logs[2].args.from).to.be.equal(holder)
+        expect(logs[2].args.to).to.be.equal(anotherHolder)
+        expect(logs[2].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[4].event).to.be.equal('Transfer')
+        expect(logs[4].args.from).to.be.equal(holder)
+        expect(logs[4].args.to).to.be.equal(anotherHolder)
+        expect(logs[4].args.tokenId).to.eq.BN(token2)
 
         ownerToken1 = await collectionContract.ownerOf(token1)
         ownerToken2 = await collectionContract.ownerOf(token2)
@@ -2985,19 +4821,90 @@ export function doTest(
         expect(ownerToken2).to.be.equal(anotherHolder)
       })
 
+      it('should safe transfer in batch by operator :: Relayed EIP721', async function () {
+        let ownerToken1 = await collectionContract.ownerOf(token1)
+        let ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(holder)
+        expect(ownerToken2).to.be.equal(holder)
+
+        await collectionContract.approve(operator, token1, fromHolder)
+        await collectionContract.approve(operator, token2, fromHolder)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: '_to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_tokenIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'safeBatchTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          operator,
+          relayer
+        )
+
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(5)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(operator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[2].event).to.be.equal('Transfer')
+        expect(logs[2].args.from).to.be.equal(holder)
+        expect(logs[2].args.to).to.be.equal(anotherHolder)
+        expect(logs[2].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[4].event).to.be.equal('Transfer')
+        expect(logs[4].args.from).to.be.equal(holder)
+        expect(logs[4].args.to).to.be.equal(anotherHolder)
+        expect(logs[4].args.tokenId).to.eq.BN(token2)
+
+        ownerToken1 = await collectionContract.ownerOf(token1)
+        ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(anotherHolder)
+        expect(ownerToken2).to.be.equal(anotherHolder)
+      })
+
       it('should safe transfer in batch by approval for all', async function () {
         let ownerToken1 = await collectionContract.ownerOf(token1)
         let ownerToken2 = await collectionContract.ownerOf(token2)
         expect(ownerToken1).to.be.equal(holder)
         expect(ownerToken2).to.be.equal(holder)
 
-        await collectionContract.setApprovalForAll(hacker, true, fromHolder)
+        await collectionContract.setApprovalForAll(
+          approvedForAll,
+          true,
+          fromHolder
+        )
 
         const { logs } = await collectionContract.safeBatchTransferFrom(
           holder,
           anotherHolder,
           [token1, token2],
-          fromHacker
+          fromApprovedForAll
         )
 
         // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
@@ -3018,12 +4925,82 @@ export function doTest(
         expect(ownerToken2).to.be.equal(anotherHolder)
       })
 
+      it('should safe transfer in batch by approval for all :: Relayed EIP721', async function () {
+        let ownerToken1 = await collectionContract.ownerOf(token1)
+        let ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(holder)
+        expect(ownerToken2).to.be.equal(holder)
+
+        await collectionContract.setApprovalForAll(
+          approvedForAll,
+          true,
+          fromHolder
+        )
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: '_to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_tokenIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'safeBatchTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          approvedForAll,
+          relayer
+        )
+
+        // 0.6 Zep contracts emits an approval before each Transfer event for cleaning allowances
+        expect(logs.length).to.be.equal(5)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(approvedForAll)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[2].event).to.be.equal('Transfer')
+        expect(logs[2].args.from).to.be.equal(holder)
+        expect(logs[2].args.to).to.be.equal(anotherHolder)
+        expect(logs[2].args.tokenId).to.eq.BN(token1)
+
+        expect(logs[4].event).to.be.equal('Transfer')
+        expect(logs[4].args.from).to.be.equal(holder)
+        expect(logs[4].args.to).to.be.equal(anotherHolder)
+        expect(logs[4].args.tokenId).to.eq.BN(token2)
+
+        ownerToken1 = await collectionContract.ownerOf(token1)
+        ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(anotherHolder)
+        expect(ownerToken2).to.be.equal(anotherHolder)
+      })
+
       it('should tranfer tokens in batch when the collection does not allow minting', async function () {
         await collectionContract.setApproved(false, fromDeployer)
 
         await assertRevert(
           collectionContract.issueToken(anotherHolder, 0, fromCreator),
-          'ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED'
+          'BCV2#isMintingAllowed: NOT_APPROVED'
         )
 
         let ownerToken1 = await collectionContract.ownerOf(token1)
@@ -3085,6 +5062,81 @@ export function doTest(
         )
       })
 
+      it('reverts when transfer in batch by unuthorized user :: Relayed EIP721 ', async function () {
+        let ownerToken1 = await collectionContract.ownerOf(token1)
+        let ownerToken2 = await collectionContract.ownerOf(token2)
+        expect(ownerToken1).to.be.equal(holder)
+        expect(ownerToken2).to.be.equal(holder)
+
+        let functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: '_to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_tokenIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'safeBatchTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: '_to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_tokenIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'safeBatchTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString(), token3.toString()],
+          ]
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, holder, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+      })
+
       it('reverts when beneficiary is 0 address', async function () {
         await assertRevert(
           collectionContract.batchTransferFrom(
@@ -3112,6 +5164,48 @@ export function doTest(
         expect(logs[0].event).to.be.equal('SetEditable')
         expect(logs[0].args._previousValue).to.be.equal(true)
         expect(logs[0].args._newValue).to.be.equal(false)
+
+        isEditable = await collectionContract.isEditable()
+        expect(isEditable).to.be.equal(false)
+      })
+
+      it('should set editable :: Relayed EIP721', async function () {
+        let isEditable = await collectionContract.isEditable()
+        expect(isEditable).to.be.equal(true)
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setEditable',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('SetEditable')
+        expect(logs[1].args._previousValue).to.be.equal(true)
+        expect(logs[1].args._newValue).to.be.equal(false)
 
         isEditable = await collectionContract.isEditable()
         expect(isEditable).to.be.equal(false)
@@ -3154,10 +5248,64 @@ export function doTest(
         )
       })
 
+      it('reverts when trying to change values by not the owner :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setEditable',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, creator, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+      })
+
       it('reverts when trying to set the same value as before', async function () {
         await assertRevert(
           collectionContract.setEditable(true, fromDeployer),
-          'ERC721BaseCollectionV2#setEditable: VALUE_IS_THE_SAME'
+          'BCV2#setEditable: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -3191,10 +5339,117 @@ export function doTest(
         )
       })
 
+      it('should set Base URI :: Relayed EIP721', async function () {
+        const newBaseURI = 'https://new-api.io/'
+
+        let baseURI = await collectionContract.baseURI()
+        expect(BASE_URI).to.be.equal(baseURI)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'string',
+                name: '_baseURI',
+                type: 'string',
+              },
+            ],
+            name: 'setBaseURI',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [newBaseURI]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('BaseURI')
+        expect(logs[1].args._oldBaseURI).to.be.equal(BASE_URI)
+        expect(logs[1].args._newBaseURI).to.be.equal(newBaseURI)
+
+        baseURI = await collectionContract.baseURI()
+        expect(newBaseURI).to.be.equal(baseURI)
+
+        const uri = await collectionContract.tokenURI(token1)
+
+        const [itemId, issuedId] = decodeTokenId(token1)
+
+        expect(uri).to.be.equal(
+          `${newBaseURI}${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
+        )
+      })
+
       it('reverts when trying to change values by hacker', async function () {
         await assertRevert(
           collectionContract.setBaseURI('', fromHacker),
           'Ownable: caller is not the owner'
+        )
+      })
+
+      it('reverts when trying to change values by not the owner :: Relayed EIP721', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'string',
+                name: '_baseURI',
+                type: 'string',
+              },
+            ],
+            name: 'setBaseURI',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          ['']
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, creator, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
     })
@@ -3214,6 +5469,41 @@ export function doTest(
 
         expect(logs.length).to.equal(1)
         expect(logs[0].event).to.equal('Complete')
+
+        isCompleted = await contract.isCompleted()
+        expect(isCompleted).to.be.equal(true)
+      })
+
+      it('should complete collection :: Relayed EIP721', async function () {
+        let isCompleted = await contract.isCompleted()
+        expect(isCompleted).to.be.equal(false)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [],
+            name: 'completeCollection',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          []
+        )
+
+        const { logs } = await sendMetaTx(
+          contract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.equal('Complete')
 
         isCompleted = await contract.isCompleted()
         expect(isCompleted).to.be.equal(true)
@@ -3246,7 +5536,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED'
+          'BCV2#_addItem: COLLECTION_COMPLETED'
         )
       })
 
@@ -3255,29 +5545,66 @@ export function doTest(
 
         await assertRevert(
           contract.completeCollection(fromCreator),
-          'ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED'
+          'BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED'
         )
       })
 
       it('reverts when completing collection by other than the creator', async function () {
         await assertRevert(
           contract.completeCollection(fromDeployer),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromManager),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromMinter),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromHacker),
-          'ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+        )
+      })
+
+      it('reverts when completing collection by other than the creator :: Relayed EIP721', async function () {
+        await contract.setMinters([minter], [true], fromCreator)
+        await contract.setManagers([manager], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsManagers([0], [manager], [true], fromCreator)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [],
+            name: 'completeCollection',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          []
+        )
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, deployer, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(contract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
     })
@@ -3301,6 +5628,49 @@ export function doTest(
         expect(creator_).to.be.equal(user)
       })
 
+      it('should transfer creator role by creator :: Relayed EIP721', async function () {
+        let creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(creator)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_newCreator',
+                type: 'address',
+              },
+            ],
+            name: 'transferCreatorship',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [user]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          creator,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('CreatorshipTransferred')
+        expect(logs[1].args._previousCreator).to.be.equal(creator)
+        expect(logs[1].args._newCreator).to.be.equal(user)
+
+        creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(user)
+      })
+
       it('should transfer creator role by owner', async function () {
         let creator_ = await collectionContract.creator()
         expect(creator_).to.be.equal(creator)
@@ -3314,6 +5684,49 @@ export function doTest(
         expect(logs[0].event).to.be.equal('CreatorshipTransferred')
         expect(logs[0].args._previousCreator).to.be.equal(creator)
         expect(logs[0].args._newCreator).to.be.equal(user)
+
+        creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(user)
+      })
+
+      it('should transfer creator role by owner :: Relayed EIP721', async function () {
+        let creator_ = await collectionContract.creator()
+        expect(creator_).to.be.equal(creator)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_newCreator',
+                type: 'address',
+              },
+            ],
+            name: 'transferCreatorship',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [user]
+        )
+
+        const { logs } = await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        expect(logs.length).to.be.equal(2)
+
+        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
+        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+        expect(logs[1].event).to.be.equal('CreatorshipTransferred')
+        expect(logs[1].args._previousCreator).to.be.equal(creator)
+        expect(logs[1].args._newCreator).to.be.equal(user)
 
         creator_ = await collectionContract.creator()
         expect(creator_).to.be.equal(user)
@@ -3337,24 +5750,73 @@ export function doTest(
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromMinter),
-          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromManager),
-          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromHacker),
-          'ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+        )
+      })
+
+      it('reverts when trying to transfer creator role by not the owner or creator :: Relayed EIP721', async function () {
+        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setManagers([manager], [true], fromCreator)
+        await collectionContract.setItemsMinters(
+          [0],
+          [minter],
+          [true],
+          fromCreator
+        )
+        await collectionContract.setItemsManagers(
+          [0],
+          [manager],
+          [true],
+          fromCreator
+        )
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_newCreator',
+                type: 'address',
+              },
+            ],
+            name: 'transferCreatorship',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [user]
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, minter, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, manager, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
+        )
+
+        await assertRevert(
+          sendMetaTx(collectionContract, functionSignature, hacker, relayer),
+          'NMT#executeMetaTransaction: CALL_FAILED'
         )
       })
 
       it('reverts when trying to transfer creator role to an invalid address', async function () {
         await assertRevert(
           collectionContract.transferCreatorship(ZERO_ADDRESS, fromDeployer),
-          'ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS'
+          'BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS'
         )
       })
     })
@@ -3401,7 +5863,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(max.add(one), 0),
-          'ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID'
+          'BCV2#encodeTokenId: INVALID_ITEM_ID'
         )
       })
 
@@ -3414,7 +5876,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(0, max.add(one)),
-          'ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID'
+          'BCV2#encodeTokenId: INVALID_ISSUED_ID'
         )
       })
     })
@@ -3475,6 +5937,218 @@ export function doTest(
         await assertRevert(collectionContract.getRarityValue(values.length))
 
         await assertRevert(collectionContract.getRarityName(values.length))
+      })
+    })
+
+    describe('MetaTransaction', function () {
+      it('should get the chain id', async function () {
+        const expectedChainId = await web3.eth.net.getId()
+        const contractChainId = await collectionContract.getChainId()
+        expect(contractChainId).to.eq.BN(expectedChainId)
+      })
+
+      it('should get the domain separator', async function () {
+        const expectedDomainSeparator = await getDomainSeparator(
+          collectionContract
+        )
+        const domainSeparator = await collectionContract.domainSeparator()
+        expect(expectedDomainSeparator).to.eq.BN(domainSeparator)
+      })
+
+      it('should get nonce', async function () {
+        let nonce = await collectionContract.getNonce(deployer)
+        expect(0).to.eq.BN(nonce)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        await sendMetaTx(
+          collectionContract,
+          functionSignature,
+          deployer,
+          relayer
+        )
+
+        nonce = await collectionContract.getNonce(deployer)
+        expect(1).to.eq.BN(nonce)
+      })
+
+      it('should send a tx ', async function () {
+        let owner = await collectionContract.ownerOf(token1)
+        expect(owner).to.be.equal(holder)
+
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: 'from',
+                type: 'address',
+              },
+              {
+                internalType: 'address',
+                name: 'to',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256',
+                name: 'tokenId',
+                type: 'uint256',
+              },
+            ],
+            name: 'safeTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [holder, anotherHolder, token1.toString()]
+        )
+
+        await sendMetaTx(collectionContract, functionSignature, holder, relayer)
+
+        owner = await collectionContract.ownerOf(token1)
+        expect(owner).to.be.equal(anotherHolder)
+      })
+
+      it('reverts when signature does not match with signer', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        await assertRevert(
+          sendMetaTx(
+            collectionContract,
+            functionSignature,
+            deployer,
+            relayer,
+            hacker
+          ),
+          'NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH'
+        )
+      })
+
+      it('reverts when trying to replicate a tx', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        const signature = await getSignature(
+          collectionContract,
+          functionSignature,
+          deployer
+        )
+
+        const r = '0x' + signature.substring(0, 64)
+        const s = '0x' + signature.substring(64, 128)
+        const v = '0x' + signature.substring(128, 130)
+
+        await collectionContract.executeMetaTransaction(
+          deployer,
+          functionSignature,
+          r,
+          s,
+          v,
+          {
+            from: relayer,
+          }
+        )
+
+        await assertRevert(
+          collectionContract.executeMetaTransaction(
+            deployer,
+            functionSignature,
+            r,
+            s,
+            v,
+            {
+              from: relayer,
+            }
+          ),
+          'NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH'
+        )
+      })
+
+      it('reverts when trying to impersonate a tx', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        )
+
+        const signature = await getSignature(
+          collectionContract,
+          functionSignature,
+          hacker
+        )
+
+        const r = '0x' + signature.substring(0, 64)
+        const s = '0x' + signature.substring(64, 128)
+        const v = '0x' + signature.substring(128, 130)
+
+        await assertRevert(
+          collectionContract.executeMetaTransaction(
+            deployer,
+            functionSignature,
+            r,
+            s,
+            v,
+            {
+              from: relayer,
+            }
+          ),
+          'NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH'
+        )
       })
     })
   })

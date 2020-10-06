@@ -4,10 +4,11 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "../../commons//OwnableInitializable.sol";
+import "../../commons//NativeMetaTransaction.sol";
 import "../../tokens/ERC721Initializable.sol";
 import "../../libs/String.sol";
 
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
+contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
@@ -96,12 +97,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         bool _shouldComplete,
         string memory _baseURI,
         Item[] memory _items
-    ) public virtual whenNotInitialized {
+    ) public virtual {
+        require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
-        require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
+        require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
         // Ownable init
         _initOwnable();
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection', '2');
         // ERC721 init
         _initERC721(_name, _symbol);
         // Base URI init
@@ -121,51 +125,27 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /*
-    * Modifiers & Roles checkers
+    * Roles checkers
     */
 
     function _isCreator() internal view returns (bool) {
-        return creator == msg.sender;
+        return creator == _msgSender();
     }
 
     function _isMinter(uint256 _itemId) internal view returns (bool) {
-        return globalMinters[msg.sender] || itemMinters[_itemId][msg.sender];
+        address sender = _msgSender();
+        return globalMinters[sender] || itemMinters[_itemId][sender];
     }
 
     function _isManager(uint256 _itemId) internal view returns (bool) {
-        return globalManagers[msg.sender] || itemManagers[_itemId][msg.sender];
-    }
-
-    modifier isCollectionEditable() {
-        require(isEditable, "ERC721BaseCollectionV2#isCollectionEditable: NOT_EDITABLE");
-        _;
-    }
-
-    modifier whenNotInitialized() {
-        require(!isInitialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
-        _;
+        address sender = _msgSender();
+        return globalManagers[sender] || itemManagers[_itemId][sender];
     }
 
     modifier onlyCreator() {
         require(
             _isCreator(),
-            "ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR"
-        );
-        _;
-    }
-
-    modifier canMint(uint256 _itemId) {
-        require(
-            _isCreator() || _isMinter(_itemId),
-            "ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT"
-        );
-        _;
-    }
-
-    modifier canManage(uint256 _itemId) {
-        require(
-            _isCreator() || _isManager(_itemId),
-            "ERC721BaseCollectionV2#canManage: CALLER_CAN_NOT_MANAGE"
+            "BCV2#onlyCreator: CALLER_IS_NOT_CREATOR"
         );
         _;
     }
@@ -182,14 +162,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setMinters(address[] calldata _minters, bool[] calldata _values) external onlyCreator {
         require(
             _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH"
+            "BCV2#setMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             bool value = _values[i];
-            require(minter != address(0), "ERC721BaseCollectionV2#setMinters: INVALID_MINTER_ADDRESS");
-            require(globalMinters[minter] != value, "ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "BCV2#setMinters: INVALID_MINTER_ADDRESS");
+            require(globalMinters[minter] != value, "BCV2#setMinters: VALUE_IS_THE_SAME");
 
             globalMinters[minter] = value;
             emit SetGlobalMinter(minter, value);
@@ -209,16 +189,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH"
+            "BCV2#setItemsMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(minter != address(0), "ERC721BaseCollectionV2#setItemsMinters: INVALID_MINTER_ADDRESS");
-            require(itemId < items.length, "ERC721BaseCollectionV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
-            require(itemMinters[itemId][minter] != value, "ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "BCV2#setItemsMinters: INVALID_MINTER_ADDRESS");
+            require(itemId < items.length, "BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
+            require(itemMinters[itemId][minter] != value, "BCV2#setItemsMinters: VALUE_IS_THE_SAME");
 
             itemMinters[itemId][minter] = value;
             emit SetItemMinter(itemId, minter, value);
@@ -233,14 +213,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setManagers(address[] calldata _managers, bool[] calldata _values) external onlyCreator {
         require(
             _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH"
+            "BCV2#setManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             bool value = _values[i];
-            require(manager != address(0), "ERC721BaseCollectionV2#setManagers: INVALID_MANAGER_ADDRESS");
-            require(globalManagers[manager] != value, "ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "BCV2#setManagers: INVALID_MANAGER_ADDRESS");
+            require(globalManagers[manager] != value, "BCV2#setManagers: VALUE_IS_THE_SAME");
 
             globalManagers[manager] = value;
             emit SetGlobalManager(manager, value);
@@ -260,16 +240,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _managers.length && _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH"
+            "BCV2#setItemsManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(manager != address(0), "ERC721BaseCollectionV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
-            require(itemId < items.length, "ERC721BaseCollectionV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
-            require(itemManagers[itemId][manager] != value, "ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
+            require(itemId < items.length, "BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
+            require(itemManagers[itemId][manager] != value, "BCV2#setItemsManagers: VALUE_IS_THE_SAME");
 
             itemManagers[itemId][manager] = value;
             emit SetItemManager(itemId, manager, value);
@@ -278,10 +258,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     /**
      * @notice Transfers ownership of the contract to a new account (`newOwner`).
+     * @dev Forced owner to check against msg.sender always
      */
     function transferCreatorship(address _newCreator) public virtual {
-        require(msg.sender == owner() || msg.sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
-        require(_newCreator != address(0), "ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
+        address sender = _msgSender();
+        require(sender == owner() || sender == creator, "BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        require(_newCreator != address(0), "BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
 
         emit CreatorshipTransferred(creator, _newCreator);
         creator = _newCreator;
@@ -296,7 +278,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _items - items to add
      */
     function addItems(Item[] memory _items) external virtual onlyCreator {
-        require(!isCompleted, "ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED");
+        require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
 
         for (uint256 i = 0; i < _items.length; i++) {
             _addItem(_items[i]);
@@ -317,7 +299,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH"
+            "BCV2#editItemsSalesData: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -326,11 +308,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
 
-            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
+                "BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
             );
 
             Item storage item = items[itemId];
@@ -349,11 +331,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function editItemsMetadata(
         uint256[] calldata _itemIds,
         string[] calldata _metadatas
-    ) isCollectionEditable external virtual {
-        // Check lengths
+    ) external virtual {
+        require(isEditable, "BCV2#editItemsMetadata: NOT_EDITABLE");
         require(
             _itemIds.length == _metadatas.length,
-            "ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH"
+            "BCV2#editItemsMetadata: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -361,9 +343,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             uint256 itemId = _itemIds[i];
             string memory metadata = _metadatas[i];
 
-            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
-            require(bytes(metadata).length > 0, "ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA");
+            require(_isCreator() || _isManager(itemId), "BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
+            require(bytes(metadata).length > 0, "BCV2#editItemsMetadata: EMPTY_METADATA");
 
             Item storage item = items[itemId];
             item.metadata = metadata;
@@ -398,21 +380,21 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         uint256 rarity = getRarityValue(_item.rarity);
         require(
            rarity > 0 && rarity <= MAX_ISSUED_ID,
-            "ERC721BaseCollectionV2#_addItem: INVALID_RARITY"
+            "BCV2#_addItem: INVALID_RARITY"
         );
         require(
             _item.totalSupply == 0,
-            "ERC721BaseCollectionV2#_addItem: INVALID_TOTAL_SUPPLY"
+            "BCV2#_addItem: INVALID_TOTAL_SUPPLY"
         );
-        require(bytes(_item.metadata).length > 0, "ERC721BaseCollectionV2#_addItem: EMPTY_METADATA");
+        require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
         require(
             _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
+            "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
         );
-        require(_item.contentHash == EMPTY_CONTENT, "ERC721BaseCollectionV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
+        require(_item.contentHash == EMPTY_CONTENT, "BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
 
         uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "ERC721BaseCollectionV2#_addItem: MAX_ITEM_ID_REACHED");
+        require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
 
         items.push(_item);
 
@@ -427,7 +409,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemId - item id
      */
     function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueToken: MINT_NOT_ALLOWED");
+        require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
 
         _issueToken(_beneficiary, _itemId);
     }
@@ -439,8 +421,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
-        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueTokens: MINT_NOT_ALLOWED");
-        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH");
+        require(isMintingAllowed(), "BCV2#issueTokens: MINT_NOT_ALLOWED");
+        require(_beneficiaries.length == _itemIds.length, "BCV2#issueTokens: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             _issueToken(_beneficiaries[i], _itemIds[i]);
@@ -453,15 +435,20 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual canMint(_itemId) {
+    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual {
+        // Check ownership
+        require(
+            _isCreator() || _isMinter(_itemId),
+            "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
+        );
         // Check item id
-        require(_itemId < items.length, "ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST");
+        require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= getRarityValue(item.rarity), "BCV2#_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -492,12 +479,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _contentHashes.length && _contentHashes.length == _metadatas.length,
-            "ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH"
+            "BCV2#rescueItems: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             uint256 itemId = _itemIds[i];
-            require(itemId < items.length, "ERC721BaseCollectionV2#rescueItems: ITEM_DOES_NOT_EXIST");
+            require(itemId < items.length, "BCV2#rescueItems: ITEM_DOES_NOT_EXIST");
 
             Item storage item = items[itemId];
 
@@ -544,7 +531,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             return 1;
         }
 
-        revert("#ERC721BaseCollectionV2#getRarityValue: INVALID_RARITY");
+        revert("#BCV2#getRarityValue: INVALID_RARITY");
     }
 
     /**
@@ -569,7 +556,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             return "unique";
         }
 
-        revert("#ERC721BaseCollectionV2#getRarityName: INVALID_RARITY");
+        revert("#BCV2#getRarityName: INVALID_RARITY");
     }
 
     /*
@@ -581,9 +568,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD");
-        require(isCompleted, "ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED");
-        require(isApproved, "ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED");
+        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
+        require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
+        require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
 
         return true;
     }
@@ -594,7 +581,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * The issuance is still allowed.
      */
     function completeCollection() external onlyCreator {
-        require(!isCompleted, "ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+        require(!isCompleted, "BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
 
         _completeCollection();
     }
@@ -613,7 +600,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @notice Approve a collection
      */
     function setApproved(bool _value) external virtual onlyOwner {
-        require(isApproved != _value, "ERC721BaseCollectionV2#setApproved: VALUE_IS_THE_SAME");
+        require(isApproved != _value, "BCV2#setApproved: VALUE_IS_THE_SAME");
 
         emit SetApproved(isApproved, _value);
 
@@ -627,7 +614,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _value - Value to set
      */
     function setEditable(bool _value) external onlyOwner {
-        require(isEditable != _value, "ERC721BaseCollectionV2#setEditable: VALUE_IS_THE_SAME");
+        require(isEditable != _value, "BCV2#setEditable: VALUE_IS_THE_SAME");
 
         emit SetEditable(isEditable, _value);
 
@@ -654,7 +641,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
+        require(_exists(_tokenId), "BCV2#tokenURI: INVALID_TOKEN_ID");
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
 
@@ -674,8 +661,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     /*
     * Batch Transfer functions
     */
-
-
 
     /**
      * @notice Transfers the ownership of given tokens ID to another address.
@@ -736,8 +721,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return id uint256 of the encoded id
      */
     function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
-        require(_itemId <= MAX_ITEM_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID");
-        require(_issuedId <= MAX_ISSUED_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID");
+        require(_itemId <= MAX_ITEM_ID, "BCV2#encodeTokenId: INVALID_ITEM_ID");
+        require(_issuedId <= MAX_ISSUED_ID, "BCV2#encodeTokenId: INVALID_ISSUED_ID");
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {

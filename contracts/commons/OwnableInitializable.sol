@@ -2,7 +2,7 @@
 
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/GSN/Context.sol";
+import "./ContextMixin.sol";
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/GSN/Context.sol";
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is Context {
+contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

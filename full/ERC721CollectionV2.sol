@@ -1,34 +1,37 @@
 
-// File: @openzeppelin/contracts/GSN/Context.sol
+// File: contracts/commons/ContextMixin.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity 0.6.12;
 
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
-        return msg.sender;
-    }
 
-    function _msgData() internal view virtual returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
+abstract contract ContextMixin {
+    function _msgSender()
+        internal
+        view
+        virtual
+        returns (address payable sender)
+    {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = msg.sender;
+        }
+        return sender;
     }
 }
 
 // File: contracts/commons/OwnableInitializable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 
@@ -45,7 +48,7 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is Context {
+contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -96,6 +99,342 @@ contract OwnableInitializable is Context {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
+    }
+}
+
+// File: @openzeppelin/contracts/math/SafeMath.sol
+
+
+pragma solidity ^0.6.0;
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations with added overflow
+ * checks.
+ *
+ * Arithmetic operations in Solidity wrap on overflow. This can easily result
+ * in bugs, because programmers usually assume that an overflow raises an
+ * error, which is the standard behavior in high level programming languages.
+ * `SafeMath` restores this intuition by reverting the transaction when an
+ * operation overflows.
+ *
+ * Using this library instead of the unchecked operations eliminates an entire
+ * class of bugs, so it's recommended to use it always.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts with custom message when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
+
+// File: contracts/commons/EIP712Base.sol
+
+
+pragma solidity 0.6.12;
+
+
+contract EIP712Base {
+    struct EIP712Domain {
+        string name;
+        string version;
+        address verifyingContract;
+        bytes32 salt;
+    }
+
+    bytes32 internal constant EIP712_DOMAIN_TYPEHASH = keccak256(
+        bytes(
+            "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
+        )
+    );
+    bytes32 public domainSeparator;
+
+    // supposed to be called once while initializing.
+    // one of the contractsa that inherits this contract follows proxy pattern
+    // so it is not possible to do this in a constructor
+    function _initializeEIP712(
+        string memory name,
+        string memory version
+    )
+        internal
+    {
+        domainSeparator = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH,
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                address(this),
+                bytes32(getChainId())
+            )
+        );
+    }
+
+    function getChainId() public pure returns (uint256) {
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
+        return id;
+    }
+
+    /**
+     * Accept message hash and returns hash message in EIP712 compatible form
+     * So that it can be used to recover signer from signature signed using EIP712 formatted data
+     * https://eips.ethereum.org/EIPS/eip-712
+     * "\\x19" makes the encoding deterministic
+     * "\\x01" is the version byte to make it compatible to EIP-191
+     */
+    function toTypedMessageHash(bytes32 messageHash)
+        internal
+        view
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encodePacked("\x19\x01", domainSeparator, messageHash)
+            );
+    }
+}
+
+// File: contracts/commons/NativeMetaTransaction.sol
+
+
+pragma solidity 0.6.12;
+
+
+
+contract NativeMetaTransaction is EIP712Base {
+    using SafeMath for uint256;
+    bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
+        bytes(
+            "MetaTransaction(uint256 nonce,address from,bytes functionSignature)"
+        )
+    );
+    event MetaTransactionExecuted(
+        address userAddress,
+        address payable relayerAddress,
+        bytes functionSignature
+    );
+    mapping(address => uint256) nonces;
+
+    /*
+     * Meta transaction structure.
+     * No point of including value field here as if user is doing value transfer then he has the funds to pay for gas
+     * He should call the desired function directly in that case.
+     */
+    struct MetaTransaction {
+        uint256 nonce;
+        address from;
+        bytes functionSignature;
+    }
+
+    function executeMetaTransaction(
+        address userAddress,
+        bytes memory functionSignature,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) public payable returns (bytes memory) {
+        MetaTransaction memory metaTx = MetaTransaction({
+            nonce: nonces[userAddress],
+            from: userAddress,
+            functionSignature: functionSignature
+        });
+
+        require(
+            verify(userAddress, metaTx, sigR, sigS, sigV),
+            "NMT#executeMetaTransaction: SIGNER_AND_SIGNATURE_DO_NOT_MATCH"
+        );
+
+        // increase nonce for user (to avoid re-use)
+        nonces[userAddress] = nonces[userAddress].add(1);
+
+        emit MetaTransactionExecuted(
+            userAddress,
+            msg.sender,
+            functionSignature
+        );
+
+        // Append userAddress and relayer address at the end to extract it from calling context
+        (bool success, bytes memory returnData) = address(this).call(
+            abi.encodePacked(functionSignature, userAddress)
+        );
+        require(success, "NMT#executeMetaTransaction: CALL_FAILED");
+
+        return returnData;
+    }
+
+    function hashMetaTransaction(MetaTransaction memory metaTx)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encode(
+                    META_TRANSACTION_TYPEHASH,
+                    metaTx.nonce,
+                    metaTx.from,
+                    keccak256(metaTx.functionSignature)
+                )
+            );
+    }
+
+    function getNonce(address user) public view returns (uint256 nonce) {
+        nonce = nonces[user];
+    }
+
+    function verify(
+        address signer,
+        MetaTransaction memory metaTx,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) internal view returns (bool) {
+        require(signer != address(0), "NMT#verify: INVALID_SIGNER");
+        return
+            signer ==
+            ecrecover(
+                toTypedMessageHash(hashMetaTransaction(metaTx)),
+                sigV,
+                sigR,
+                sigS
+            );
     }
 }
 
@@ -389,167 +728,6 @@ contract ERC165 is IERC165 {
     function _registerInterface(bytes4 interfaceId) internal virtual {
         require(interfaceId != 0xffffffff, "ERC165: invalid interface id");
         _supportedInterfaces[interfaceId] = true;
-    }
-}
-
-// File: @openzeppelin/contracts/math/SafeMath.sol
-
-
-pragma solidity ^0.6.0;
-
-/**
- * @dev Wrappers over Solidity's arithmetic operations with added overflow
- * checks.
- *
- * Arithmetic operations in Solidity wrap on overflow. This can easily result
- * in bugs, because programmers usually assume that an overflow raises an
- * error, which is the standard behavior in high level programming languages.
- * `SafeMath` restores this intuition by reverting the transaction when an
- * operation overflows.
- *
- * Using this library instead of the unchecked operations eliminates an entire
- * class of bugs, so it's recommended to use it always.
- */
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     *
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     *
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
     }
 }
 
@@ -1237,7 +1415,7 @@ pragma solidity ^0.6.0;
  * This is the same contract at `openzeppelin/contracts 3.1.0` but `tokenURI` was changed to virtual override
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ERC721Initializable is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
+contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -1780,7 +1958,8 @@ pragma experimental ABIEncoderV2;
 
 
 
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
+
+contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
@@ -1869,12 +2048,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         bool _shouldComplete,
         string memory _baseURI,
         Item[] memory _items
-    ) public virtual whenNotInitialized {
+    ) public virtual {
+        require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
-        require(_creator != address(0), "ERC721BaseCollectionV2#initialize: INVALID_CREATOR");
+        require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
         // Ownable init
         _initOwnable();
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection', '2');
         // ERC721 init
         _initERC721(_name, _symbol);
         // Base URI init
@@ -1894,51 +2076,27 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     }
 
     /*
-    * Modifiers & Roles checkers
+    * Roles checkers
     */
 
     function _isCreator() internal view returns (bool) {
-        return creator == msg.sender;
+        return creator == _msgSender();
     }
 
     function _isMinter(uint256 _itemId) internal view returns (bool) {
-        return globalMinters[msg.sender] || itemMinters[_itemId][msg.sender];
+        address sender = _msgSender();
+        return globalMinters[sender] || itemMinters[_itemId][sender];
     }
 
     function _isManager(uint256 _itemId) internal view returns (bool) {
-        return globalManagers[msg.sender] || itemManagers[_itemId][msg.sender];
-    }
-
-    modifier isCollectionEditable() {
-        require(isEditable, "ERC721BaseCollectionV2#isCollectionEditable: NOT_EDITABLE");
-        _;
-    }
-
-    modifier whenNotInitialized() {
-        require(!isInitialized, "ERC721BaseCollectionV2#whenNotInitialized: ALREADY_INITIALIZED");
-        _;
+        address sender = _msgSender();
+        return globalManagers[sender] || itemManagers[_itemId][sender];
     }
 
     modifier onlyCreator() {
         require(
             _isCreator(),
-            "ERC721BaseCollectionV2#onlyCreator: CALLER_IS_NOT_CREATOR"
-        );
-        _;
-    }
-
-    modifier canMint(uint256 _itemId) {
-        require(
-            _isCreator() || _isMinter(_itemId),
-            "ERC721BaseCollectionV2#canMint: CALLER_CAN_NOT_MINT"
-        );
-        _;
-    }
-
-    modifier canManage(uint256 _itemId) {
-        require(
-            _isCreator() || _isManager(_itemId),
-            "ERC721BaseCollectionV2#canManage: CALLER_CAN_NOT_MANAGE"
+            "BCV2#onlyCreator: CALLER_IS_NOT_CREATOR"
         );
         _;
     }
@@ -1955,14 +2113,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setMinters(address[] calldata _minters, bool[] calldata _values) external onlyCreator {
         require(
             _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setMinters: LENGTH_MISMATCH"
+            "BCV2#setMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             bool value = _values[i];
-            require(minter != address(0), "ERC721BaseCollectionV2#setMinters: INVALID_MINTER_ADDRESS");
-            require(globalMinters[minter] != value, "ERC721BaseCollectionV2#setMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "BCV2#setMinters: INVALID_MINTER_ADDRESS");
+            require(globalMinters[minter] != value, "BCV2#setMinters: VALUE_IS_THE_SAME");
 
             globalMinters[minter] = value;
             emit SetGlobalMinter(minter, value);
@@ -1982,16 +2140,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsMinters: LENGTH_MISMATCH"
+            "BCV2#setItemsMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(minter != address(0), "ERC721BaseCollectionV2#setItemsMinters: INVALID_MINTER_ADDRESS");
-            require(itemId < items.length, "ERC721BaseCollectionV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
-            require(itemMinters[itemId][minter] != value, "ERC721BaseCollectionV2#setItemsMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "BCV2#setItemsMinters: INVALID_MINTER_ADDRESS");
+            require(itemId < items.length, "BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
+            require(itemMinters[itemId][minter] != value, "BCV2#setItemsMinters: VALUE_IS_THE_SAME");
 
             itemMinters[itemId][minter] = value;
             emit SetItemMinter(itemId, minter, value);
@@ -2006,14 +2164,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function setManagers(address[] calldata _managers, bool[] calldata _values) external onlyCreator {
         require(
             _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setManagers: LENGTH_MISMATCH"
+            "BCV2#setManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             bool value = _values[i];
-            require(manager != address(0), "ERC721BaseCollectionV2#setManagers: INVALID_MANAGER_ADDRESS");
-            require(globalManagers[manager] != value, "ERC721BaseCollectionV2#setManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "BCV2#setManagers: INVALID_MANAGER_ADDRESS");
+            require(globalManagers[manager] != value, "BCV2#setManagers: VALUE_IS_THE_SAME");
 
             globalManagers[manager] = value;
             emit SetGlobalManager(manager, value);
@@ -2033,16 +2191,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     ) external onlyCreator {
         require(
             _itemIds.length == _managers.length && _managers.length == _values.length,
-            "ERC721BaseCollectionV2#setItemsManagers: LENGTH_MISMATCH"
+            "BCV2#setItemsManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(manager != address(0), "ERC721BaseCollectionV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
-            require(itemId < items.length, "ERC721BaseCollectionV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
-            require(itemManagers[itemId][manager] != value, "ERC721BaseCollectionV2#setItemsManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
+            require(itemId < items.length, "BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
+            require(itemManagers[itemId][manager] != value, "BCV2#setItemsManagers: VALUE_IS_THE_SAME");
 
             itemManagers[itemId][manager] = value;
             emit SetItemManager(itemId, manager, value);
@@ -2051,10 +2209,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
 
     /**
      * @notice Transfers ownership of the contract to a new account (`newOwner`).
+     * @dev Forced owner to check against msg.sender always
      */
     function transferCreatorship(address _newCreator) public virtual {
-        require(msg.sender == owner() || msg.sender == creator, "ERC721BaseCollectionV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
-        require(_newCreator != address(0), "ERC721BaseCollectionV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
+        address sender = _msgSender();
+        require(sender == owner() || sender == creator, "BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        require(_newCreator != address(0), "BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
 
         emit CreatorshipTransferred(creator, _newCreator);
         creator = _newCreator;
@@ -2069,7 +2229,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _items - items to add
      */
     function addItems(Item[] memory _items) external virtual onlyCreator {
-        require(!isCompleted, "ERC721BaseCollectionV2#_addItem: COLLECTION_COMPLETED");
+        require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
 
         for (uint256 i = 0; i < _items.length; i++) {
             _addItem(_items[i]);
@@ -2090,7 +2250,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "ERC721BaseCollectionV2#editItemsSalesData: LENGTH_MISMATCH"
+            "BCV2#editItemsSalesData: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -2099,11 +2259,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
 
-            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "ERC721BaseCollectionV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
+                "BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
             );
 
             Item storage item = items[itemId];
@@ -2122,11 +2282,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     function editItemsMetadata(
         uint256[] calldata _itemIds,
         string[] calldata _metadatas
-    ) isCollectionEditable external virtual {
-        // Check lengths
+    ) external virtual {
+        require(isEditable, "BCV2#editItemsMetadata: NOT_EDITABLE");
         require(
             _itemIds.length == _metadatas.length,
-            "ERC721BaseCollectionV2#editItemsMetadata: LENGTH_MISMATCH"
+            "BCV2#editItemsMetadata: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -2134,9 +2294,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             uint256 itemId = _itemIds[i];
             string memory metadata = _metadatas[i];
 
-            require(_isCreator() || _isManager(itemId), "ERC721BaseCollectionV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "ERC721BaseCollectionV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
-            require(bytes(metadata).length > 0, "ERC721BaseCollectionV2#editItemsMetadata: EMPTY_METADATA");
+            require(_isCreator() || _isManager(itemId), "BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
+            require(bytes(metadata).length > 0, "BCV2#editItemsMetadata: EMPTY_METADATA");
 
             Item storage item = items[itemId];
             item.metadata = metadata;
@@ -2171,21 +2331,21 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         uint256 rarity = getRarityValue(_item.rarity);
         require(
            rarity > 0 && rarity <= MAX_ISSUED_ID,
-            "ERC721BaseCollectionV2#_addItem: INVALID_RARITY"
+            "BCV2#_addItem: INVALID_RARITY"
         );
         require(
             _item.totalSupply == 0,
-            "ERC721BaseCollectionV2#_addItem: INVALID_TOTAL_SUPPLY"
+            "BCV2#_addItem: INVALID_TOTAL_SUPPLY"
         );
-        require(bytes(_item.metadata).length > 0, "ERC721BaseCollectionV2#_addItem: EMPTY_METADATA");
+        require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
         require(
             _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "ERC721BaseCollectionV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
+            "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
         );
-        require(_item.contentHash == EMPTY_CONTENT, "ERC721BaseCollectionV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
+        require(_item.contentHash == EMPTY_CONTENT, "BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
 
         uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "ERC721BaseCollectionV2#_addItem: MAX_ITEM_ID_REACHED");
+        require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
 
         items.push(_item);
 
@@ -2200,7 +2360,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemId - item id
      */
     function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueToken: MINT_NOT_ALLOWED");
+        require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
 
         _issueToken(_beneficiary, _itemId);
     }
@@ -2212,8 +2372,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
-        require(isMintingAllowed(), "ERC721BaseCollectionV2#issueTokens: MINT_NOT_ALLOWED");
-        require(_beneficiaries.length == _itemIds.length, "ERC721BaseCollectionV2#issueTokens: LENGTH_MISMATCH");
+        require(isMintingAllowed(), "BCV2#issueTokens: MINT_NOT_ALLOWED");
+        require(_beneficiaries.length == _itemIds.length, "BCV2#issueTokens: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             _issueToken(_beneficiaries[i], _itemIds[i]);
@@ -2226,15 +2386,20 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual canMint(_itemId) {
+    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual {
+        // Check ownership
+        require(
+            _isCreator() || _isMinter(_itemId),
+            "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
+        );
         // Check item id
-        require(_itemId < items.length, "ERC721BaseCollectionV2#_issueToken: ITEM_DOES_NOT_EXIST");
+        require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "ERC721BaseCollectionV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= getRarityValue(item.rarity), "BCV2#_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -2265,12 +2430,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
         // Check lengths
         require(
             _itemIds.length == _contentHashes.length && _contentHashes.length == _metadatas.length,
-            "ERC721BaseCollectionV2#rescueItems: LENGTH_MISMATCH"
+            "BCV2#rescueItems: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             uint256 itemId = _itemIds[i];
-            require(itemId < items.length, "ERC721BaseCollectionV2#rescueItems: ITEM_DOES_NOT_EXIST");
+            require(itemId < items.length, "BCV2#rescueItems: ITEM_DOES_NOT_EXIST");
 
             Item storage item = items[itemId];
 
@@ -2317,7 +2482,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             return 1;
         }
 
-        revert("#ERC721BaseCollectionV2#getRarityValue: INVALID_RARITY");
+        revert("#BCV2#getRarityValue: INVALID_RARITY");
     }
 
     /**
@@ -2342,7 +2507,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
             return "unique";
         }
 
-        revert("#ERC721BaseCollectionV2#getRarityName: INVALID_RARITY");
+        revert("#BCV2#getRarityName: INVALID_RARITY");
     }
 
     /*
@@ -2354,9 +2519,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "ERC721BaseCollectionV2#isMintingAllowed: IN_GRACE_PERIOD");
-        require(isCompleted, "ERC721BaseCollectionV2#isMintingAllowed: NOT_COMPLETED");
-        require(isApproved, "ERC721BaseCollectionV2#isMintingAllowed: NOT_APPROVED");
+        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
+        require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
+        require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
 
         return true;
     }
@@ -2367,7 +2532,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * The issuance is still allowed.
      */
     function completeCollection() external onlyCreator {
-        require(!isCompleted, "ERC721BaseCollectionV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+        require(!isCompleted, "BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
 
         _completeCollection();
     }
@@ -2386,7 +2551,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @notice Approve a collection
      */
     function setApproved(bool _value) external virtual onlyOwner {
-        require(isApproved != _value, "ERC721BaseCollectionV2#setApproved: VALUE_IS_THE_SAME");
+        require(isApproved != _value, "BCV2#setApproved: VALUE_IS_THE_SAME");
 
         emit SetApproved(isApproved, _value);
 
@@ -2400,7 +2565,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @param _value - Value to set
      */
     function setEditable(bool _value) external onlyOwner {
-        require(isEditable != _value, "ERC721BaseCollectionV2#setEditable: VALUE_IS_THE_SAME");
+        require(isEditable != _value, "BCV2#setEditable: VALUE_IS_THE_SAME");
 
         emit SetEditable(isEditable, _value);
 
@@ -2427,7 +2592,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        require(_exists(_tokenId), "ERC721Metadata: received a URI query for a nonexistent token");
+        require(_exists(_tokenId), "BCV2#tokenURI: INVALID_TOKEN_ID");
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
 
@@ -2447,8 +2612,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
     /*
     * Batch Transfer functions
     */
-
-
 
     /**
      * @notice Transfers the ownership of given tokens ID to another address.
@@ -2509,8 +2672,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable {
      * @return id uint256 of the encoded id
      */
     function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
-        require(_itemId <= MAX_ITEM_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ITEM_ID");
-        require(_issuedId <= MAX_ISSUED_ID, "ERC721BaseCollectionV2#encodeTokenId: INVALID_ISSUED_ID");
+        require(_itemId <= MAX_ITEM_ID, "BCV2#encodeTokenId: INVALID_ITEM_ID");
+        require(_issuedId <= MAX_ISSUED_ID, "BCV2#encodeTokenId: INVALID_ISSUED_ID");
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {

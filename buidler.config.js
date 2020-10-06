@@ -16,17 +16,19 @@ module.exports = {
     version: '0.6.12',
     optimizer: {
       enabled: true,
-      runs: 200,
+      runs: 1,
     },
   },
   networks: {
     buidlerevm: {
       loggingEnabled: false,
-      blockGasLimit: 100000000,
+      blockGasLimit: 1000000000,
+      gas: 1000000000,
     },
     local: {
       url: 'http://127.0.0.1:8545',
-      blockGasLimit: 100000000,
+      blockGasLimit: 1000000000,
+      gas: 1000000000,
       network_id: '*', // eslint-disable-line camelcase
     },
   },
