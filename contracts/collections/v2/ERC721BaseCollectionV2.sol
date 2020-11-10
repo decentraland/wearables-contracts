@@ -177,7 +177,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     }
 
     /**
-     * @notice Set allowed account to manage items.
+     * @notice Set allowed account to mint items.
      * @param _itemIds - item ids
      * @param _minters - minter addresses
      * @param _values - values array
