@@ -273,6 +273,14 @@ describe('Factory V2', function () {
       const salt = randomBytes(32)
       const expectedAddress = await factoryContract.getAddress(salt, user)
 
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(false)
+
       const { logs } = await factoryContract.createCollection(
         salt,
         encodeERC721Initialize(
@@ -302,11 +310,27 @@ describe('Factory V2', function () {
       expect(log.event).to.be.equal('OwnershipTransferred')
       expect(log.args.previousOwner).to.be.equal(factoryContract.address)
       expect(log.args.newOwner).to.be.equal(factoryOwner)
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(1)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('should create a collection with items', async function () {
       const salt = randomBytes(32)
       const expectedAddress = await factoryContract.getAddress(salt, user)
+
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(false)
 
       const { logs } = await factoryContract.createCollection(
         salt,
@@ -381,11 +405,22 @@ describe('Factory V2', function () {
         expect(metadata).to.be.equal(ITEMS[i][4])
         expect(contentHash).to.be.equal(ITEMS[i][5])
       }
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(1)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('should create different addresses from different salts', async function () {
       const salt1 = randomBytes(32)
       const salt2 = randomBytes(32)
+
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
 
       const res1 = await factoryContract.createCollection(
         salt1,
@@ -416,6 +451,19 @@ describe('Factory V2', function () {
       const address2 = res2.logs[0].args._address
 
       expect(address2).to.not.be.equal(address1)
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(2)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        address1
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        address2
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('reverts if initialize call failed', async function () {

@@ -19,7 +19,7 @@ contract MinimalProxyFactory is Ownable {
         _setImplementation(_implementation);
     }
 
-    function createProxy(bytes32 _salt, bytes memory _data) public virtual returns (address addr) {
+    function _createProxy(bytes32 _salt, bytes memory _data) internal virtual returns (address addr) {
         bytes memory slotcode = code;
         bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
 
