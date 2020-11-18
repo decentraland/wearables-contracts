@@ -4,6 +4,7 @@ import {
   EMPTY_HASH,
   ZERO_ADDRESS,
   BASE_URI,
+  MAX_UINT256,
   RARITIES,
   GRACE_PERIOD,
   decodeTokenId,
@@ -356,7 +357,7 @@ export function doTest(
       it('reverts when trying to approve a collection by not the owner', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -400,7 +401,7 @@ export function doTest(
 
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -509,45 +510,45 @@ export function doTest(
       })
 
       it('should add items minters', async function () {
-        let isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         const { logs } = await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(0)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(true)
+        expect(logs[0].args._value).to.be.eq.BN(1)
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
 
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [false],
+          [0],
           fromCreator
         )
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
       })
 
       it('should add items minters in batch', async function () {
-        let isMinter = await collectionContract.itemMinters(1, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(1, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, user)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, user)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         let res = await collectionContract.setItemsMinters(
           [1, 1],
           [minter, user],
-          [true, true],
+          [1, 1],
           fromCreator
         )
         let logs = res.logs
@@ -556,17 +557,17 @@ export function doTest(
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(1)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(true)
+        expect(logs[0].args._value).to.be.eq.BN(1)
 
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(1)
         expect(logs[1].args._minter).to.be.equal(user)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(1)
 
         res = await collectionContract.setItemsMinters(
           [1, 1, 1],
           [minter, anotherUser, user],
-          [false, true, false],
+          [0, 10, 0],
           fromCreator
         )
         logs = res.logs
@@ -575,26 +576,26 @@ export function doTest(
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(1)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(false)
+        expect(logs[0].args._value).to.be.eq.BN(0)
 
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(1)
         expect(logs[1].args._minter).to.be.equal(anotherUser)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(10)
 
         expect(logs[2].event).to.be.equal('SetItemMinter')
         expect(logs[2].args._itemId).to.be.eq.BN(1)
         expect(logs[2].args._minter).to.be.equal(user)
-        expect(logs[2].args._value).to.be.equal(false)
+        expect(logs[2].args._value).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, user)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, user)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, anotherUser)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(1, anotherUser)
+        expect(minterAllowance).to.be.eq.BN(10)
       })
 
       it('should add global minters :: Relayed EIP721', async function () {
@@ -677,8 +678,8 @@ export function doTest(
       })
 
       it('should add items minters :: Relayed EIP721', async function () {
-        let isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         let functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -694,9 +695,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -704,7 +705,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [true]]
+          [[0], [minter], [1]]
         )
 
         const { logs } = await sendMetaTx(
@@ -724,10 +725,10 @@ export function doTest(
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(0)
         expect(logs[1].args._minter).to.be.equal(minter)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(1)
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
 
         functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -743,9 +744,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -753,7 +754,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [false]]
+          [[0], [minter], [0]]
         )
 
         await sendMetaTx(
@@ -763,8 +764,8 @@ export function doTest(
           relayer
         )
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
       })
 
       it("reverts when params' length mismatch", async function () {
@@ -782,7 +783,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [0, 0],
             [minter],
-            [true],
+            [1],
             fromCreator
           ),
           'BCV2#setItemsMinters: LENGTH_MISMATCH'
@@ -792,7 +793,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [0],
             [minter, user],
-            [true],
+            [1],
             fromCreator
           ),
           'BCV2#setItemsMinters: LENGTH_MISMATCH'
@@ -802,7 +803,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [0],
             [minter],
-            [true, false],
+            [1, 1],
             fromCreator
           ),
           'BCV2#setItemsMinters: LENGTH_MISMATCH'
@@ -815,13 +816,13 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
           [0],
           [manager],
-          [true],
+          [1],
           fromCreator
         )
 
@@ -846,27 +847,22 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters(
-            [1],
-            [user],
-            [false],
-            fromDeployer
-          ),
+          collectionContract.setItemsMinters([1], [user], [1], fromDeployer),
           'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromMinter),
+          collectionContract.setItemsMinters([1], [user], [1], fromMinter),
           'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromManager),
+          collectionContract.setItemsMinters([1], [user], [1], fromManager),
           'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromHacker),
+          collectionContract.setItemsMinters([1], [user], [1], fromHacker),
           'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
@@ -908,9 +904,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -918,7 +914,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [false]]
+          [[0], [minter], [1]]
         )
 
         await collectionContract.setMinters([minter], [true], fromCreator)
@@ -926,13 +922,13 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
           [0],
           [manager],
-          [true],
+          [1],
           fromCreator
         )
 
@@ -1017,7 +1013,7 @@ export function doTest(
         )
       })
 
-      it('reverts when the using an invalid address', async function () {
+      it('reverts when using an invalid address', async function () {
         await assertRevert(
           collectionContract.setMinters([ZERO_ADDRESS], [true], fromCreator),
           'BCV2#setMinters: INVALID_MINTER_ADDRESS'
@@ -1027,7 +1023,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [0],
             [ZERO_ADDRESS],
-            [true],
+            [1],
             fromCreator
           ),
           'BCV2#setItemsMinters: INVALID_MINTER_ADDRESS'
@@ -1039,7 +1035,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [items.length],
             [minter],
-            [true],
+            [1],
             fromCreator
           ),
           'BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
@@ -1051,7 +1047,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
 
@@ -1070,12 +1066,7 @@ export function doTest(
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters(
-            [0],
-            [minter],
-            [true],
-            fromCreator
-          ),
+          collectionContract.setItemsMinters([0], [minter], [1], fromCreator),
           'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
         )
 
@@ -1083,7 +1074,7 @@ export function doTest(
           collectionContract.setItemsMinters(
             [0, 1, 0],
             [user, minter, minter],
-            [true, true, true],
+            [1, 1, 1],
             fromCreator
           ),
           'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
@@ -1474,7 +1465,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -1590,7 +1581,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -2086,7 +2077,7 @@ export function doTest(
       it('reverts when trying to add an item by not the creator', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
@@ -2122,7 +2113,7 @@ export function doTest(
       it('reverts when trying to add an item by not the creator :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
@@ -2696,7 +2687,7 @@ export function doTest(
 
       it('reverts when trying to edit sales data by not the creator or manager', async function () {
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
           contract.editItemsSalesData(
@@ -2758,7 +2749,7 @@ export function doTest(
         )
 
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
           sendMetaTx(contract, functionSignature, deployer, relayer),
@@ -3139,7 +3130,7 @@ export function doTest(
 
       it('reverts when trying to edit metadata by not the creator or manager', async function () {
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
@@ -3159,7 +3150,7 @@ export function doTest(
 
       it('reverts when trying to edit metadata by not the creator or manager :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -3595,7 +3586,7 @@ export function doTest(
       it('reverts when trying to rescue by not the owner', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -3622,7 +3613,7 @@ export function doTest(
       it('reverts when trying to rescue by not the owner :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -3878,12 +3869,7 @@ export function doTest(
         )
 
         // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
 
         await contract.issueToken(anotherHolder, newItemId, fromMinter)
       })
@@ -3927,20 +3913,76 @@ export function doTest(
         )
 
         // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
 
         await sendMetaTx(contract, functionSignature, minter, relayer)
+      })
+
+      it('should issue a token by minter and reduce the allowance', async function () {
+        // Set item Minter
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        await contract.issueToken(anotherHolder, newItemId, fromMinter)
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+      })
+
+      it('should issue a token by minter and reduce the allowance :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address',
+                name: '_beneficiary',
+                type: 'address',
+              },
+              {
+                internalType: 'uint256',
+                name: '_itemId',
+                type: 'uint256',
+              },
+            ],
+            name: 'issueToken',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [anotherHolder, newItemId.toString()]
+        )
+
+        // Set item Minter
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+      })
+
+      it('should issue a token by minter and not reduce if allowance is infinity', async function () {
+        // Set item Minter
+        await contract.setItemsMinters([newItemId], [minter], [-1], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        await contract.issueToken(anotherHolder, newItemId, fromMinter)
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
       })
 
       it('reverts when issuing a token by not the creator or minter', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -3962,7 +4004,7 @@ export function doTest(
       it('reverts when issuing a token by not the creator or minter :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         let functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -4124,7 +4166,7 @@ export function doTest(
         anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
       })
 
-      it('should issue multiple token', async function () {
+      it('should issue multiple tokens', async function () {
         let item = await contract.items(newItemId)
         expect(item.rarity).to.eq.BN(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
@@ -4334,12 +4376,7 @@ export function doTest(
         )
 
         // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
 
         await contract.issueTokens([anotherHolder], [newItemId], fromMinter)
       })
@@ -4383,20 +4420,124 @@ export function doTest(
         )
 
         // Set item Minter
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
+
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+      })
+
+      it('should issue multiple tokens by minter and reduce the allowance', async function () {
+        // Set items Minter
         await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
           fromCreator
         )
 
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
+      it('should issue multiple tokens by minter and reduce the allowance :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'issueTokens',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [
+            [anotherHolder, anotherHolder, anotherHolder],
+            [
+              newItemId.toString(),
+              anotherNewItemId.toString(),
+              newItemId.toString(),
+            ],
+          ]
+        )
+
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
         await sendMetaTx(contract, functionSignature, minter, relayer)
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
+      it('should issue multiple tokens by minter and not reduce if allowance is infinity', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [-1, -1],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -4430,7 +4571,7 @@ export function doTest(
       it('reverts when issuing a token by not the creator or minter :: Relayed EIP721 ', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         let functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -5217,7 +5358,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5266,12 +5407,12 @@ export function doTest(
           [false]
         )
 
-        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setMinters([minter], [1], fromCreator)
         await collectionContract.setManagers([manager], [true], fromCreator)
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5405,7 +5546,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5574,7 +5715,7 @@ export function doTest(
       it('reverts when completing collection by other than the creator :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -5738,7 +5879,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5770,7 +5911,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
