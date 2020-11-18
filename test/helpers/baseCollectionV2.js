@@ -3979,6 +3979,21 @@ export function doTest(
         expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
       })
 
+      it('reverts when issue a token by minter without allowance', async function () {
+        // Set items Minter
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        await contract.issueToken(anotherHolder, newItemId, fromMinter)
+
+        await assertRevert(
+          contract.issueToken(anotherHolder, newItemId, fromMinter),
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+        )
+      })
+
       it('reverts when issuing a token by not the creator or minter', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
@@ -4532,6 +4547,31 @@ export function doTest(
 
         minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
         expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+      })
+
+      it('reverts when issue multiple tokens by minter without allowance', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        await assertRevert(
+          contract.issueTokens(
+            [anotherHolder, anotherHolder, anotherHolder, anotherHolder],
+            [newItemId, newItemId, anotherNewItemId, newItemId],
+            fromMinter
+          ),
+          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+        )
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
