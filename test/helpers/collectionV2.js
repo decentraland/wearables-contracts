@@ -6,6 +6,9 @@ export const EMPTY_HASH =
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const BASE_URI =
   'https://api-wearables.decentraland.org/v1/standards/erc721-metadata/collections/'
+export const MAX_UINT256 = web3.utils.toBN(
+  '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+)
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 
