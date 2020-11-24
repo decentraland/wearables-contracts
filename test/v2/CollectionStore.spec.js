@@ -12,9 +12,7 @@ import {
   createDummyCollection,
   encodeTokenId,
   ZERO_ADDRESS,
-  GRACE_PERIOD,
 } from '../helpers/collectionV2'
-import { increaseTime } from '../helpers/increase'
 
 const Store = artifacts.require('DummyCollectionStore')
 
@@ -126,8 +124,6 @@ describe('Collection Store', function () {
 
     await collection1.setMinters([storeContract.address], [true])
     await collection2.setMinters([storeContract.address], [true])
-
-    await increaseTime(GRACE_PERIOD)
 
     // Approve store
     await manaContract.approve(storeContract.address, -1, fromBuyer)

@@ -259,7 +259,7 @@ contract MinimalProxyFactory is Ownable {
         _setImplementation(_implementation);
     }
 
-    function createProxy(bytes32 _salt, bytes memory _data) public virtual returns (address addr) {
+    function _createProxy(bytes32 _salt, bytes memory _data) internal virtual returns (address addr) {
         bytes memory slotcode = code;
         bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
 
@@ -325,15 +325,27 @@ pragma solidity ^0.6.12;
 
 contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
 
+    address[] public collections;
+    mapping(address => bool) public isCollectionFromFactory;
+
     constructor(address _implementation, address _owner) public MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 
     function createCollection(bytes32 _salt, bytes memory _data) public returns (address addr) {
         // Deploy a new collection
-        addr = createProxy(_salt, _data);
+        addr = _createProxy(_salt, _data);
 
         // Transfer ownership to the owner after deployment
         Ownable(addr).transferOwnership(owner());
+
+        // Set variables for handle data faster
+        // This use storage and therefore make deployments expensive.
+        collections.push(addr);
+        isCollectionFromFactory[addr] = true;
+    }
+
+    function collectionsSize() public view returns (uint256) {
+        return collections.length;
     }
 }

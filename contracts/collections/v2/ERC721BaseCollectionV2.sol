@@ -20,9 +20,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
-    /// @dev time for the collection to be auto approved
-    uint256 constant public GRACE_PERIOD = 60 * 60 * 24 * 7; // 7 days
-
     enum RARITY {
         common,
         uncommon,
@@ -574,7 +571,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
         require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
         require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
 

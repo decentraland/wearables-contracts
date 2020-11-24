@@ -6,7 +6,6 @@ import {
   BASE_URI,
   MAX_UINT256,
   RARITIES,
-  GRACE_PERIOD,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
@@ -4117,32 +4116,6 @@ export function doTest(
           'BCV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
-        )
-      })
     })
 
     describe('issueTokens', function () {
@@ -4175,7 +4148,6 @@ export function doTest(
         await contract.addItems([newItem, anotherNewItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(2))
         anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
@@ -4764,34 +4736,6 @@ export function doTest(
           'BCV2#isMintingAllowed: NOT_COMPLETED'
         )
       })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
-
-        await assertRevert(
-          contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
-        )
-      })
     })
 
     describe('tokenURI', function () {
@@ -4815,7 +4759,6 @@ export function doTest(
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
