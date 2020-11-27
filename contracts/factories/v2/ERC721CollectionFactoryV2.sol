@@ -14,7 +14,7 @@ contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
         transferOwnership(_owner);
     }
 
-    function createCollection(bytes32 _salt, bytes memory _data) public returns (address addr) {
+    function createCollection(bytes32 _salt, bytes memory _data) public onlyOwner returns (address addr) {
         // Deploy a new collection
         addr = _createProxy(_salt, _data);
 

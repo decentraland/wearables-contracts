@@ -214,7 +214,10 @@ describe('Factory V2', function () {
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       const { logs } = await factoryContract.createCollection(
         salt,
@@ -223,7 +226,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           creationParams,
         }),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -241,7 +244,7 @@ describe('Factory V2', function () {
         [
           '0xff',
           factoryContract.address,
-          keccak256(['bytes32', 'address'], [salt, user]),
+          keccak256(['bytes32', 'address'], [salt, factoryOwner]),
           codeHash,
         ]
       ).slice(-40)}`.toLowerCase()
@@ -253,7 +256,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           creationParams,
         }),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -271,7 +274,10 @@ describe('Factory V2', function () {
 
     it('should create a collection', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
@@ -291,7 +297,7 @@ describe('Factory V2', function () {
           baseURI,
           items
         ),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -322,7 +328,10 @@ describe('Factory V2', function () {
 
     it('should create a collection with items', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
@@ -342,7 +351,7 @@ describe('Factory V2', function () {
           baseURI,
           ITEMS
         ),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -432,7 +441,7 @@ describe('Factory V2', function () {
           baseURI,
           ITEMS
         ),
-        fromUser
+        fromFactoryOwner
       )
       const address1 = res1.logs[0].args._address
 
@@ -446,7 +455,7 @@ describe('Factory V2', function () {
           baseURI,
           ITEMS
         ),
-        fromUser
+        fromFactoryOwner
       )
       const address2 = res2.logs[0].args._address
 
@@ -479,7 +488,7 @@ describe('Factory V2', function () {
             baseURI,
             ITEMS
           ),
-          fromUser
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CALL_FAILED'
       )
@@ -497,7 +506,7 @@ describe('Factory V2', function () {
           baseURI,
           ITEMS
         ),
-        fromUser
+        fromFactoryOwner
       )
 
       await assertRevert(
@@ -511,9 +520,28 @@ describe('Factory V2', function () {
             baseURI,
             ITEMS
           ),
-          fromUser
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CREATION_FAILED'
+      )
+    })
+
+    it('reverts if trying to create a collection by not the owner', async function () {
+      const salt = randomBytes(32)
+      await assertRevert(
+        factoryContract.createCollection(
+          salt,
+          encodeERC721Initialize(
+            name,
+            symbol,
+            user,
+            shouldComplete,
+            baseURI,
+            ITEMS
+          ),
+          fromUser
+        ),
+        'Ownable: caller is not the owner'
       )
     })
   })
