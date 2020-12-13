@@ -44,9 +44,8 @@ contract CollectionManager is Ownable {
         bytes32 _salt,
         string memory _name,
         string memory _symbol,
-        address _creator,
-        bool _shouldComplete,
         string memory _baseURI,
+        address _creator,
         IERC721CollectionV2.Item[] memory _items
      ) external {
         uint256 amount = _items.length.mul(pricePerItem);
@@ -62,9 +61,10 @@ contract CollectionManager is Ownable {
             IERC721CollectionV2.initialize.selector,
             _name,
             _symbol,
-            _creator,
-            _shouldComplete,
             _baseURI,
+            _creator,
+            true, // Collection should be completed
+            false, // Collection should start disapproved
             _items
         );
 

@@ -99,7 +99,8 @@ export function doTest(
       // Create collection and set up wearables
       collectionContract = await createContract(
         creator,
-        true,
+        true, // shouldComplete
+        true, // isApproved
         true,
         creationParams
       )
@@ -122,9 +123,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           false,
-          BASE_URI,
+          true,
           items,
           creationParams
         )
@@ -179,9 +181,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           false,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -216,9 +219,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -227,14 +231,32 @@ export function doTest(
         expect(isCompleted_).to.be.equal(true)
       })
 
+      it('should be initialized and not approved', async function () {
+        const contract = await Contract.new()
+        await contract.initialize(
+          contractName,
+          contractSymbol,
+          BASE_URI,
+          user,
+          false,
+          false,
+          [],
+          creationParams
+        )
+
+        const isApproved_ = await contract.isApproved()
+        expect(isApproved_).to.be.equal(false)
+      })
+
       it('reverts when trying to initialize more than once', async function () {
         const contract = await Contract.new()
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -243,9 +265,10 @@ export function doTest(
           contract.initialize(
             contractName,
             contractSymbol,
+            BASE_URI,
             user,
             true,
-            BASE_URI,
+            true,
             [],
             creationParams
           ),
@@ -261,9 +284,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           creator,
           true,
-          BASE_URI,
+          true,
           items,
           creationParams
         )
@@ -1749,7 +1773,13 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should add an item', async function () {
@@ -2247,7 +2277,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -2833,7 +2869,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -3240,7 +3282,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -3687,7 +3735,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
@@ -4107,6 +4161,7 @@ export function doTest(
           creator,
           false,
           true,
+          true,
           creationParams
         )
         await contract.addItems([newItem], fromCreator)
@@ -4144,7 +4199,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([newItem, anotherNewItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
@@ -4725,6 +4786,7 @@ export function doTest(
           creator,
           false,
           true,
+          true,
           creationParams
         )
         await contract.addItems([newItem], fromCreator)
@@ -4752,6 +4814,7 @@ export function doTest(
         const contract = await createContract(
           creator,
           false,
+          true,
           true,
           creationParams
         )
@@ -5582,7 +5645,13 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should complete collection', async function () {

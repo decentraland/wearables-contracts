@@ -1,12 +1,7 @@
 import { randomBytes } from '@ethersproject/random'
 
 import assertRevert from '../helpers/assertRevert'
-import {
-  encodeCollectionInitCall,
-  getInitData,
-  ZERO_ADDRESS,
-  ITEMS,
-} from '../helpers/collectionV2'
+import { ITEMS } from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
@@ -14,7 +9,7 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
 
-describe.only('Commitee V2', function () {
+describe('Commitee V2', function () {
   let collectionImplementation
   let factoryContract
   let committeeContract
@@ -176,7 +171,6 @@ describe.only('Commitee V2', function () {
   describe('manageCollection', async function () {
     const name = 'collectionName'
     const symbol = 'collectionSymbol'
-    const shouldComplete = true
     const baseURI = 'collectionBaseURI'
 
     let collectionContract
@@ -188,9 +182,8 @@ describe.only('Commitee V2', function () {
         salt,
         name,
         symbol,
-        user,
-        shouldComplete,
         baseURI,
+        user,
         ITEMS,
         fromOwner
       )

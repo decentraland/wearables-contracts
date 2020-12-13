@@ -20,9 +20,10 @@ interface IERC721CollectionV2 {
     function initialize(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         address _creator,
         bool _shouldComplete,
-        string memory _baseURI,
+        bool _isApproved,
         Item[] memory _items
     ) external;
     function items(uint256 _itemId) external view returns (uint256, uint256, uint256, address, string memory, bytes32);

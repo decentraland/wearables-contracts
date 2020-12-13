@@ -3,12 +3,7 @@ import { randomBytes } from '@ethersproject/random'
 import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
-import {
-  encodeCollectionInitCall,
-  getInitData,
-  ZERO_ADDRESS,
-  ITEMS,
-} from '../helpers/collectionV2'
+import { getInitData, ZERO_ADDRESS, ITEMS } from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
@@ -146,7 +141,7 @@ describe('Factory V2', function () {
         getInitData({
           creator: user,
           shouldComplete: true,
-          creationParams,
+          isApproved: true,
         }),
         fromFactoryOwner
       )
@@ -176,7 +171,7 @@ describe('Factory V2', function () {
         getInitData({
           creator: user,
           shouldComplete: true,
-          creationParams,
+          isApproved: true,
         }),
         fromFactoryOwner
       )
@@ -211,14 +206,15 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeCollectionInitCall(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          items
-        ),
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items,
+        }),
         fromFactoryOwner
       )
 
@@ -265,14 +261,15 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeCollectionInitCall(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
         fromFactoryOwner
       )
 
@@ -311,7 +308,7 @@ describe('Factory V2', function () {
       expect(name_).to.be.equal(name)
       expect(symbol_).to.be.equal(symbol)
       expect(isInitialized_).to.be.equal(true)
-      expect(isApproved_).to.be.equal(true)
+      expect(isApproved_).to.be.equal(false)
       expect(isCompleted_).to.be.equal(shouldComplete)
       expect(isEditable_).to.be.equal(true)
 
@@ -355,28 +352,30 @@ describe('Factory V2', function () {
 
       const res1 = await factoryContract.createCollection(
         salt1,
-        encodeCollectionInitCall(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
         fromFactoryOwner
       )
       const address1 = res1.logs[0].args._address
 
       const res2 = await factoryContract.createCollection(
         salt2,
-        encodeCollectionInitCall(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
         fromFactoryOwner
       )
       const address2 = res2.logs[0].args._address
@@ -402,14 +401,15 @@ describe('Factory V2', function () {
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeCollectionInitCall(
+          getInitData({
             name,
             symbol,
-            ZERO_ADDRESS,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
+            creator: ZERO_ADDRESS,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
           fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CALL_FAILED'
@@ -420,28 +420,30 @@ describe('Factory V2', function () {
       const salt = randomBytes(32)
       await factoryContract.createCollection(
         salt,
-        encodeCollectionInitCall(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
         fromFactoryOwner
       )
 
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeCollectionInitCall(
+          getInitData({
             name,
             symbol,
-            user,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
           fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CREATION_FAILED'
@@ -453,14 +455,15 @@ describe('Factory V2', function () {
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeCollectionInitCall(
+          getInitData({
             name,
             symbol,
-            user,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
           fromUser
         ),
         'Ownable: caller is not the owner'
