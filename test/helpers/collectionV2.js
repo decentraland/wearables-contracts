@@ -218,3 +218,86 @@ export function decodeTokenId(id) {
     web3.utils.toBN(hexId.substr(10, hexId.length)),
   ]
 }
+
+export function encodeCollectionInitCall(
+  name,
+  symbol,
+  creator,
+  shouldComplete,
+  baseURI,
+  items
+) {
+  return web3.eth.abi.encodeFunctionCall(
+    {
+      inputs: [
+        {
+          internalType: 'string',
+          name: '_name',
+          type: 'string',
+        },
+        {
+          internalType: 'string',
+          name: '_symbol',
+          type: 'string',
+        },
+        {
+          internalType: 'address',
+          name: '_creator',
+          type: 'address',
+        },
+        {
+          internalType: 'bool',
+          name: '_shouldComplete',
+          type: 'bool',
+        },
+        {
+          internalType: 'string',
+          name: '_baseURI',
+          type: 'string',
+        },
+        {
+          components: [
+            {
+              internalType: 'enum ERC721BaseCollectionV2.RARITY',
+              name: 'rarity',
+              type: 'uint8',
+            },
+            {
+              internalType: 'uint256',
+              name: 'totalSupply',
+              type: 'uint256',
+            },
+            {
+              internalType: 'uint256',
+              name: 'price',
+              type: 'uint256',
+            },
+            {
+              internalType: 'address',
+              name: 'beneficiary',
+              type: 'address',
+            },
+            {
+              internalType: 'string',
+              name: 'metadata',
+              type: 'string',
+            },
+            {
+              internalType: 'bytes32',
+              name: 'contentHash',
+              type: 'bytes32',
+            },
+          ],
+          internalType: 'struct ERC721BaseCollectionV2.Item[]',
+          name: '_items',
+          type: 'tuple[]',
+        },
+      ],
+      name: 'initialize',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
+    [name, symbol, creator, shouldComplete, baseURI, items]
+  )
+}

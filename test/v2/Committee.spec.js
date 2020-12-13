@@ -1,102 +1,24 @@
-import { keccak256 } from '@ethersproject/solidity'
 import { randomBytes } from '@ethersproject/random'
-import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
-import { getInitData, ZERO_ADDRESS, ITEMS } from '../helpers/collectionV2'
+import {
+  encodeCollectionInitCall,
+  getInitData,
+  ZERO_ADDRESS,
+  ITEMS,
+} from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
-
-function encodeERC721Initialize(
-  name,
-  symbol,
-  creator,
-  shouldComplete,
-  baseURI,
-  items
-) {
-  return web3.eth.abi.encodeFunctionCall(
-    {
-      inputs: [
-        {
-          internalType: 'string',
-          name: '_name',
-          type: 'string',
-        },
-        {
-          internalType: 'string',
-          name: '_symbol',
-          type: 'string',
-        },
-        {
-          internalType: 'address',
-          name: '_creator',
-          type: 'address',
-        },
-        {
-          internalType: 'bool',
-          name: '_shouldComplete',
-          type: 'bool',
-        },
-        {
-          internalType: 'string',
-          name: '_baseURI',
-          type: 'string',
-        },
-        {
-          components: [
-            {
-              internalType: 'enum ERC721BaseCollectionV2.RARITY',
-              name: 'rarity',
-              type: 'uint8',
-            },
-            {
-              internalType: 'uint256',
-              name: 'totalSupply',
-              type: 'uint256',
-            },
-            {
-              internalType: 'uint256',
-              name: 'price',
-              type: 'uint256',
-            },
-            {
-              internalType: 'address',
-              name: 'beneficiary',
-              type: 'address',
-            },
-            {
-              internalType: 'string',
-              name: 'metadata',
-              type: 'string',
-            },
-            {
-              internalType: 'bytes32',
-              name: 'contentHash',
-              type: 'bytes32',
-            },
-          ],
-          internalType: 'struct ERC721BaseCollectionV2.Item[]',
-          name: '_items',
-          type: 'tuple[]',
-        },
-      ],
-      name: 'initialize',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    [name, symbol, creator, shouldComplete, baseURI, items]
-  )
-}
+const CollectionManager = artifacts.require('CollectionManager')
 
 describe.only('Commitee V2', function () {
   let collectionImplementation
   let factoryContract
   let committeeContract
+  let collectionManagerContract
 
   // Accounts
   let accounts
@@ -132,14 +54,21 @@ describe.only('Commitee V2', function () {
       gasPrice: 21e9,
     }
 
+    committeeContract = await Committee.new(owner, [user], fromDeployer)
+
+    collectionManagerContract = await CollectionManager.new(
+      committeeContract.address,
+      committeeContract.address,
+      user,
+      0
+    )
+
     collectionImplementation = await ERC721CollectionV2.new()
 
     factoryContract = await ERC721CollectionFactoryV2.new(
       collectionImplementation.address,
-      owner
+      collectionManagerContract.address
     )
-
-    committeeContract = await Committee.new(owner, [user], fromDeployer)
   })
 
   describe('create committee', async function () {
@@ -159,7 +88,11 @@ describe.only('Commitee V2', function () {
       let isMember = await committeeContract.members(anotherUser)
       expect(isMember).to.be.equal(false)
 
-      let res = await committeeContract.setMember(anotherUser, true, fromOwner)
+      let res = await committeeContract.setMembers(
+        [anotherUser],
+        [true],
+        fromOwner
+      )
       let logs = res.logs
 
       expect(logs.length).to.be.equal(1)
@@ -170,7 +103,11 @@ describe.only('Commitee V2', function () {
       isMember = await committeeContract.members(anotherUser)
       expect(isMember).to.be.equal(true)
 
-      res = await committeeContract.setMember(anotherUser, false, fromOwner)
+      res = await committeeContract.setMembers(
+        [anotherUser],
+        [false],
+        fromOwner
+      )
       logs = res.logs
 
       expect(logs.length).to.be.equal(1)
@@ -180,6 +117,173 @@ describe.only('Commitee V2', function () {
 
       isMember = await committeeContract.members(anotherUser)
       expect(isMember).to.be.equal(false)
+    })
+
+    it('should set members to the committee', async function () {
+      let isMember = await committeeContract.members(user)
+      expect(isMember).to.be.equal(true)
+
+      isMember = await committeeContract.members(anotherUser)
+      expect(isMember).to.be.equal(false)
+
+      let res = await committeeContract.setMembers(
+        [user, anotherUser],
+        [false, true],
+        fromOwner
+      )
+      let logs = res.logs
+
+      expect(logs.length).to.be.equal(2)
+      expect(logs[0].event).to.be.equal('MemberSet')
+      expect(logs[0].args._member).to.be.equal(user)
+      expect(logs[0].args._value).to.be.equal(false)
+
+      expect(logs[1].event).to.be.equal('MemberSet')
+      expect(logs[1].args._member).to.be.equal(anotherUser)
+      expect(logs[1].args._value).to.be.equal(true)
+
+      isMember = await committeeContract.members(user)
+      expect(isMember).to.be.equal(false)
+
+      isMember = await committeeContract.members(anotherUser)
+      expect(isMember).to.be.equal(true)
+    })
+
+    it("reverts when trying to set members with different parameter's length", async function () {
+      await assertRevert(
+        committeeContract.setMembers([user, anotherUser], [false], fromOwner),
+        'Committee#setMembers: LENGTH_MISMATCH'
+      )
+
+      await assertRevert(
+        committeeContract.setMembers([user], [false, true], fromOwner),
+        'Committee#setMembers: LENGTH_MISMATCH'
+      )
+    })
+
+    it('reverts when trying to set members by hacker', async function () {
+      await assertRevert(
+        committeeContract.setMembers(
+          [user, anotherUser],
+          [false, true],
+          fromHacker
+        ),
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
+  describe('manageCollection', async function () {
+    const name = 'collectionName'
+    const symbol = 'collectionSymbol'
+    const shouldComplete = true
+    const baseURI = 'collectionBaseURI'
+
+    let collectionContract
+
+    beforeEach(async () => {
+      const salt = randomBytes(32)
+      const { logs } = await collectionManagerContract.createCollection(
+        factoryContract.address,
+        salt,
+        name,
+        symbol,
+        user,
+        shouldComplete,
+        baseURI,
+        ITEMS,
+        fromOwner
+      )
+      collectionContract = await ERC721CollectionV2.at(logs[0].address)
+    })
+
+    it('should manage a collection', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      // Approve collection
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        collectionContract.address,
+        true,
+        fromUser
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      // Approve collection
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        collectionContract.address,
+        false,
+        fromUser
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+    })
+
+    it('reverts when trying to manage a collection by a committee removed member', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        collectionContract.address,
+        true,
+        fromUser
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      await committeeContract.setMembers([user], [false], fromOwner)
+
+      await assertRevert(
+        committeeContract.manageCollection(
+          collectionManagerContract.address,
+          collectionContract.address,
+          false,
+          fromUser
+        ),
+        'Committee#manageCollection: UNAUTHORIZED_SENDER'
+      )
+
+      await committeeContract.setMembers([user], [true], fromOwner)
+
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        collectionContract.address,
+        false,
+        fromUser
+      )
+    })
+
+    it('reverts when trying to manage a collection by not a committee member', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      await assertRevert(
+        committeeContract.manageCollection(
+          collectionManagerContract.address,
+          collectionContract.address,
+          true,
+          fromHacker
+        ),
+        'Committee#manageCollection: UNAUTHORIZED_SENDER'
+      )
+
+      // Approve collection
+      await assertRevert(
+        committeeContract.manageCollection(
+          collectionManagerContract.address,
+          collectionContract.address,
+          true,
+          fromOwner
+        ),
+        'Committee#manageCollection: UNAUTHORIZED_SENDER'
+      )
     })
   })
 })

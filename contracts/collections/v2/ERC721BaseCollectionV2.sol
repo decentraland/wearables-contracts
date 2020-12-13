@@ -117,7 +117,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         }
 
         isEditable = true;
-        isApproved = true;
+        isApproved = false;
         createdAt = now;
     }
 

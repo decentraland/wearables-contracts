@@ -39,19 +39,39 @@ contract CollectionManager is Ownable {
         _factory.transferOwnership(_newFactoryOwner);
     }
 
-    function createCollection(IERC721CollectionFactoryV2 _factory, bytes32 _salt, bytes memory _data) external {
-        (,,,,,, bytes[] memory items) = abi.decode(_data, (bytes4, string, string, address, bool, string, bytes[]));
-
+    function createCollection(
+        IERC721CollectionFactoryV2 _factory,
+        bytes32 _salt,
+        string memory _name,
+        string memory _symbol,
+        address _creator,
+        bool _shouldComplete,
+        string memory _baseURI,
+        IERC721CollectionV2.Item[] memory _items
+     ) external {
+        uint256 amount = _items.length.mul(pricePerItem);
         // Transfer fees to collector
-        require(
-            acceptedToken.transferFrom(msg.sender, feesCollector, items.length.mul(pricePerItem)),
-            "CollectionManager#createCollection: TRANSFER_FEES_FAILED"
+        if (amount > 0) {
+            require(
+                acceptedToken.transferFrom(msg.sender, feesCollector, amount),
+                "CollectionManager#createCollection: TRANSFER_FEES_FAILED"
+            );
+        }
+
+        bytes memory data = abi.encodeWithSelector(
+            IERC721CollectionV2.initialize.selector,
+            _name,
+            _symbol,
+            _creator,
+            _shouldComplete,
+            _baseURI,
+            _items
         );
 
-        _factory.createCollection(_salt, _data);
+        _factory.createCollection(_salt, data);
     }
 
-    function manageCollection(IERC721CollectionV2 _collection, bool _value) public returns (address addr) {
+    function manageCollection(IERC721CollectionV2 _collection, bool _value) external {
         require(msg.sender == committee, "CollectionManager#manageCollection: UNAUTHORIZED_SENDER");
 
         _collection.setApproved(_value);

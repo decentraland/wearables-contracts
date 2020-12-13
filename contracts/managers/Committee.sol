@@ -18,18 +18,22 @@ contract Committee is Ownable {
         transferOwnership(_owner);
 
         for (uint256 i = 0; i < _members.length; i++) {
-            address member = _members[i];
-
-            members[member] = true;
-
-            emit MemberSet(member, true);
+            _setMember(_members[i], true);
         }
     }
 
-    function setMember(address _address, bool _value) external onlyOwner {
-        members[_address] = _value;
+    function setMembers(address[] calldata _members, bool[] calldata _values) external onlyOwner {
+        require(_members.length == _values.length, "Committee#setMembers: LENGTH_MISMATCH");
 
-        emit MemberSet(_address, _value);
+        for (uint256 i = 0; i < _members.length; i++) {
+            _setMember(_members[i], _values[i]);
+        }
+    }
+
+    function _setMember(address _member, bool _value) internal {
+        members[_member] = _value;
+
+        emit MemberSet(_member, _value);
     }
 
     function manageCollection(ICollectionManager _collectionManager, address _collection, bool _value) public {

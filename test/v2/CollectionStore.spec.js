@@ -122,7 +122,10 @@ describe('Collection Store', function () {
       fromStoreOwner
     )
 
+    await collection1.setApproved(true)
     await collection1.setMinters([storeContract.address], [true])
+
+    await collection2.setApproved(true)
     await collection2.setMinters([storeContract.address], [true])
 
     // Approve store
