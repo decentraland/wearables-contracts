@@ -9,7 +9,7 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
 
-describe('Commitee V2', function () {
+describe('Commitee', function () {
   let collectionImplementation
   let factoryContract
   let committeeContract
@@ -52,6 +52,7 @@ describe('Commitee V2', function () {
     committeeContract = await Committee.new(owner, [user], fromDeployer)
 
     collectionManagerContract = await CollectionManager.new(
+      owner,
       committeeContract.address,
       committeeContract.address,
       user,
