@@ -1,7 +1,117 @@
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
+// File: contracts/interfaces/ICollectionManager.sol
 
 // SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+
+interface ICollectionManager {
+   function manageCollection(address _forwarder, address _collection, bytes calldata _data) external;
+}
+
+// File: contracts/commons/ContextMixin.sol
+
+pragma solidity 0.6.12;
+
+
+abstract contract ContextMixin {
+    function _msgSender()
+        internal
+        view
+        virtual
+        returns (address payable sender)
+    {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = msg.sender;
+        }
+        return sender;
+    }
+}
+
+// File: contracts/commons/OwnableInitializable.sol
+
+pragma solidity ^0.6.0;
+
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+contract OwnableInitializable is ContextMixin {
+    address internal _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    constructor() internal {}
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    function _initOwnable () internal {
+        address msgSender = _msgSender();
+        _owner = msgSender;
+        emit OwnershipTransferred(address(0), msgSender);
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+
+// File: @openzeppelin/contracts/math/SafeMath.sol
 
 pragma solidity ^0.6.0;
 
@@ -161,156 +271,7 @@ library SafeMath {
     }
 }
 
-// File: contracts/interfaces/IERC20.sol
-
-
-pragma solidity ^0.6.12;
-
-
-interface IERC20 {
-    function balanceOf(address from) external view returns (uint256);
-    function transferFrom(address from, address to, uint tokens) external returns (bool);
-    function transfer(address to, uint tokens) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function burn(uint256 amount) external;
-}
-
-// File: contracts/interfaces/IERC721CollectionV2.sol
-
-
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
-
-
-interface IERC721CollectionV2 {
-    struct Item {
-        uint8 rarity;
-        uint256 totalSupply; // current supply
-        uint256 price;
-        address beneficiary;
-        string metadata;
-        bytes32 contentHash; // used for safe purposes
-    }
-
-    function issueToken(address _beneficiary, uint256 _itemId) external;
-    function setApproved(bool _value) external;
-    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter/
-    function initialize(
-        string memory _name,
-        string memory _symbol,
-        string memory _baseURI,
-        address _creator,
-        bool _shouldComplete,
-        bool _isApproved,
-        Item[] memory _items
-    ) external;
-    function items(uint256 _itemId) external view returns (uint256, uint256, uint256, address, string memory, bytes32);
-}
-
-// File: contracts/commons/ContextMixin.sol
-
-
-pragma solidity 0.6.12;
-
-
-abstract contract ContextMixin {
-    function _msgSender()
-        internal
-        view
-        virtual
-        returns (address payable sender)
-    {
-        if (msg.sender == address(this)) {
-            bytes memory array = msg.data;
-            uint256 index = msg.data.length;
-            assembly {
-                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
-                sender := and(
-                    mload(add(array, index)),
-                    0xffffffffffffffffffffffffffffffffffffffff
-                )
-            }
-        } else {
-            sender = msg.sender;
-        }
-        return sender;
-    }
-}
-
-// File: contracts/commons/OwnableInitializable.sol
-
-
-pragma solidity ^0.6.0;
-
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-contract OwnableInitializable is ContextMixin {
-    address internal _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    constructor() internal {}
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    function _initOwnable () internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
 // File: contracts/commons/EIP712Base.sol
-
 
 pragma solidity 0.6.12;
 
@@ -378,7 +339,6 @@ contract EIP712Base {
 }
 
 // File: contracts/commons/NativeMetaTransaction.sol
-
 
 pragma solidity 0.6.12;
 
@@ -484,139 +444,49 @@ contract NativeMetaTransaction is EIP712Base {
     }
 }
 
-// File: contracts/markets/v2/CollectionStore.sol
-
+// File: contracts/managers/Committee.sol
 
 pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
 
 
 
 
 
+contract Committee is OwnableInitializable, NativeMetaTransaction {
 
-contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
-    using SafeMath for uint256;
+    mapping(address => bool) public members;
 
-    struct ItemToBuy {
-        IERC721CollectionV2 collection;
-        uint256[] ids;
-        uint256[] prices;
-    }
+    event MemberSet(address indexed _member, bool _value);
 
-    IERC20 public acceptedToken;
-    uint256 public fee;
-    address public feeOwner;
-
-    event Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
-    event SetFee(uint256 _oldFee, uint256 _newFee);
-    event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
-
-    /**
-    * @notice Constructor of the contract.
-    * @param _acceptedToken - Address of the ERC20 token accepted
-    * @param _feeOwner - address where fees will be transferred
-    * @param _fee - fee to charge for each sale
-    */
-    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner, address[] memory _members) public {
         // EIP712 init
-        _initializeEIP712('Decentraland Collection Store', '1');
+        _initializeEIP712('Decentraland Collection Committee', '1');
         // Ownable init
         _initOwnable();
-
-        acceptedToken = _acceptedToken;
-        feeOwner = _feeOwner;
-        setFee(_fee);
-
         transferOwnership(_owner);
-    }
 
-    /**
-    * @notice Buy collection's items.
-    * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
-    * @param _itemsToBuy - items to buy
-    * @param _beneficiary - beneficiary address
-    */
-    function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external {
-        uint256 totalFee = 0;
-        address sender = _msgSender();
-
-        for (uint256 i = 0; i < _itemsToBuy.length; i++) {
-            ItemToBuy memory itemToBuy = _itemsToBuy[i];
-            IERC721CollectionV2 collection = itemToBuy.collection;
-            uint256 amountOfItems = itemToBuy.ids.length;
-
-            require(amountOfItems == itemToBuy.prices.length, "CollectionStore#buy: LENGTH_MISMATCH");
-
-            for (uint256 j = 0; j < amountOfItems; j++) {
-                uint256 itemId = itemToBuy.ids[j];
-                uint256 price = itemToBuy.prices[j];
-
-                (uint256 itemPrice, address itemBeneficiary) = getItemBuyData(collection, itemId);
-                require(price == itemPrice, "CollectionStore#buy: ITEM_PRICE_MISMATCH");
-
-                if (itemPrice > 0) {
-                    // Calculate sale share
-                    uint256 saleShareAmount = itemPrice.mul(fee).div(1000000);
-                    totalFee = totalFee.add(saleShareAmount);
-
-                    // Transfer sale amount to the item beneficiary
-                    require(
-                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
-                        "CollectionStore#buy: TRANSFER_PRICE_FAILED"
-                    );
-                }
-
-                // Mint Token
-                collection.issueToken(_beneficiary, itemId);
-            }
+        for (uint256 i = 0; i < _members.length; i++) {
+            _setMember(_members[i], true);
         }
+    }
 
-        if (totalFee > 0) {
-            // Transfer share amount for fees owner
-            require(
-                acceptedToken.transferFrom(sender, feeOwner, totalFee),
-                "CollectionStore#buy: TRANSFER_FEES_FAILED"
-            );
+    function setMembers(address[] calldata _members, bool[] calldata _values) external onlyOwner {
+        require(_members.length == _values.length, "Committee#setMembers: LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < _members.length; i++) {
+            _setMember(_members[i], _values[i]);
         }
-        emit Bought(_itemsToBuy, _beneficiary);
     }
 
-    /**
-     * @notice Get item's price and beneficiary
-     * @param _collection - collection address
-     * @param _itemId - item id
-     * @return uint256 of the item's price
-     * @return address of the item's beneficiary
-     */
-    function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-      (,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
-       return (price, beneficiary);
+    function _setMember(address _member, bool _value) internal {
+        members[_member] = _value;
+
+        emit MemberSet(_member, _value);
     }
 
-    // Owner functions
+    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) public {
+       require(members[_msgSender()], "Committee#manageCollection: UNAUTHORIZED_SENDER");
 
-    /**
-     * @notice Sets the fee of the contract that's charged to the seller on each sale
-     * @param _newFee - Fee from 0 to 999,999
-     */
-    function setFee(uint256 _newFee) public onlyOwner {
-        require(_newFee < 1000000, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000");
-        require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
-
-        emit SetFee(fee, _newFee);
-        fee = _newFee;
-    }
-
-    /**
-     * @notice Set a new fee owner.
-    * @param _newFeeOwner - Address of the new fee owner
-     */
-    function setFeeOwner(address _newFeeOwner) external onlyOwner {
-        require(_newFeeOwner != address(0), "CollectionStore#setFeeOwner: INVALID_ADDRESS");
-        require(_newFeeOwner != feeOwner, "CollectionStore#setFeeOwner: SAME_FEE_OWNER");
-
-        emit SetFeeOwner(feeOwner, _newFeeOwner);
-        feeOwner = _newFeeOwner;
+        _collectionManager.manageCollection(_forwarder, _collection, _data);
     }
 }

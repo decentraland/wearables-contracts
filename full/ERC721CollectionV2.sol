@@ -2033,17 +2033,19 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Create the contract
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
+     * @param _baseURI - base URI for token URIs
      * @param _creator - creator address
      * @param _shouldComplete - Whether the collection should be completed by the end of this call.
-     * @param _baseURI - base URI for token URIs
+     * @param _isApproved - Whether the collection should be approved by the end of this call.
      * @param _items - items to be added
      */
     function initialize(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         address _creator,
         bool _shouldComplete,
-        string memory _baseURI,
+        bool _isApproved,
         Item[] memory _items
     ) public virtual {
         require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
@@ -2067,8 +2069,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             _completeCollection();
         }
 
+        isApproved = _isApproved;
+
         isEditable = true;
-        isApproved = true;
         createdAt = now;
     }
 
@@ -2702,7 +2705,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
 
 // File: contracts/collections/v2/ERC721CollectionV2.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;

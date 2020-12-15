@@ -161,8 +161,16 @@ library SafeMath {
     }
 }
 
-// File: contracts/interfaces/IERC20.sol
+// File: contracts/interfaces/IForwarder.sol
 
+pragma solidity ^0.6.12;
+
+
+interface IForwarder {
+   function forwardCall(address _address, bytes calldata _data) external returns (bool, bytes memory);
+}
+
+// File: contracts/interfaces/IERC20.sol
 
 pragma solidity ^0.6.12;
 
@@ -176,7 +184,6 @@ interface IERC20 {
 }
 
 // File: contracts/interfaces/IERC721CollectionV2.sol
-
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
@@ -207,8 +214,18 @@ interface IERC721CollectionV2 {
     function items(uint256 _itemId) external view returns (uint256, uint256, uint256, address, string memory, bytes32);
 }
 
-// File: contracts/commons/ContextMixin.sol
+// File: contracts/interfaces/IERC721CollectionFactoryV2.sol
 
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+
+interface IERC721CollectionFactoryV2 {
+   function createCollection(bytes32 _salt, bytes memory _data) external returns (address addr);
+    function transferOwnership(address newOwner) external;
+}
+
+// File: contracts/commons/ContextMixin.sol
 
 pragma solidity 0.6.12;
 
@@ -238,7 +255,6 @@ abstract contract ContextMixin {
 }
 
 // File: contracts/commons/OwnableInitializable.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -311,7 +327,6 @@ contract OwnableInitializable is ContextMixin {
 
 // File: contracts/commons/EIP712Base.sol
 
-
 pragma solidity 0.6.12;
 
 
@@ -378,7 +393,6 @@ contract EIP712Base {
 }
 
 // File: contracts/commons/NativeMetaTransaction.sol
-
 
 pragma solidity 0.6.12;
 
@@ -484,8 +498,7 @@ contract NativeMetaTransaction is EIP712Base {
     }
 }
 
-// File: contracts/markets/v2/CollectionStore.sol
-
+// File: contracts/managers/CollectionManager.sol
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
@@ -495,128 +508,110 @@ pragma experimental ABIEncoderV2;
 
 
 
-contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
+
+
+
+contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
+
     using SafeMath for uint256;
 
-    struct ItemToBuy {
-        IERC721CollectionV2 collection;
-        uint256[] ids;
-        uint256[] prices;
-    }
+    IERC20  public acceptedToken;
+    address public committee;
+    address public feesCollector;
+    uint256 public pricePerItem;
 
-    IERC20 public acceptedToken;
-    uint256 public fee;
-    address public feeOwner;
+    event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
+    event CommitteeSet(address indexed _oldCommittee, address indexed _newCommittee);
+    event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
+    event PricePerItemSet(uint256 _oldPricePerItem, uint256 _newPricePerItem);
 
-    event Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
-    event SetFee(uint256 _oldFee, uint256 _newFee);
-    event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
-
-    /**
-    * @notice Constructor of the contract.
-    * @param _acceptedToken - Address of the ERC20 token accepted
-    * @param _feeOwner - address where fees will be transferred
-    * @param _fee - fee to charge for each sale
-    */
-    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, uint256 _pricePerItem) public {
         // EIP712 init
-        _initializeEIP712('Decentraland Collection Store', '1');
+        _initializeEIP712('Decentraland Collection Manager', '1');
         // Ownable init
         _initOwnable();
 
-        acceptedToken = _acceptedToken;
-        feeOwner = _feeOwner;
-        setFee(_fee);
+        setAcceptedToken(_acceptedToken);
+        setCommittee(_committee);
+        setFeesCollector(_feesCollector);
+        setPricePerItem(_pricePerItem);
 
         transferOwnership(_owner);
     }
 
-    /**
-    * @notice Buy collection's items.
-    * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
-    * @param _itemsToBuy - items to buy
-    * @param _beneficiary - beneficiary address
-    */
-    function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external {
-        uint256 totalFee = 0;
-        address sender = _msgSender();
+    function setAcceptedToken(IERC20 _newAcceptedToken) onlyOwner public {
+        require(address(_newAcceptedToken) != address(0), "CollectionManager#setAcceptedToken: INVALID_ACCEPTED_TOKEN");
 
-        for (uint256 i = 0; i < _itemsToBuy.length; i++) {
-            ItemToBuy memory itemToBuy = _itemsToBuy[i];
-            IERC721CollectionV2 collection = itemToBuy.collection;
-            uint256 amountOfItems = itemToBuy.ids.length;
+        emit AcceptedTokenSet(acceptedToken, _newAcceptedToken);
+        acceptedToken = _newAcceptedToken;
+    }
 
-            require(amountOfItems == itemToBuy.prices.length, "CollectionStore#buy: LENGTH_MISMATCH");
+    function setCommittee(address _newCommittee) onlyOwner public {
+        require(_newCommittee != address(0), "CollectionManager#setCommittee: INVALID_COMMITTEE");
 
-            for (uint256 j = 0; j < amountOfItems; j++) {
-                uint256 itemId = itemToBuy.ids[j];
-                uint256 price = itemToBuy.prices[j];
+        emit CommitteeSet(committee, _newCommittee);
+        committee = _newCommittee;
+    }
 
-                (uint256 itemPrice, address itemBeneficiary) = getItemBuyData(collection, itemId);
-                require(price == itemPrice, "CollectionStore#buy: ITEM_PRICE_MISMATCH");
+    function setFeesCollector(address _newFeesCollector) onlyOwner public {
+        require(_newFeesCollector != address(0), "CollectionManager#setFeesCollector: INVALID_FEES_COLLECTOR");
 
-                if (itemPrice > 0) {
-                    // Calculate sale share
-                    uint256 saleShareAmount = itemPrice.mul(fee).div(1000000);
-                    totalFee = totalFee.add(saleShareAmount);
+        emit FeesCollectorSet(feesCollector, _newFeesCollector);
+        feesCollector = _newFeesCollector;
+    }
 
-                    // Transfer sale amount to the item beneficiary
-                    require(
-                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
-                        "CollectionStore#buy: TRANSFER_PRICE_FAILED"
-                    );
-                }
+    function setPricePerItem(uint256 _newPricePerItem) onlyOwner public {
+        emit PricePerItemSet(pricePerItem, _newPricePerItem);
+        pricePerItem = _newPricePerItem;
+    }
 
-                // Mint Token
-                collection.issueToken(_beneficiary, itemId);
-            }
-        }
-
-        if (totalFee > 0) {
-            // Transfer share amount for fees owner
+    function createCollection(
+        IForwarder _forwarder,
+        IERC721CollectionFactoryV2 _factory,
+        bytes32 _salt,
+        string memory _name,
+        string memory _symbol,
+        string memory _baseURI,
+        address _creator,
+        IERC721CollectionV2.Item[] memory _items
+     ) external {
+        uint256 amount = _items.length.mul(pricePerItem);
+        // Transfer fees to collector
+        if (amount > 0) {
             require(
-                acceptedToken.transferFrom(sender, feeOwner, totalFee),
-                "CollectionStore#buy: TRANSFER_FEES_FAILED"
+                acceptedToken.transferFrom(_msgSender(), feesCollector, amount),
+                "CollectionManager#createCollection: TRANSFER_FEES_FAILED"
             );
         }
-        emit Bought(_itemsToBuy, _beneficiary);
+
+        bytes memory data = abi.encodeWithSelector(
+            IERC721CollectionV2.initialize.selector,
+            _name,
+            _symbol,
+            _baseURI,
+            _creator,
+            true, // Collection should be completed
+            false, // Collection should start disapproved
+            _items
+        );
+
+        (bool success,) = _forwarder.forwardCall(address(_factory), abi.encodeWithSelector(_factory.createCollection.selector, _salt, data));
+        require(
+            success,
+             "CollectionManager#createCollection: FORWARD_FAILED"
+        );
     }
 
-    /**
-     * @notice Get item's price and beneficiary
-     * @param _collection - collection address
-     * @param _itemId - item id
-     * @return uint256 of the item's price
-     * @return address of the item's beneficiary
-     */
-    function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-      (,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
-       return (price, beneficiary);
-    }
+    function manageCollection(IForwarder _forwarder, address _collection, bytes calldata _data) public {
+        require(
+            _msgSender() == committee,
+            "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"
+        );
 
-    // Owner functions
-
-    /**
-     * @notice Sets the fee of the contract that's charged to the seller on each sale
-     * @param _newFee - Fee from 0 to 999,999
-     */
-    function setFee(uint256 _newFee) public onlyOwner {
-        require(_newFee < 1000000, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000");
-        require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
-
-        emit SetFee(fee, _newFee);
-        fee = _newFee;
-    }
-
-    /**
-     * @notice Set a new fee owner.
-    * @param _newFeeOwner - Address of the new fee owner
-     */
-    function setFeeOwner(address _newFeeOwner) external onlyOwner {
-        require(_newFeeOwner != address(0), "CollectionStore#setFeeOwner: INVALID_ADDRESS");
-        require(_newFeeOwner != feeOwner, "CollectionStore#setFeeOwner: SAME_FEE_OWNER");
-
-        emit SetFeeOwner(feeOwner, _newFeeOwner);
-        feeOwner = _newFeeOwner;
+        (bool success,) = _forwarder.forwardCall(_collection, _data);
+        require(
+            success,
+            "CollectionManager#manageCollection: FORWARD_FAILED"
+        );
     }
 }

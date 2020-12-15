@@ -10,6 +10,10 @@ DONATION=Donation.sol
 BURNING_STORE=BurningStore.sol
 COLLECTION_V2_STORE=CollectionStore.sol
 
+COMMITTEE=Committee.sol
+FORWARDER=Forwarder.sol
+COLLECTION_MANAGER=CollectionManager.sol
+
 
 OUTPUT=full
 
@@ -21,5 +25,9 @@ npx truffle-flattener contracts/markets/$BURNING_STORE > $OUTPUT/$BURNING_STORE
 npx truffle-flattener contracts/markets/v2/$COLLECTION_V2_STORE > $OUTPUT/$COLLECTION_V2_STORE
 npx truffle-flattener contracts/collections/v2/$ERC721_COLLECTION_V2 > $OUTPUT/$ERC721_COLLECTION_V2
 npx truffle-flattener contracts/factories/v2/$ERC721_COLLECTION_FACTORY_V2 > $OUTPUT/$ERC721_COLLECTION_FACTORY_V2
+npx truffle-flattener contracts/commons/$FORWARDER > $OUTPUT/$FORWARDER
+npx truffle-flattener contracts/managers/$COMMITTEE > $OUTPUT/$COMMITTEE
+npx truffle-flattener contracts/managers/$COLLECTION_MANAGER > $OUTPUT/$COLLECTION_MANAGER
+
 
 
