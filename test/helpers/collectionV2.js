@@ -99,7 +99,7 @@ export async function createDummyFactory(owner) {
 
   const collectionImplementation = await ERC721CollectionV2.new()
 
-  return ERC721CollectionFactoryV2.new(collectionImplementation.address, owner)
+  return ERC721CollectionFactoryV2.new(owner, collectionImplementation.address)
 }
 
 export async function createDummyCollection(factory, options) {

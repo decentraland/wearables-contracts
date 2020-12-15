@@ -1,5 +1,4 @@
 import assertRevert from './assertRevert'
-import { increaseTime } from './increase'
 import {
   EMPTY_HASH,
   ZERO_ADDRESS,
@@ -9,7 +8,13 @@ import {
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
-import { sendMetaTx, getDomainSeparator, getSignature } from './metaTx'
+import {
+  sendMetaTx,
+  getDomainSeparator,
+  getSignature,
+  DEFAULT_DOMAIN,
+  DEFAULT_VERSION,
+} from './metaTx'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -6268,7 +6273,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          deployer
+          deployer,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)
@@ -6322,7 +6330,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          hacker
+          hacker,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)

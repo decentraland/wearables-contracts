@@ -3,13 +3,14 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/IERC721CollectionV2.sol";
+import "../../commons/OwnableInitializable.sol";
+import "../../commons/NativeMetaTransaction.sol";
 
-contract CollectionStore is Ownable {
+contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     struct ItemToBuy {
@@ -32,10 +33,17 @@ contract CollectionStore is Ownable {
     * @param _feeOwner - address where fees will be transferred
     * @param _fee - fee to charge for each sale
     */
-    constructor(IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection Store', '1');
+        // Ownable init
+        _initOwnable();
+
         acceptedToken = _acceptedToken;
         feeOwner = _feeOwner;
         setFee(_fee);
+
+        transferOwnership(_owner);
     }
 
     /**
@@ -46,6 +54,8 @@ contract CollectionStore is Ownable {
     */
     function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external {
         uint256 totalFee = 0;
+        address sender = _msgSender();
+
         for (uint256 i = 0; i < _itemsToBuy.length; i++) {
             ItemToBuy memory itemToBuy = _itemsToBuy[i];
             IERC721CollectionV2 collection = itemToBuy.collection;
@@ -67,7 +77,7 @@ contract CollectionStore is Ownable {
 
                     // Transfer sale amount to the item beneficiary
                     require(
-                        acceptedToken.transferFrom(msg.sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
+                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
                         "CollectionStore#buy: TRANSFER_PRICE_FAILED"
                     );
                 }
@@ -80,7 +90,7 @@ contract CollectionStore is Ownable {
         if (totalFee > 0) {
             // Transfer share amount for fees owner
             require(
-                acceptedToken.transferFrom(msg.sender, feeOwner, totalFee),
+                acceptedToken.transferFrom(sender, feeOwner, totalFee),
                 "CollectionStore#buy: TRANSFER_FEES_FAILED"
             );
         }

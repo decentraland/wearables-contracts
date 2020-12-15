@@ -2,18 +2,21 @@ import { randomBytes } from '@ethersproject/random'
 
 import assertRevert from '../helpers/assertRevert'
 import { ITEMS } from '../helpers/collectionV2'
+import { sendMetaTx } from '../helpers/metaTx'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
+const Forwarder = artifacts.require('Forwarder')
 
 describe('Commitee', function () {
   let collectionImplementation
   let factoryContract
   let committeeContract
   let collectionManagerContract
+  let forwarderContract
 
   // Accounts
   let accounts
@@ -22,12 +25,11 @@ describe('Commitee', function () {
   let anotherUser
   let owner
   let hacker
+  let relayer
   let fromUser
   let fromHacker
   let fromOwner
   let fromDeployer
-
-  let creationParams
 
   beforeEach(async function () {
     accounts = await web3.eth.getAccounts()
@@ -36,18 +38,13 @@ describe('Commitee', function () {
     owner = accounts[3]
     hacker = accounts[4]
     anotherUser = accounts[5]
+    relayer = accounts[6]
 
     fromUser = { from: user }
     fromHacker = { from: hacker }
 
     fromOwner = { from: owner }
     fromDeployer = { from: deployer }
-
-    creationParams = {
-      ...fromOwner,
-      gas: 9e6,
-      gasPrice: 21e9,
-    }
 
     committeeContract = await Committee.new(owner, [user], fromDeployer)
 
@@ -61,9 +58,15 @@ describe('Commitee', function () {
 
     collectionImplementation = await ERC721CollectionV2.new()
 
+    forwarderContract = await Forwarder.new(
+      owner,
+      collectionManagerContract.address,
+      fromDeployer
+    )
+
     factoryContract = await ERC721CollectionFactoryV2.new(
-      collectionImplementation.address,
-      collectionManagerContract.address
+      forwarderContract.address,
+      collectionImplementation.address
     )
   })
 
@@ -179,6 +182,7 @@ describe('Commitee', function () {
     beforeEach(async () => {
       const salt = randomBytes(32)
       const { logs } = await collectionManagerContract.createCollection(
+        forwarderContract.address,
         factoryContract.address,
         salt,
         name,
@@ -198,8 +202,24 @@ describe('Commitee', function () {
       // Approve collection
       await committeeContract.manageCollection(
         collectionManagerContract.address,
+        forwarderContract.address,
         collectionContract.address,
-        true,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [true]
+        ),
         fromUser
       )
 
@@ -209,9 +229,162 @@ describe('Commitee', function () {
       // Approve collection
       await committeeContract.manageCollection(
         collectionManagerContract.address,
+        forwarderContract.address,
         collectionContract.address,
-        false,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        ),
         fromUser
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+    })
+
+    it('should manage a collection :: Relayed EIP721', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      // Approve collection
+      let functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'contract ICollectionManager',
+              name: '_collectionManager',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_forwarder',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_collection',
+              type: 'address',
+            },
+            {
+              internalType: 'bytes',
+              name: '_data',
+              type: 'bytes',
+            },
+          ],
+          name: 'manageCollection',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          collectionManagerContract.address,
+          forwarderContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+        ]
+      )
+
+      await sendMetaTx(
+        committeeContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        'Decentraland Collection Committee',
+        '1'
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      // Reject collection
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'contract ICollectionManager',
+              name: '_collectionManager',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_forwarder',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_collection',
+              type: 'address',
+            },
+            {
+              internalType: 'bytes',
+              name: '_data',
+              type: 'bytes',
+            },
+          ],
+          name: 'manageCollection',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          collectionManagerContract.address,
+          forwarderContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [false]
+          ),
+        ]
+      )
+
+      await sendMetaTx(
+        committeeContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        'Decentraland Collection Committee',
+        '1'
       )
 
       isApproved = await collectionContract.isApproved()
@@ -224,8 +397,24 @@ describe('Commitee', function () {
 
       await committeeContract.manageCollection(
         collectionManagerContract.address,
+        forwarderContract.address,
         collectionContract.address,
-        true,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [true]
+        ),
         fromUser
       )
 
@@ -237,8 +426,24 @@ describe('Commitee', function () {
       await assertRevert(
         committeeContract.manageCollection(
           collectionManagerContract.address,
+          forwarderContract.address,
           collectionContract.address,
-          false,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [false]
+          ),
           fromUser
         ),
         'Committee#manageCollection: UNAUTHORIZED_SENDER'
@@ -248,8 +453,24 @@ describe('Commitee', function () {
 
       await committeeContract.manageCollection(
         collectionManagerContract.address,
+        forwarderContract.address,
         collectionContract.address,
-        false,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setApproved',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        ),
         fromUser
       )
     })
@@ -261,8 +482,24 @@ describe('Commitee', function () {
       await assertRevert(
         committeeContract.manageCollection(
           collectionManagerContract.address,
+          forwarderContract.address,
           collectionContract.address,
-          true,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
           fromHacker
         ),
         'Committee#manageCollection: UNAUTHORIZED_SENDER'
@@ -272,8 +509,24 @@ describe('Commitee', function () {
       await assertRevert(
         committeeContract.manageCollection(
           collectionManagerContract.address,
+          forwarderContract.address,
           collectionContract.address,
-          true,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
           fromOwner
         ),
         'Committee#manageCollection: UNAUTHORIZED_SENDER'

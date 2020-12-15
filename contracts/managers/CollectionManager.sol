@@ -3,15 +3,17 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "../interfaces/IForwarder.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IERC721CollectionV2.sol";
 import "../interfaces/IERC721CollectionFactoryV2.sol";
+import "../commons/OwnableInitializable.sol";
+import "../commons/NativeMetaTransaction.sol";
 
 
-contract CollectionManager is Ownable {
+contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
 
     using SafeMath for uint256;
 
@@ -26,13 +28,18 @@ contract CollectionManager is Ownable {
     event PricePerItemSet(uint256 _oldPricePerItem, uint256 _newPricePerItem);
 
     constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, uint256 _pricePerItem) public {
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection Manager', '1');
+        // Ownable init
+        _initOwnable();
+
         setAcceptedToken(_acceptedToken);
         setCommittee(_committee);
         setFeesCollector(_feesCollector);
         setPricePerItem(_pricePerItem);
+
         transferOwnership(_owner);
     }
-
 
     function setAcceptedToken(IERC20 _newAcceptedToken) onlyOwner public {
         require(address(_newAcceptedToken) != address(0), "CollectionManager#setAcceptedToken: INVALID_ACCEPTED_TOKEN");
@@ -61,6 +68,7 @@ contract CollectionManager is Ownable {
     }
 
     function createCollection(
+        IForwarder _forwarder,
         IERC721CollectionFactoryV2 _factory,
         bytes32 _salt,
         string memory _name,
@@ -73,7 +81,7 @@ contract CollectionManager is Ownable {
         // Transfer fees to collector
         if (amount > 0) {
             require(
-                acceptedToken.transferFrom(msg.sender, feesCollector, amount),
+                acceptedToken.transferFrom(_msgSender(), feesCollector, amount),
                 "CollectionManager#createCollection: TRANSFER_FEES_FAILED"
             );
         }
@@ -89,12 +97,23 @@ contract CollectionManager is Ownable {
             _items
         );
 
-        _factory.createCollection(_salt, data);
+        (bool success,) = _forwarder.forwardCall(address(_factory), abi.encodeWithSelector(_factory.createCollection.selector, _salt, data));
+        require(
+            success,
+             "CollectionManager#createCollection: FORWARD_FAILED"
+        );
     }
 
-    function manageCollection(IERC721CollectionV2 _collection, bool _value) external {
-        require(msg.sender == committee, "CollectionManager#manageCollection: UNAUTHORIZED_SENDER");
+    function manageCollection(IForwarder _forwarder, address _collection, bytes calldata _data) public {
+        require(
+            _msgSender() == committee,
+            "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"
+        );
 
-        _collection.setApproved(_value);
+        (bool success,) = _forwarder.forwardCall(_collection, _data);
+        require(
+            success,
+            "CollectionManager#manageCollection: FORWARD_FAILED"
+        );
     }
 }

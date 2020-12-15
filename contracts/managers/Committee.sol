@@ -3,18 +3,22 @@
 pragma solidity ^0.6.12;
 
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "../interfaces/ICollectionManager.sol";
+import "../commons/OwnableInitializable.sol";
+import "../commons/NativeMetaTransaction.sol";
 
 
-contract Committee is Ownable {
+contract Committee is OwnableInitializable, NativeMetaTransaction {
 
     mapping(address => bool) public members;
 
     event MemberSet(address indexed _member, bool _value);
 
     constructor(address _owner, address[] memory _members) public {
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection Committee', '1');
+        // Ownable init
+        _initOwnable();
         transferOwnership(_owner);
 
         for (uint256 i = 0; i < _members.length; i++) {
@@ -36,12 +40,9 @@ contract Committee is Ownable {
         emit MemberSet(_member, _value);
     }
 
-    function manageCollection(ICollectionManager _collectionManager, address _collection, bool _value) public {
-        require(members[msg.sender], "Committee#manageCollection: UNAUTHORIZED_SENDER");
+    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) public {
+       require(members[_msgSender()], "Committee#manageCollection: UNAUTHORIZED_SENDER");
 
-        _collectionManager.manageCollection(_collection, _value);
+        _collectionManager.manageCollection(_forwarder, _collection, _data);
     }
-
-
-
 }

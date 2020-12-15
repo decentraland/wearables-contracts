@@ -46,8 +46,8 @@ describe('Factory V2', function () {
     collectionImplementation = await ERC721CollectionV2.new()
 
     factoryContract = await ERC721CollectionFactoryV2.new(
-      collectionImplementation.address,
-      factoryOwner
+      factoryOwner,
+      collectionImplementation.address
     )
   })
 
@@ -55,8 +55,8 @@ describe('Factory V2', function () {
     it('deploy with correct values', async function () {
       const collectionImpl = await ERC721CollectionV2.new(creationParams)
       const contract = await ERC721CollectionFactoryV2.new(
-        collectionImpl.address,
-        factoryOwner
+        factoryOwner,
+        collectionImpl.address
       )
 
       const impl = await contract.implementation()

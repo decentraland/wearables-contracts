@@ -12,8 +12,9 @@ interface EventsInterface {
 
 contract DummyCollectionStore is EventsInterface, CollectionStore {
     constructor (
+        address _owner,
         IERC20 _acceptedToken,
         address _feeOwner,
         uint256 _fee
-    ) CollectionStore(_acceptedToken, _feeOwner, _fee) public {}
+    ) CollectionStore(_owner, _acceptedToken, _feeOwner, _fee) public {}
 }

@@ -10,7 +10,7 @@ contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
     address[] public collections;
     mapping(address => bool) public isCollectionFromFactory;
 
-    constructor(address _implementation, address _owner) public MinimalProxyFactory(_implementation) {
+    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 
