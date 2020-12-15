@@ -14,6 +14,11 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
 
     event MemberSet(address indexed _member, bool _value);
 
+    /**
+    * @notice Create the contract
+    * @param _owner - owner of the contract
+    * @param _members - members to be added at contract creation
+    */
     constructor(address _owner, address[] memory _members) public {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Committee', '1');
@@ -26,6 +31,11 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
         }
     }
 
+    /**
+    * @notice Set members
+    * @param _members - members to be added
+    * @param _values - whether the members should be added or removed
+    */
     function setMembers(address[] calldata _members, bool[] calldata _values) external onlyOwner {
         require(_members.length == _values.length, "Committee#setMembers: LENGTH_MISMATCH");
 
@@ -34,12 +44,24 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
         }
     }
 
+    /**
+    * @notice Set members
+    * @param _member - member to be added
+    * @param _value - whether the member should be added or removed
+    */
     function _setMember(address _member, bool _value) internal {
         members[_member] = _value;
 
         emit MemberSet(_member, _value);
     }
 
+    /**
+    * @notice Manage collection
+    * @param _collectionManager - collection manager
+    * @param _forwarder - forwarder contract owner of the collection
+    * @param _collection - collection to be managed
+    * @param _data - call data to be used
+    */
     function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) public {
        require(members[_msgSender()], "Committee#manageCollection: UNAUTHORIZED_SENDER");
 

@@ -1042,6 +1042,33 @@ describe('Collection Manager', function () {
       expect(isApproved).to.be.equal(false)
     })
 
+    it('reverts when trying to manage not a collection', async function () {
+      await assertRevert(
+        collectionManagerContract.manageCollection(
+          forwarderContract.address,
+          collectionManagerContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          fromUser
+        ),
+        'CollectionManager#manageCollection: INVALID_COLLECTION'
+      )
+    })
+
     it('reverts when trying to manage a collection by not the committee', async function () {
       await assertRevert(
         collectionManagerContract.manageCollection(

@@ -1,6 +1,12 @@
+import { keccak256 } from '@ethersproject/solidity'
+
 export const BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 export const OTHER_BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 
+export const COLLECTION_HASH = keccak256(
+  ['string'],
+  ['Decentraland Collection']
+)
 export const EMPTY_HASH =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'

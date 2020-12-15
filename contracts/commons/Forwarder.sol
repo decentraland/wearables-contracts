@@ -34,7 +34,7 @@ contract Forwarder is Ownable {
     /**
     * @notice Forward a call
     * @param _target - target address to call
-    * @param _data - calld ata to be used
+    * @param _data - call data to be used
     * @return whether the call was a success or not
     * @return response in bytes if any
     */

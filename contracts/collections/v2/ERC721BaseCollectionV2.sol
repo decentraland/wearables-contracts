@@ -13,12 +13,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     using String for uint256;
     using String for address;
 
-    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
+    bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
-
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
+
+    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
     enum RARITY {
         common,
@@ -75,7 +76,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
    /*
     * Init functions
     */
-
     constructor() internal {}
 
     /**
@@ -84,8 +84,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _symbol - symbol of the contract
      * @param _baseURI - base URI for token URIs
      * @param _creator - creator address
-     * @param _shouldComplete - Whether the collection should be completed by the end of this call.
-     * @param _isApproved - Whether the collection should be approved by the end of this call.
+     * @param _shouldComplete - Whether the collection should be completed by the end of this call
+     * @param _isApproved - Whether the collection should be approved by the end of this call
      * @param _items - items to be added
      */
     function initialize(

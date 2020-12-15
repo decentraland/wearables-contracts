@@ -3,9 +3,8 @@
 pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MinimalProxyFactory is Ownable {
+contract MinimalProxyFactory {
     using Address for address;
 
     address public implementation;
@@ -13,12 +12,22 @@ contract MinimalProxyFactory is Ownable {
     bytes32 public codeHash;
 
     event ProxyCreated(address indexed _address, bytes32 _salt);
-    event ImplementationChanged(address indexed _implementation, bytes32 _codeHash, bytes _code);
+    event ImplementationSet(address indexed _implementation, bytes32 _codeHash, bytes _code);
 
+    /**
+    * @notice Create the contract
+    * @param _implementation - contract implementation
+    */
     constructor(address _implementation) public {
         _setImplementation(_implementation);
     }
 
+    /**
+    * @notice Create a contract
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _data - call data used to call the contract already created if passed
+    * @return addr - address of the contract created
+    */
     function _createProxy(bytes32 _salt, bytes memory _data) internal virtual returns (address addr) {
         bytes memory slotcode = code;
         bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
@@ -38,7 +47,10 @@ contract MinimalProxyFactory is Ownable {
     }
 
     /**
-    * @dev Get a deterministics collection.
+    * @notice Get a deterministics contract address
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _address - supposed sender of the transaction
+    * @return address of the deterministic contract
     */
     function getAddress(bytes32 _salt, address _address) public view returns (address) {
         return address(
@@ -55,10 +67,10 @@ contract MinimalProxyFactory is Ownable {
         );
     }
 
-    function setImplementation(address _implementation) onlyOwner external {
-        _setImplementation(_implementation);
-    }
-
+    /**
+    * @notice Set the contract implementation
+    * @param _implementation - contract implementation
+    */
     function _setImplementation(address _implementation) internal {
         require(
             _implementation != address(0) && _implementation.isContract(),
@@ -73,6 +85,6 @@ contract MinimalProxyFactory is Ownable {
         codeHash = keccak256(code);
         implementation = _implementation;
 
-        emit ImplementationChanged(implementation, codeHash, code);
+        emit ImplementationSet(implementation, codeHash, code);
     }
 }

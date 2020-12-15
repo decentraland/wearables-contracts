@@ -5,6 +5,7 @@ import {
   BASE_URI,
   MAX_UINT256,
   RARITIES,
+  COLLECTION_HASH,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
@@ -145,6 +146,7 @@ export function doTest(
         const isApproved_ = await contract.isApproved()
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
+        const collectionHash = await contract.COLLECTION_HASH()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -155,6 +157,7 @@ export function doTest(
         expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
+        expect(collectionHash).to.be.equal(COLLECTION_HASH)
 
         const itemLength = await contract.itemsCount()
 
@@ -203,6 +206,7 @@ export function doTest(
         const isApproved_ = await contract.isApproved()
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
+        const collectionHash = await contract.COLLECTION_HASH()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -213,6 +217,7 @@ export function doTest(
         expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
+        expect(collectionHash).to.be.equal(COLLECTION_HASH)
 
         const itemLength = await contract.itemsCount()
 

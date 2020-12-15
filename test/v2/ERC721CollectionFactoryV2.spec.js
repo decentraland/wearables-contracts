@@ -76,58 +76,6 @@ describe('Factory V2', function () {
     })
   })
 
-  describe('createCollection', function () {
-    it('should set an implementation', async function () {
-      let impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(collectionImplementation.address)
-
-      const newImpl = await ERC721CollectionV2.new()
-
-      const { logs } = await factoryContract.setImplementation(
-        newImpl.address,
-        fromFactoryOwner
-      )
-
-      const expectedCode = `0x3d602d80600a3d3981f3363d3d373d3d3d363d73${newImpl.address.replace(
-        '0x',
-        ''
-      )}5af43d82803e903d91602b57fd5bf3`
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('ImplementationChanged')
-      expect(logs[0].args._implementation).to.be.equal(newImpl.address)
-      expect(logs[0].args._code.toLowerCase()).to.be.equal(
-        expectedCode.toLowerCase()
-      )
-      expect(logs[0].args._codeHash).to.be.equal(
-        keccak256(['bytes'], [expectedCode])
-      )
-
-      impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(newImpl.address)
-    })
-
-    it('reverts when trying to change the implementation by hacker', async function () {
-      const newImpl = await ERC721CollectionV2.new()
-      await assertRevert(
-        factoryContract.setImplementation(newImpl.address, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-
-    it('reverts when trying to change with an invalid implementation', async function () {
-      await assertRevert(
-        factoryContract.setImplementation(user, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-
-      await assertRevert(
-        factoryContract.setImplementation(ZERO_ADDRESS, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-    })
-  })
-
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
       const salt = randomBytes(32)

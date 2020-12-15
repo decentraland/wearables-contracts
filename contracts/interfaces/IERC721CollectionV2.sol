@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 
 
 interface IERC721CollectionV2 {
+    function COLLECTION_HASH() external view returns (bytes32);
+
     struct Item {
         uint8 rarity;
         uint256 totalSupply; // current supply

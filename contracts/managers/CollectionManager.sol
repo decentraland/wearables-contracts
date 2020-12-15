@@ -27,6 +27,14 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event PricePerItemSet(uint256 _oldPricePerItem, uint256 _newPricePerItem);
 
+    /**
+    * @notice Create the contract
+    * @param _owner - owner of the contract
+    * @param _acceptedToken - accepted ERC20 token for collection deployment
+    * @param _committee - committee contract
+    * @param _feesCollector - fees collector
+    * @param _pricePerItem - price per item
+    */
     constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, uint256 _pricePerItem) public {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Manager', '1');
@@ -41,6 +49,10 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         transferOwnership(_owner);
     }
 
+    /**
+    * @notice Set the accepted token
+    * @param _newAcceptedToken - accepted ERC20 token for collection deployment
+    */
     function setAcceptedToken(IERC20 _newAcceptedToken) onlyOwner public {
         require(address(_newAcceptedToken) != address(0), "CollectionManager#setAcceptedToken: INVALID_ACCEPTED_TOKEN");
 
@@ -48,6 +60,10 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         acceptedToken = _newAcceptedToken;
     }
 
+    /**
+    * @notice Set the committee
+    * @param _newCommittee - committee contract
+    */
     function setCommittee(address _newCommittee) onlyOwner public {
         require(_newCommittee != address(0), "CollectionManager#setCommittee: INVALID_COMMITTEE");
 
@@ -55,6 +71,10 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         committee = _newCommittee;
     }
 
+    /**
+    * @notice Set the fees collector
+    * @param _newFeesCollector - fees collector
+    */
     function setFeesCollector(address _newFeesCollector) onlyOwner public {
         require(_newFeesCollector != address(0), "CollectionManager#setFeesCollector: INVALID_FEES_COLLECTOR");
 
@@ -62,11 +82,26 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         feesCollector = _newFeesCollector;
     }
 
+    /**
+    * @notice Set the price per item
+    * @param _newPricePerItem - price per item
+    */
     function setPricePerItem(uint256 _newPricePerItem) onlyOwner public {
         emit PricePerItemSet(pricePerItem, _newPricePerItem);
         pricePerItem = _newPricePerItem;
     }
 
+    /**
+    * @notice Create a collection
+    * @param _forwarder - forwarder contract owner of the collection factory
+    * @param _factory - collection factory
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _name - name of the contract
+    * @param _symbol - symbol of the contract
+    * @param _baseURI - base URI for token URIs
+    * @param _creator - creator address
+    * @param _items - items to be added
+    */
     function createCollection(
         IForwarder _forwarder,
         IERC721CollectionFactoryV2 _factory,
@@ -104,13 +139,28 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         );
     }
 
-    function manageCollection(IForwarder _forwarder, address _collection, bytes calldata _data) public {
+    /**
+    * @notice Manage a collection
+    * @param _forwarder - forwarder contract owner of the collection factory
+    * @param _collection - collection to be managed
+    * @param _data - call data to be used
+    */
+    function manageCollection(IForwarder _forwarder, IERC721CollectionV2 _collection, bytes calldata _data) public {
         require(
             _msgSender() == committee,
             "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"
         );
 
-        (bool success,) = _forwarder.forwardCall(_collection, _data);
+        bool success;
+        bytes memory res;
+
+        (success, res) = address(_collection).staticcall(abi.encodeWithSelector(_collection.COLLECTION_HASH.selector));
+        require(
+            success && abi.decode(res, (bytes32)) == keccak256("Decentraland Collection"),
+            "CollectionManager#manageCollection: INVALID_COLLECTION"
+        );
+
+        (success,) = _forwarder.forwardCall(address(_collection), _data);
         require(
             success,
             "CollectionManager#manageCollection: FORWARD_FAILED"

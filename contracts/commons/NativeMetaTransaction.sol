@@ -3,7 +3,8 @@
 pragma solidity 0.6.12;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-import {EIP712Base} from "./EIP712Base.sol";
+
+import { EIP712Base } from "./EIP712Base.sol";
 
 contract NativeMetaTransaction is EIP712Base {
     using SafeMath for uint256;
