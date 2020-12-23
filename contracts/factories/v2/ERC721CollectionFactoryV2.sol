@@ -2,19 +2,31 @@
 
 pragma solidity ^0.6.12;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../commons/MinimalProxyFactory.sol";
 
-contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
+contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
 
     address[] public collections;
     mapping(address => bool) public isCollectionFromFactory;
 
-    constructor(address _implementation, address _owner) public MinimalProxyFactory(_implementation) {
+    /**
+    * @notice Create the contract
+    * @param _owner - contract owner
+    * @param _implementation - contract implementation
+    */
+    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 
-    function createCollection(bytes32 _salt, bytes memory _data) public returns (address addr) {
+    /**
+    * @notice Create a collection
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _data - call data used to call the contract already created if passed
+    * @return addr - address of the contract created
+    */
+    function createCollection(bytes32 _salt, bytes memory _data) public onlyOwner returns (address addr) {
         // Deploy a new collection
         addr = _createProxy(_salt, _data);
 
@@ -27,6 +39,10 @@ contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
         isCollectionFromFactory[addr] = true;
     }
 
+    /**
+    * @notice Get the amount of collections deployed
+    * @return amount of collections deployed
+    */
     function collectionsSize() public view returns (uint256) {
         return collections.length;
     }

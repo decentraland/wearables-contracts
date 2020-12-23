@@ -9,89 +9,6 @@ import { expect } from 'chai'
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 
-function encodeERC721Initialize(
-  name,
-  symbol,
-  creator,
-  shouldComplete,
-  baseURI,
-  items
-) {
-  return web3.eth.abi.encodeFunctionCall(
-    {
-      inputs: [
-        {
-          internalType: 'string',
-          name: '_name',
-          type: 'string',
-        },
-        {
-          internalType: 'string',
-          name: '_symbol',
-          type: 'string',
-        },
-        {
-          internalType: 'address',
-          name: '_creator',
-          type: 'address',
-        },
-        {
-          internalType: 'bool',
-          name: '_shouldComplete',
-          type: 'bool',
-        },
-        {
-          internalType: 'string',
-          name: '_baseURI',
-          type: 'string',
-        },
-        {
-          components: [
-            {
-              internalType: 'enum ERC721BaseCollectionV2.RARITY',
-              name: 'rarity',
-              type: 'uint8',
-            },
-            {
-              internalType: 'uint256',
-              name: 'totalSupply',
-              type: 'uint256',
-            },
-            {
-              internalType: 'uint256',
-              name: 'price',
-              type: 'uint256',
-            },
-            {
-              internalType: 'address',
-              name: 'beneficiary',
-              type: 'address',
-            },
-            {
-              internalType: 'string',
-              name: 'metadata',
-              type: 'string',
-            },
-            {
-              internalType: 'bytes32',
-              name: 'contentHash',
-              type: 'bytes32',
-            },
-          ],
-          internalType: 'struct ERC721BaseCollectionV2.Item[]',
-          name: '_items',
-          type: 'tuple[]',
-        },
-      ],
-      name: 'initialize',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    [name, symbol, creator, shouldComplete, baseURI, items]
-  )
-}
-
 describe('Factory V2', function () {
   let collectionImplementation
   let factoryContract
@@ -129,8 +46,8 @@ describe('Factory V2', function () {
     collectionImplementation = await ERC721CollectionV2.new()
 
     factoryContract = await ERC721CollectionFactoryV2.new(
-      collectionImplementation.address,
-      factoryOwner
+      factoryOwner,
+      collectionImplementation.address
     )
   })
 
@@ -138,8 +55,8 @@ describe('Factory V2', function () {
     it('deploy with correct values', async function () {
       const collectionImpl = await ERC721CollectionV2.new(creationParams)
       const contract = await ERC721CollectionFactoryV2.new(
-        collectionImpl.address,
-        factoryOwner
+        factoryOwner,
+        collectionImpl.address
       )
 
       const impl = await contract.implementation()
@@ -159,71 +76,22 @@ describe('Factory V2', function () {
     })
   })
 
-  describe('createCollection', function () {
-    it('should set an implementation', async function () {
-      let impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(collectionImplementation.address)
-
-      const newImpl = await ERC721CollectionV2.new()
-
-      const { logs } = await factoryContract.setImplementation(
-        newImpl.address,
-        fromFactoryOwner
-      )
-
-      const expectedCode = `0x3d602d80600a3d3981f3363d3d373d3d3d363d73${newImpl.address.replace(
-        '0x',
-        ''
-      )}5af43d82803e903d91602b57fd5bf3`
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('ImplementationChanged')
-      expect(logs[0].args._implementation).to.be.equal(newImpl.address)
-      expect(logs[0].args._code.toLowerCase()).to.be.equal(
-        expectedCode.toLowerCase()
-      )
-      expect(logs[0].args._codeHash).to.be.equal(
-        keccak256(['bytes'], [expectedCode])
-      )
-
-      impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(newImpl.address)
-    })
-
-    it('reverts when trying to change the implementation by hacker', async function () {
-      const newImpl = await ERC721CollectionV2.new()
-      await assertRevert(
-        factoryContract.setImplementation(newImpl.address, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-
-    it('reverts when trying to change with an invalid implementation', async function () {
-      await assertRevert(
-        factoryContract.setImplementation(user, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-
-      await assertRevert(
-        factoryContract.setImplementation(ZERO_ADDRESS, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-    })
-  })
-
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       const { logs } = await factoryContract.createCollection(
         salt,
         getInitData({
           creator: user,
           shouldComplete: true,
-          creationParams,
+          isApproved: true,
         }),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -241,7 +109,7 @@ describe('Factory V2', function () {
         [
           '0xff',
           factoryContract.address,
-          keccak256(['bytes32', 'address'], [salt, user]),
+          keccak256(['bytes32', 'address'], [salt, factoryOwner]),
           codeHash,
         ]
       ).slice(-40)}`.toLowerCase()
@@ -251,9 +119,9 @@ describe('Factory V2', function () {
         getInitData({
           creator: user,
           shouldComplete: true,
-          creationParams,
+          isApproved: true,
         }),
-        fromUser
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -271,7 +139,10 @@ describe('Factory V2', function () {
 
     it('should create a collection', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
@@ -283,15 +154,16 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          items
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items,
+        }),
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -322,7 +194,10 @@ describe('Factory V2', function () {
 
     it('should create a collection with items', async function () {
       const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner
+      )
 
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
@@ -334,15 +209,16 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -380,7 +256,7 @@ describe('Factory V2', function () {
       expect(name_).to.be.equal(name)
       expect(symbol_).to.be.equal(symbol)
       expect(isInitialized_).to.be.equal(true)
-      expect(isApproved_).to.be.equal(true)
+      expect(isApproved_).to.be.equal(false)
       expect(isCompleted_).to.be.equal(shouldComplete)
       expect(isEditable_).to.be.equal(true)
 
@@ -424,29 +300,31 @@ describe('Factory V2', function () {
 
       const res1 = await factoryContract.createCollection(
         salt1,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
+        fromFactoryOwner
       )
       const address1 = res1.logs[0].args._address
 
       const res2 = await factoryContract.createCollection(
         salt2,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
+        fromFactoryOwner
       )
       const address2 = res2.logs[0].args._address
 
@@ -471,15 +349,16 @@ describe('Factory V2', function () {
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeERC721Initialize(
+          getInitData({
             name,
             symbol,
-            ZERO_ADDRESS,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
-          fromUser
+            creator: ZERO_ADDRESS,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CALL_FAILED'
       )
@@ -489,31 +368,53 @@ describe('Factory V2', function () {
       const salt = randomBytes(32)
       await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+        }),
+        fromFactoryOwner
       )
 
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeERC721Initialize(
+          getInitData({
             name,
             symbol,
-            user,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
-          fromUser
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CREATION_FAILED'
+      )
+    })
+
+    it('reverts if trying to create a collection by not the owner', async function () {
+      const salt = randomBytes(32)
+      await assertRevert(
+        factoryContract.createCollection(
+          salt,
+          getInitData({
+            name,
+            symbol,
+            baseURI,
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+          }),
+          fromUser
+        ),
+        'Ownable: caller is not the owner'
       )
     })
   })

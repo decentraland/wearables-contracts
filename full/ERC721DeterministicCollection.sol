@@ -97,7 +97,6 @@ contract Ownable is Context {
 
 // File: @openzeppelin/contracts/introspection/IERC165.sol
 
-
 pragma solidity ^0.6.0;
 
 /**
@@ -122,7 +121,6 @@ interface IERC165 {
 }
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721.sol
-
 
 pragma solidity ^0.6.2;
 
@@ -253,7 +251,6 @@ interface IERC721 is IERC165 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol
 
-
 pragma solidity ^0.6.2;
 
 
@@ -280,7 +277,6 @@ interface IERC721Metadata is IERC721 {
 }
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol
-
 
 pragma solidity ^0.6.2;
 
@@ -311,7 +307,6 @@ interface IERC721Enumerable is IERC721 {
 
 // File: @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
 
-
 pragma solidity ^0.6.0;
 
 /**
@@ -334,7 +329,6 @@ interface IERC721Receiver {
 }
 
 // File: @openzeppelin/contracts/introspection/ERC165.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -389,7 +383,6 @@ contract ERC165 is IERC165 {
 }
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -551,7 +544,6 @@ library SafeMath {
 
 // File: @openzeppelin/contracts/utils/Address.sol
 
-
 pragma solidity ^0.6.2;
 
 /**
@@ -693,7 +685,6 @@ library Address {
 }
 
 // File: @openzeppelin/contracts/utils/EnumerableSet.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -939,7 +930,6 @@ library EnumerableSet {
 
 // File: @openzeppelin/contracts/utils/EnumerableMap.sol
 
-
 pragma solidity ^0.6.0;
 
 /**
@@ -1178,7 +1168,6 @@ library EnumerableMap {
 
 // File: @openzeppelin/contracts/utils/Strings.sol
 
-
 pragma solidity ^0.6.0;
 
 /**
@@ -1213,7 +1202,6 @@ library Strings {
 }
 
 // File: contracts/tokens/ERC721.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -1689,7 +1677,6 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
 
 // File: contracts/libs/String.sol
 
-
 pragma solidity ^0.6.12;
 
 library String {
@@ -1766,7 +1753,6 @@ library String {
 }
 
 // File: contracts/collections/v1/ERC721BaseCollection.sol
-
 
 pragma solidity ^0.6.12;
 
@@ -1976,7 +1962,6 @@ contract ERC721BaseCollection is Ownable, ERC721 {
 }
 
 // File: contracts/collections/v1/ERC721DeterministicCollection.sol
-
 
 pragma solidity ^0.6.12;
 

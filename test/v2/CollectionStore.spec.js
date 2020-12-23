@@ -12,9 +12,8 @@ import {
   createDummyCollection,
   encodeTokenId,
   ZERO_ADDRESS,
-  GRACE_PERIOD,
 } from '../helpers/collectionV2'
-import { increaseTime } from '../helpers/increase'
+import { sendMetaTx } from '../helpers/metaTx'
 
 const Store = artifacts.require('DummyCollectionStore')
 
@@ -66,6 +65,7 @@ describe('Collection Store', function () {
   let storeOwner
   let feeOwner
   let hacker
+  let relayer
   let fromUser
   let fromHacker
   let fromDeployer
@@ -84,6 +84,7 @@ describe('Collection Store', function () {
     feeOwner = accounts[ADDRESS_INDEXES.anotherUser]
     buyer = accounts[ADDRESS_INDEXES.buyer]
     anotherBuyer = accounts[ADDRESS_INDEXES.anotherBuyer]
+    relayer = accounts[ADDRESS_INDEXES.anotherUser]
 
     fromStoreOwner = { from: storeOwner }
     fromUser = { from: user }
@@ -118,16 +119,18 @@ describe('Collection Store', function () {
     })
 
     storeContract = await Store.new(
+      storeOwner,
       manaContract.address,
       feeOwner,
       FEE,
       fromStoreOwner
     )
 
+    await collection1.setApproved(true)
     await collection1.setMinters([storeContract.address], [true])
-    await collection2.setMinters([storeContract.address], [true])
 
-    await increaseTime(GRACE_PERIOD)
+    await collection2.setApproved(true)
+    await collection2.setMinters([storeContract.address], [true])
 
     // Approve store
     await manaContract.approve(storeContract.address, -1, fromBuyer)
@@ -136,6 +139,7 @@ describe('Collection Store', function () {
   describe('Deploy', async function () {
     it('deploy with correct values', async function () {
       const contract = await Store.new(
+        storeOwner,
         manaContract.address,
         feeOwner,
         FEE,
@@ -154,12 +158,19 @@ describe('Collection Store', function () {
 
     it('reverts when deploying with fee >= ONE_MILLION', async function () {
       await assertRevert(
-        Store.new(manaContract.address, feeOwner, ONE_MILLION, fromStoreOwner),
+        Store.new(
+          storeOwner,
+          manaContract.address,
+          feeOwner,
+          ONE_MILLION,
+          fromStoreOwner
+        ),
         'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
       )
 
       await assertRevert(
         Store.new(
+          storeOwner,
           manaContract.address,
           feeOwner,
           ONE_MILLION.add(web3.utils.toBN(1)),
@@ -375,6 +386,238 @@ describe('Collection Store', function () {
         buyer,
         fromBuyer
       )
+
+      totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(3)
+
+      totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(1)
+
+      const item10 = await collection1.items(0)
+      expect(item10.totalSupply).to.be.eq.BN(2)
+
+      const item12 = await collection1.items(2)
+      expect(item12.totalSupply).to.be.eq.BN(1)
+
+      const item20 = await collection2.items(0)
+      expect(item20.totalSupply).to.be.eq.BN(1)
+
+      expect(logs.length).to.be.equal(10)
+
+      const price10Fee = price10.mul(FEE).div(ONE_MILLION)
+      let feeCharged = price10Fee
+      expect(logs[0].event).to.be.equal('Transfer')
+      expect(logs[0].args._from).to.be.equal(buyer)
+      expect(logs[0].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[0].args._value).to.be.eq.BN(price10.sub(price10Fee))
+
+      expect(logs[1].event).to.be.equal('Issue')
+      expect(logs[1].args._beneficiary).to.be.equal(buyer)
+      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
+      expect(logs[1].args._itemId).to.be.eq.BN(0)
+      expect(logs[1].args._issuedId).to.be.eq.BN(1)
+
+      feeCharged = feeCharged.add(price10Fee)
+      expect(logs[2].event).to.be.equal('Transfer')
+      expect(logs[2].args._from).to.be.equal(buyer)
+      expect(logs[2].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[2].args._value).to.be.eq.BN(price10.sub(price10Fee))
+
+      expect(logs[3].event).to.be.equal('Issue')
+      expect(logs[3].args._beneficiary).to.be.equal(buyer)
+      expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
+      expect(logs[3].args._itemId).to.be.eq.BN(0)
+      expect(logs[3].args._issuedId).to.be.eq.BN(2)
+
+      const price12Fee = price12.mul(FEE).div(ONE_MILLION)
+      feeCharged = feeCharged.add(price12Fee)
+      expect(logs[4].event).to.be.equal('Transfer')
+      expect(logs[4].args._from).to.be.equal(buyer)
+      expect(logs[4].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[4].args._value).to.be.eq.BN(price12.sub(price12Fee))
+
+      expect(logs[5].event).to.be.equal('Issue')
+      expect(logs[5].args._beneficiary).to.be.equal(buyer)
+      expect(logs[5].args._tokenId).to.be.eq.BN(encodeTokenId(2, 1))
+      expect(logs[5].args._itemId).to.be.eq.BN(2)
+      expect(logs[5].args._issuedId).to.be.eq.BN(1)
+
+      const price20Fee = price20.mul(FEE).div(ONE_MILLION)
+      feeCharged = feeCharged.add(price20Fee)
+      expect(logs[6].event).to.be.equal('Transfer')
+      expect(logs[6].args._from).to.be.equal(buyer)
+      expect(logs[6].args._to.toLowerCase()).to.be.equal(
+        OTHER_BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[6].args._value).to.be.eq.BN(price20.sub(price20Fee))
+
+      expect(logs[7].event).to.be.equal('Issue')
+      expect(logs[7].args._beneficiary).to.be.equal(buyer)
+      expect(logs[7].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
+      expect(logs[7].args._itemId).to.be.eq.BN(0)
+      expect(logs[7].args._issuedId).to.be.eq.BN(1)
+
+      expect(logs[8].event).to.be.equal('Transfer')
+      expect(logs[8].args._from).to.be.equal(buyer)
+      expect(logs[8].args._to).to.be.equal(feeOwner)
+      expect(logs[8].args._value).to.be.eq.BN(feeCharged)
+
+      expect(logs[9].event).to.be.equal('Bought')
+      expect(logs[9].args._itemsToBuy).to.be.eql([
+        [
+          collection1.address,
+          ['0', '0', '2'],
+          [price10.toString(), price10.toString(), price12.toString()],
+        ],
+        [collection2.address, ['0'], [price20.toString()]],
+      ])
+      expect(logs[9].args._beneficiary).to.be.equal(buyer)
+
+      await buyerBalance.requireDecrease(finalPrice)
+      await beneficiaryBalance.requireIncrease(
+        price10
+          .add(price10)
+          .add(price12)
+          .sub(price10Fee.add(price10Fee).add(price12Fee))
+      )
+      await otherBeneficiaryBalance.requireIncrease(price20.sub(price20Fee))
+      await feeOwnerBalance.requireIncrease(feeCharged)
+      await storeBalance.requireConstant()
+
+      itemsCollection1BalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsCollection1BalanceOfBuyer).to.be.eq.BN(3)
+
+      itemsCollection2BalanceOfBuyer = await collection2.balanceOf(buyer)
+      expect(itemsCollection2BalanceOfBuyer).to.be.eq.BN(1)
+
+      let itemId = await collection1.tokenOfOwnerByIndex(buyer, 0)
+      let uri = await collection1.tokenURI(itemId)
+      let uriArr = uri.split('/')
+      expect(0).to.eq.BN(uriArr[uriArr.length - 2])
+
+      itemId = await collection1.tokenOfOwnerByIndex(buyer, 1)
+      uri = await collection1.tokenURI(itemId)
+      uriArr = uri.split('/')
+      expect(0).to.eq.BN(uriArr[uriArr.length - 2])
+
+      itemId = await collection1.tokenOfOwnerByIndex(buyer, 2)
+      uri = await collection1.tokenURI(itemId)
+      uriArr = uri.split('/')
+      expect(2).to.eq.BN(uriArr[uriArr.length - 2])
+
+      itemId = await collection2.tokenOfOwnerByIndex(buyer, 0)
+      uri = await collection1.tokenURI(itemId)
+      uriArr = uri.split('/')
+      expect(0).to.eq.BN(uriArr[uriArr.length - 2])
+    })
+
+    it('should buy more than 1 item from different collections :: Relayed EIP721', async function () {
+      let totalSupplyCollection1 = await collection1.totalSupply()
+      expect(totalSupplyCollection1).to.be.eq.BN(0)
+
+      let totalSupplyCollection2 = await collection2.totalSupply()
+      expect(totalSupplyCollection2).to.be.eq.BN(0)
+
+      const buyerBalance = await balanceSnap(manaContract, buyer, 'buyer')
+      const beneficiaryBalance = await balanceSnap(
+        manaContract,
+        BENEFICIARY_ADDRESS,
+        'beneficiary collection 1'
+      )
+      const otherBeneficiaryBalance = await balanceSnap(
+        manaContract,
+        OTHER_BENEFICIARY_ADDRESS,
+        'beneficiary collection 2'
+      )
+      const feeOwnerBalance = await balanceSnap(
+        manaContract,
+        feeOwner,
+        'fee owner'
+      )
+      const storeBalance = await balanceSnap(
+        manaContract,
+        storeContract.address,
+        'store'
+      )
+
+      let itemsCollection1BalanceOfBuyer = await collection1.balanceOf(buyer)
+      expect(itemsCollection1BalanceOfBuyer).to.be.eq.BN(0)
+
+      let itemsCollection2BalanceOfBuyer = await collection2.balanceOf(buyer)
+      expect(itemsCollection2BalanceOfBuyer).to.be.eq.BN(0)
+
+      const price10 = web3.utils.toBN(ITEMS[0][2])
+      const price12 = web3.utils.toBN(ITEMS[2][2])
+      const price20 = web3.utils.toBN(COLLECTION2_ITEMS[0][2])
+
+      const finalPrice = price10.add(price10).add(price12).add(price20)
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: 'contract IERC721CollectionV2',
+                  name: 'collection',
+                  type: 'address',
+                },
+                {
+                  internalType: 'uint256[]',
+                  name: 'ids',
+                  type: 'uint256[]',
+                },
+                {
+                  internalType: 'uint256[]',
+                  name: 'prices',
+                  type: 'uint256[]',
+                },
+              ],
+              internalType: 'struct CollectionStore.ItemToBuy[]',
+              name: '_itemsToBuy',
+              type: 'tuple[]',
+            },
+            {
+              internalType: 'address',
+              name: '_beneficiary',
+              type: 'address',
+            },
+          ],
+          name: 'buy',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          [
+            [
+              collection1.address,
+              [0, 0, 2],
+              [price10.toString(), price10.toString(), price12.toString()],
+            ],
+            [collection2.address, [0], [price20.toString()]],
+          ],
+          buyer,
+        ]
+      )
+
+      const res = await sendMetaTx(
+        storeContract,
+        functionSignature,
+        buyer,
+        relayer,
+        null,
+        'Decentraland Collection Store',
+        '1'
+      )
+
+      const logs = res.logs.slice(1, res.logs.length)
 
       totalSupplyCollection1 = await collection1.totalSupply()
       expect(totalSupplyCollection1).to.be.eq.BN(3)

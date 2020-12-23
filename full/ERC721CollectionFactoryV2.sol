@@ -1,7 +1,103 @@
 
-// File: @openzeppelin/contracts/utils/Address.sol
+// File: @openzeppelin/contracts/GSN/Context.sol
 
 // SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
+/*
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with GSN meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address payable) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes memory) {
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        return msg.data;
+    }
+}
+
+// File: @openzeppelin/contracts/access/Ownable.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor () internal {
+        address msgSender = _msgSender();
+        _owner = msgSender;
+        emit OwnershipTransferred(address(0), msgSender);
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+
+// File: @openzeppelin/contracts/utils/Address.sol
+
 
 pragma solidity ^0.6.2;
 
@@ -143,109 +239,13 @@ library Address {
     }
 }
 
-// File: @openzeppelin/contracts/GSN/Context.sol
-
-
-pragma solidity ^0.6.0;
-
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
-    }
-}
-
-// File: @openzeppelin/contracts/access/Ownable.sol
-
-
-pragma solidity ^0.6.0;
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor () internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
 // File: contracts/commons/MinimalProxyFactory.sol
 
 
 pragma solidity ^0.6.12;
 
 
-
-contract MinimalProxyFactory is Ownable {
+contract MinimalProxyFactory {
     using Address for address;
 
     address public implementation;
@@ -253,13 +253,23 @@ contract MinimalProxyFactory is Ownable {
     bytes32 public codeHash;
 
     event ProxyCreated(address indexed _address, bytes32 _salt);
-    event ImplementationChanged(address indexed _implementation, bytes32 _codeHash, bytes _code);
+    event ImplementationSet(address indexed _implementation, bytes32 _codeHash, bytes _code);
 
+    /**
+    * @notice Create the contract
+    * @param _implementation - contract implementation
+    */
     constructor(address _implementation) public {
         _setImplementation(_implementation);
     }
 
-    function createProxy(bytes32 _salt, bytes memory _data) public virtual returns (address addr) {
+    /**
+    * @notice Create a contract
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _data - call data used to call the contract already created if passed
+    * @return addr - address of the contract created
+    */
+    function _createProxy(bytes32 _salt, bytes memory _data) internal virtual returns (address addr) {
         bytes memory slotcode = code;
         bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
 
@@ -278,7 +288,10 @@ contract MinimalProxyFactory is Ownable {
     }
 
     /**
-    * @dev Get a deterministics collection.
+    * @notice Get a deterministics contract address
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _address - supposed sender of the transaction
+    * @return address of the deterministic contract
     */
     function getAddress(bytes32 _salt, address _address) public view returns (address) {
         return address(
@@ -295,10 +308,10 @@ contract MinimalProxyFactory is Ownable {
         );
     }
 
-    function setImplementation(address _implementation) onlyOwner external {
-        _setImplementation(_implementation);
-    }
-
+    /**
+    * @notice Set the contract implementation
+    * @param _implementation - contract implementation
+    */
     function _setImplementation(address _implementation) internal {
         require(
             _implementation != address(0) && _implementation.isContract(),
@@ -313,7 +326,7 @@ contract MinimalProxyFactory is Ownable {
         codeHash = keccak256(code);
         implementation = _implementation;
 
-        emit ImplementationChanged(implementation, codeHash, code);
+        emit ImplementationSet(implementation, codeHash, code);
     }
 }
 
@@ -323,17 +336,45 @@ contract MinimalProxyFactory is Ownable {
 pragma solidity ^0.6.12;
 
 
-contract ERC721CollectionFactoryV2 is MinimalProxyFactory {
 
-    constructor(address _implementation, address _owner) public MinimalProxyFactory(_implementation) {
+contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
+
+    address[] public collections;
+    mapping(address => bool) public isCollectionFromFactory;
+
+    /**
+    * @notice Create the contract
+    * @param _owner - contract owner
+    * @param _implementation - contract implementation
+    */
+    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 
-    function createCollection(bytes32 _salt, bytes memory _data) public returns (address addr) {
+    /**
+    * @notice Create a collection
+    * @param _salt - arbitrary 32 bytes hexa
+    * @param _data - call data used to call the contract already created if passed
+    * @return addr - address of the contract created
+    */
+    function createCollection(bytes32 _salt, bytes memory _data) public onlyOwner returns (address addr) {
         // Deploy a new collection
-        addr = createProxy(_salt, _data);
+        addr = _createProxy(_salt, _data);
 
         // Transfer ownership to the owner after deployment
         Ownable(addr).transferOwnership(owner());
+
+        // Set variables for handle data faster
+        // This use storage and therefore make deployments expensive.
+        collections.push(addr);
+        isCollectionFromFactory[addr] = true;
+    }
+
+    /**
+    * @notice Get the amount of collections deployed
+    * @return amount of collections deployed
+    */
+    function collectionsSize() public view returns (uint256) {
+        return collections.length;
     }
 }

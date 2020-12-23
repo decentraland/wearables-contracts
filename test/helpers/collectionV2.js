@@ -1,6 +1,12 @@
+import { keccak256 } from '@ethersproject/solidity'
+
 export const BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 export const OTHER_BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 
+export const COLLECTION_HASH = keccak256(
+  ['string'],
+  ['Decentraland Collection']
+)
 export const EMPTY_HASH =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -99,7 +105,7 @@ export async function createDummyFactory(owner) {
 
   const collectionImplementation = await ERC721CollectionV2.new()
 
-  return ERC721CollectionFactoryV2.new(collectionImplementation.address, owner)
+  return ERC721CollectionFactoryV2.new(owner, collectionImplementation.address)
 }
 
 export async function createDummyCollection(factory, options) {
@@ -134,6 +140,11 @@ export function getInitData(options) {
           type: 'string',
         },
         {
+          internalType: 'string',
+          name: '_baseURI',
+          type: 'string',
+        },
+        {
           internalType: 'address',
           name: '_creator',
           type: 'address',
@@ -144,9 +155,9 @@ export function getInitData(options) {
           type: 'bool',
         },
         {
-          internalType: 'string',
-          name: '_baseURI',
-          type: 'string',
+          internalType: 'bool',
+          name: '_isApproved',
+          type: 'bool',
         },
         {
           components: [
@@ -194,9 +205,10 @@ export function getInitData(options) {
     [
       options.name || CONTRACT_NAME,
       options.symbol || CONTRACT_SYMBOL,
+      options.baseURI || BASE_URI,
       options.creator,
       options.shouldComplete,
-      options.baseURI || BASE_URI,
+      options.shouldApprove,
       options.items || ITEMS,
     ]
   )

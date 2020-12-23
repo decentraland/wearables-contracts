@@ -1,16 +1,21 @@
 import assertRevert from './assertRevert'
-import { increaseTime } from './increase'
 import {
   EMPTY_HASH,
   ZERO_ADDRESS,
   BASE_URI,
   MAX_UINT256,
   RARITIES,
-  GRACE_PERIOD,
+  COLLECTION_HASH,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
-import { sendMetaTx, getDomainSeparator, getSignature } from './metaTx'
+import {
+  sendMetaTx,
+  getDomainSeparator,
+  getSignature,
+  DEFAULT_DOMAIN,
+  DEFAULT_VERSION,
+} from './metaTx'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -100,7 +105,8 @@ export function doTest(
       // Create collection and set up wearables
       collectionContract = await createContract(
         creator,
-        true,
+        true, // shouldComplete
+        true, // isApproved
         true,
         creationParams
       )
@@ -123,9 +129,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           false,
-          BASE_URI,
+          true,
           items,
           creationParams
         )
@@ -139,6 +146,7 @@ export function doTest(
         const isApproved_ = await contract.isApproved()
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
+        const collectionHash = await contract.COLLECTION_HASH()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -149,6 +157,7 @@ export function doTest(
         expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
+        expect(collectionHash).to.be.equal(COLLECTION_HASH)
 
         const itemLength = await contract.itemsCount()
 
@@ -180,9 +189,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           false,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -196,6 +206,7 @@ export function doTest(
         const isApproved_ = await contract.isApproved()
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
+        const collectionHash = await contract.COLLECTION_HASH()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -206,6 +217,7 @@ export function doTest(
         expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
+        expect(collectionHash).to.be.equal(COLLECTION_HASH)
 
         const itemLength = await contract.itemsCount()
 
@@ -217,9 +229,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -228,14 +241,32 @@ export function doTest(
         expect(isCompleted_).to.be.equal(true)
       })
 
+      it('should be initialized and not approved', async function () {
+        const contract = await Contract.new()
+        await contract.initialize(
+          contractName,
+          contractSymbol,
+          BASE_URI,
+          user,
+          false,
+          false,
+          [],
+          creationParams
+        )
+
+        const isApproved_ = await contract.isApproved()
+        expect(isApproved_).to.be.equal(false)
+      })
+
       it('reverts when trying to initialize more than once', async function () {
         const contract = await Contract.new()
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
+          true,
           [],
           creationParams
         )
@@ -244,9 +275,10 @@ export function doTest(
           contract.initialize(
             contractName,
             contractSymbol,
+            BASE_URI,
             user,
             true,
-            BASE_URI,
+            true,
             [],
             creationParams
           ),
@@ -262,9 +294,10 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           creator,
           true,
-          BASE_URI,
+          true,
           items,
           creationParams
         )
@@ -1750,7 +1783,13 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should add an item', async function () {
@@ -2248,7 +2287,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -2834,7 +2879,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -3241,7 +3292,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([item0, item1], fromCreator)
 
         const itemLength = await contract.itemsCount()
@@ -3688,7 +3745,13 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
@@ -4108,6 +4171,7 @@ export function doTest(
           creator,
           false,
           true,
+          true,
           creationParams
         )
         await contract.addItems([newItem], fromCreator)
@@ -4115,32 +4179,6 @@ export function doTest(
         await assertRevert(
           contract.issueToken(anotherHolder, newItemId, fromCreator),
           'BCV2#isMintingAllowed: NOT_COMPLETED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -4171,11 +4209,16 @@ export function doTest(
           EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
         await contract.addItems([newItem, anotherNewItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(2))
         anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
@@ -4753,6 +4796,7 @@ export function doTest(
           creator,
           false,
           true,
+          true,
           creationParams
         )
         await contract.addItems([newItem], fromCreator)
@@ -4762,34 +4806,6 @@ export function doTest(
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
           'BCV2#isMintingAllowed: NOT_COMPLETED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
-
-        await assertRevert(
-          contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
         )
       })
     })
@@ -4809,13 +4825,13 @@ export function doTest(
           creator,
           false,
           true,
+          true,
           creationParams
         )
 
         await contract.addItems([newItem], fromCreator)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
@@ -5639,7 +5655,13 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should complete collection', async function () {
@@ -6256,7 +6278,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          deployer
+          deployer,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)
@@ -6310,7 +6335,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          hacker
+          hacker,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)

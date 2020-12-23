@@ -13,15 +13,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     using String for uint256;
     using String for address;
 
-    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
+    bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
-
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
-    /// @dev time for the collection to be auto approved
-    uint256 constant public GRACE_PERIOD = 60 * 60 * 24 * 7; // 7 days
+    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
     enum RARITY {
         common,
@@ -78,24 +76,25 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
    /*
     * Init functions
     */
-
     constructor() internal {}
 
     /**
      * @notice Create the contract
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
-     * @param _creator - creator address
-     * @param _shouldComplete - Whether the collection should be completed by the end of this call.
      * @param _baseURI - base URI for token URIs
+     * @param _creator - creator address
+     * @param _shouldComplete - Whether the collection should be completed by the end of this call
+     * @param _isApproved - Whether the collection should be approved by the end of this call
      * @param _items - items to be added
      */
     function initialize(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         address _creator,
         bool _shouldComplete,
-        string memory _baseURI,
+        bool _isApproved,
         Item[] memory _items
     ) public virtual {
         require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
@@ -119,8 +118,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             _completeCollection();
         }
 
+        isApproved = _isApproved;
+
         isEditable = true;
-        isApproved = true;
         createdAt = now;
     }
 
@@ -574,7 +574,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
         require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
         require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
 

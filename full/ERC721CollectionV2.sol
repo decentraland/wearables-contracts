@@ -1964,15 +1964,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     using String for uint256;
     using String for address;
 
-    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
+    bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
-
     uint40 constant public MAX_ITEM_ID = uint40(-1);
     uint216 constant public MAX_ISSUED_ID = uint216(-1);
 
-    /// @dev time for the collection to be auto approved
-    uint256 constant public GRACE_PERIOD = 60 * 60 * 24 * 7; // 7 days
+    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
     enum RARITY {
         common,
@@ -1997,7 +1995,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     address public creator;
     mapping(address => bool) public globalMinters;
     mapping(address => bool) public globalManagers;
-    mapping(uint256 => mapping (address => bool)) public itemMinters;
+    mapping(uint256 => mapping (address => uint256)) public itemMinters;
     mapping(uint256 => mapping (address => bool)) public itemManagers;
 
     Item[] public items;
@@ -2013,7 +2011,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
 
     event SetGlobalMinter(address indexed _minter, bool _value);
     event SetGlobalManager(address indexed _manager, bool _value);
-    event SetItemMinter(uint256 indexed _itemId, address indexed _minter, bool _value);
+    event SetItemMinter(uint256 indexed _itemId, address indexed _minter, uint256 _value);
     event SetItemManager(uint256 indexed _itemId, address indexed _manager, bool _value);
 
     event AddItem(uint256 indexed _itemId, Item _item);
@@ -2029,24 +2027,25 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
    /*
     * Init functions
     */
-
     constructor() internal {}
 
     /**
      * @notice Create the contract
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
-     * @param _creator - creator address
-     * @param _shouldComplete - Whether the collection should be completed by the end of this call.
      * @param _baseURI - base URI for token URIs
+     * @param _creator - creator address
+     * @param _shouldComplete - Whether the collection should be completed by the end of this call
+     * @param _isApproved - Whether the collection should be approved by the end of this call
      * @param _items - items to be added
      */
     function initialize(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         address _creator,
         bool _shouldComplete,
-        string memory _baseURI,
+        bool _isApproved,
         Item[] memory _items
     ) public virtual {
         require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
@@ -2070,8 +2069,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             _completeCollection();
         }
 
+        isApproved = _isApproved;
+
         isEditable = true;
-        isApproved = true;
         createdAt = now;
     }
 
@@ -2081,11 +2081,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
 
     function _isCreator() internal view returns (bool) {
         return creator == _msgSender();
-    }
-
-    function _isMinter(uint256 _itemId) internal view returns (bool) {
-        address sender = _msgSender();
-        return globalMinters[sender] || itemMinters[_itemId][sender];
     }
 
     function _isManager(uint256 _itemId) internal view returns (bool) {
@@ -2128,7 +2123,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     }
 
     /**
-     * @notice Set allowed account to manage items.
+     * @notice Set allowed account to mint items.
      * @param _itemIds - item ids
      * @param _minters - minter addresses
      * @param _values - values array
@@ -2136,7 +2131,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setItemsMinters(
         uint256[] calldata _itemIds,
         address[] calldata _minters,
-        bool[] calldata _values
+        uint256[] calldata _values
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
@@ -2146,7 +2141,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             uint256 itemId = _itemIds[i];
-            bool value = _values[i];
+            uint256 value = _values[i];
             require(minter != address(0), "BCV2#setItemsMinters: INVALID_MINTER_ADDRESS");
             require(itemId < items.length, "BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
             require(itemMinters[itemId][minter] != value, "BCV2#setItemsMinters: VALUE_IS_THE_SAME");
@@ -2362,7 +2357,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
         require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
 
-        _issueToken(_beneficiary, _itemId);
+        address sender = _msgSender();
+        _issueToken(_beneficiary, _itemId, sender);
     }
 
     /**
@@ -2375,8 +2371,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         require(isMintingAllowed(), "BCV2#issueTokens: MINT_NOT_ALLOWED");
         require(_beneficiaries.length == _itemIds.length, "BCV2#issueTokens: LENGTH_MISMATCH");
 
+        address sender = _msgSender();
         for (uint256 i = 0; i < _itemIds.length; i++) {
-            _issueToken(_beneficiaries[i], _itemIds[i]);
+            _issueToken(_beneficiaries[i], _itemIds[i], sender);
         }
     }
 
@@ -2385,13 +2382,22 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @dev Will throw if the item has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
+     * @param _sender - transaction sender
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual {
-        // Check ownership
+    function _issueToken(address _beneficiary, uint256 _itemId, address _sender) internal virtual {
+        uint256 allowance = itemMinters[_itemId][_sender];
+        bool canMint = _isCreator() || globalMinters[_sender] || allowance > 0;
+
+        // Check sender role
         require(
-            _isCreator() || _isMinter(_itemId),
+            canMint,
             "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
         );
+
+        if (allowance > 0 && allowance != uint256(-1)) {
+            itemMinters[_itemId][_sender] = allowance - 1;
+        }
+
         // Check item id
         require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
 
@@ -2519,7 +2525,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
         require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
         require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
 
