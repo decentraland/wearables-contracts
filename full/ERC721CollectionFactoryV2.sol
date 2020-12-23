@@ -28,7 +28,6 @@ abstract contract Context {
 
 // File: @openzeppelin/contracts/access/Ownable.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
 

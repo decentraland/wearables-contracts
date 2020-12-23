@@ -2707,7 +2707,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
 
 
 pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
 
 
 
