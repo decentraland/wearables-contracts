@@ -148,14 +148,15 @@ Also, the owner can set the collection as `not editable` and therefore creators 
 
 #### Metadata
 
-Each item will have metadata on-chain describing important aspects. The metadata will follow a protocol: `version:type:name:data`. Where data could be useful information about the type. In the case of Decentraland wearables an example can be:
+Each item will have metadata on-chain describing important aspects. The metadata will follow a protocol: `version:type:name:description:data`. Where data could be useful information about the type. In the case of Decentraland wearables an example can be:
 
 - version: 1
 - type: w (wearable)
 - name: red_hat
-- data: category,bodyShape = (hat:female,male)
+- description: the red hat description
+- data: category:bodyShape (hat:female,male)
 
-In the contract will looks like: `1:w:red_hat:hat:female,male`.
+In the contract will looks like: `1:w:red_hat:the red hat description:hat:female,male`.
 
 This metadata will be primarly used by the indexers work as filters. Also, this metadata will be backed up by the content stored in the Decentraland content-server
 
