@@ -60,6 +60,5 @@
     "solium": "^1.2.5",
     "truffle": "^5.1.41",
     "validate-commit-msg": "^2.14.0"
-  },
-  "dependencies": {}
+  }
 }

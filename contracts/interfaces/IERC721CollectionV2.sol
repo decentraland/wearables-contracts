@@ -7,13 +7,11 @@ pragma experimental ABIEncoderV2;
 interface IERC721CollectionV2 {
     function COLLECTION_HASH() external view returns (bytes32);
 
-    struct Item {
-        uint8 rarity;
-        uint256 totalSupply; // current supply
+    struct ItemParam {
+        string rarity;
         uint256 price;
         address beneficiary;
         string metadata;
-        bytes32 contentHash; // used for safe purposes
     }
 
     function issueToken(address _beneficiary, uint256 _itemId) external;
@@ -26,7 +24,8 @@ interface IERC721CollectionV2 {
         address _creator,
         bool _shouldComplete,
         bool _isApproved,
-        Item[] memory _items
+        address _rarities,
+        ItemParam[] memory _items
     ) external;
-    function items(uint256 _itemId) external view returns (uint256, uint256, uint256, address, string memory, bytes32);
+    function items(uint256 _itemId) external view returns (string memory, uint256, uint256, uint256, address, string memory, bytes32);
 }

@@ -69,8 +69,29 @@ library String {
         return string(s);
     }
 
-    function char(byte b) private pure returns (byte c) {
+    function char(byte b) internal pure returns (byte c) {
         if (uint8(b) < 10) return byte(uint8(b) + 0x30);
         else return byte(uint8(b) + 0x57);
+    }
+
+    /**
+     * @dev Lowercase a string.
+     * @param _str - to be converted to string.
+     * @return string
+     */
+    function toLowerCase(string memory _str) internal pure returns (string memory) {
+        bytes memory bStr = bytes(_str);
+        bytes memory bLower = new bytes(bStr.length);
+
+        for (uint i = 0; i < bStr.length; i++) {
+            // Uppercase character...
+            if ((bStr[i] >= 0x41) && (bStr[i] <= 0x5A)) {
+                // So we add 0x20 to make it lowercase
+                bLower[i] = bytes1(uint8(bStr[i]) + 0x20);
+            } else {
+                bLower[i] = bStr[i];
+            }
+        }
+        return string(bLower);
     }
 }

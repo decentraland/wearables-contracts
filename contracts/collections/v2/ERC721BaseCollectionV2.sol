@@ -3,6 +3,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
+import "../../interfaces/IRarities.sol";
 import "../../commons//OwnableInitializable.sol";
 import "../../commons//NativeMetaTransaction.sol";
 import "../../tokens/ERC721Initializable.sol";
@@ -21,24 +22,24 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
 
     bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
-    enum RARITY {
-        common,
-        uncommon,
-        rare,
-        epic,
-        legendary,
-        mythic,
-        unique
+    struct ItemParam {
+        string rarity;
+        uint256 price;
+        address beneficiary;
+        string metadata;
     }
 
     struct Item {
-        RARITY rarity;
+        string rarity;
+        uint256 maxSupply; // max supply
         uint256 totalSupply; // current supply
         uint256 price;
         address beneficiary;
         string metadata;
         bytes32 contentHash; // used for safe purposes
     }
+
+    IRarities public rarities;
 
     // Roles
     address public creator;
@@ -86,6 +87,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _creator - creator address
      * @param _shouldComplete - Whether the collection should be completed by the end of this call
      * @param _isApproved - Whether the collection should be approved by the end of this call
+     * @param _rarities - rarities address
      * @param _items - items to be added
      */
     function initialize(
@@ -95,12 +97,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         address _creator,
         bool _shouldComplete,
         bool _isApproved,
-        Item[] memory _items
+        IRarities _rarities,
+        ItemParam[] memory _items
     ) public virtual {
         require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
         require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
+        require(address(_rarities) != address(0), "BCV2#initialize: INVALID_RARITIES");
+
         // Ownable init
         _initOwnable();
         // EIP712 init
@@ -111,6 +116,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         setBaseURI(_baseURI);
         // Creator init
         creator = _creator;
+        // Rarities init
+        rarities = _rarities;
         // Items init
         _initializeItems(_items);
 
@@ -272,7 +279,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Add items to the collection.
      * @param _items - items to add
      */
-    function addItems(Item[] memory _items) external virtual onlyCreator {
+    function addItems(ItemParam[] memory _items) external virtual onlyCreator {
         require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
 
         for (uint256 i = 0; i < _items.length; i++) {
@@ -354,7 +361,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @dev Used only at initialize
      * @param _items - items to add
      */
-    function _initializeItems(Item[] memory _items) internal {
+    function _initializeItems(ItemParam[] memory _items) internal {
         for (uint256 i = 0; i < _items.length; i++) {
             _addItem(_items[i]);
         }
@@ -371,29 +378,34 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * contentHash: Should be the an empty hash
      * @param _item - item to add
      */
-    function _addItem(Item memory _item) internal {
-        uint256 rarity = getRarityValue(_item.rarity);
+    function _addItem(ItemParam memory _item) internal {
+        IRarities.Rarity memory rarity = rarities.getRarityByName(_item.rarity);
         require(
-           rarity > 0 && rarity <= MAX_ISSUED_ID,
+           rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
             "BCV2#_addItem: INVALID_RARITY"
-        );
-        require(
-            _item.totalSupply == 0,
-            "BCV2#_addItem: INVALID_TOTAL_SUPPLY"
         );
         require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
         require(
             _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
             "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
         );
-        require(_item.contentHash == EMPTY_CONTENT, "BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
 
         uint256 newItemId = items.length;
         require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
 
-        items.push(_item);
+        Item memory item = Item({
+            rarity: rarity.name,
+            maxSupply: rarity.maxSupply,
+            totalSupply: 0,
+            price: _item.price,
+            beneficiary: _item.beneficiary,
+            metadata: _item.metadata,
+            contentHash: EMPTY_CONTENT
+        });
 
-        emit AddItem(newItemId, _item);
+        items.push(item);
+
+        emit AddItem(newItemId, item);
     }
 
 
@@ -454,7 +466,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "BCV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= item.maxSupply, "BCV2#_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -513,56 +525,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      */
     function itemsCount() external view returns (uint256) {
         return items.length;
-    }
-
-    /**
-     * @notice Returns a rarity's maximum supply
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Max supply of the rarity given
-     */
-    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
-        if (_rarity == RARITY.common) {
-            return 100000;
-        } else  if (_rarity == RARITY.uncommon) {
-            return 10000;
-        } else  if (_rarity == RARITY.rare) {
-            return 5000;
-        } else  if (_rarity == RARITY.epic) {
-            return 1000;
-        } else  if (_rarity == RARITY.legendary) {
-            return 100;
-        } else  if (_rarity == RARITY.mythic) {
-            return 10;
-        } else  if (_rarity == RARITY.unique) {
-            return 1;
-        }
-
-        revert("#BCV2#getRarityValue: INVALID_RARITY");
-    }
-
-    /**
-     * @notice Returns a rarity's name
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Name of the rarity given
-     */
-    function getRarityName(RARITY _rarity) public pure returns (string memory) {
-        if (_rarity == RARITY.common) {
-            return "common";
-        } else  if (_rarity == RARITY.uncommon) {
-            return "uncommon";
-        } else  if (_rarity == RARITY.rare) {
-            return "rare";
-        } else  if (_rarity == RARITY.epic) {
-            return "epic";
-        } else  if (_rarity == RARITY.legendary) {
-            return "legendary";
-        } else  if (_rarity == RARITY.mythic) {
-            return "mythic";
-        } else  if (_rarity == RARITY.unique) {
-            return "unique";
-        }
-
-        revert("#BCV2#getRarityName: INVALID_RARITY");
     }
 
     /*
