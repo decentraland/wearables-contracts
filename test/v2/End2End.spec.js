@@ -2,7 +2,13 @@ import { Mana } from 'decentraland-contract-plugins'
 import { randomBytes } from '@ethersproject/random'
 import { expect } from 'chai'
 
-import { ITEMS } from '../helpers/collectionV2'
+import {
+  ITEMS,
+  getInitialRarities,
+  getRarityNames,
+  EMPTY_HASH,
+  RARITIES,
+} from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
@@ -10,9 +16,9 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
+const Rarities = artifacts.require('Rarities')
 
 describe('End 2 End: Approval Flow', function () {
-  const PRICE_PER_ITEM = web3.utils.toBN(10)
   const name = 'collectionName'
   const symbol = 'collectionSymbol'
   const baseURI = 'collectionBaseURI'
@@ -24,6 +30,7 @@ describe('End 2 End: Approval Flow', function () {
   let collectionManagerContract
   let forwarderContract
   let collectionContract
+  let raritiesContract
 
   // Accounts
   let accounts
@@ -67,6 +74,7 @@ describe('End 2 End: Approval Flow', function () {
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
     committeeContract = await Committee.new(owner, [user], fromDeployer)
 
     collectionManagerContract = await CollectionManager.new(
@@ -74,7 +82,7 @@ describe('End 2 End: Approval Flow', function () {
       manaContract.address,
       committeeContract.address,
       collector,
-      PRICE_PER_ITEM
+      raritiesContract.address
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -90,7 +98,13 @@ describe('End 2 End: Approval Flow', function () {
       collectionImplementation.address
     )
 
-    await collectionManagerContract.setPricePerItem(0, fromOwner)
+    // Rarities at price 0
+    const rarities = getInitialRarities()
+
+    await raritiesContract.updatePrices(
+      getRarityNames(),
+      Array(rarities.length).fill(0)
+    )
   })
 
   describe('User Tx', function () {
@@ -131,6 +145,9 @@ describe('End 2 End: Approval Flow', function () {
         const isCompleted = await collectionContract.isCompleted()
         expect(isCompleted).to.be.equal(true)
 
+        const rarities = await collectionContract.rarities()
+        expect(rarities).to.be.equal(raritiesContract.address)
+
         const itemLength = await collectionContract.itemsCount()
 
         expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -138,6 +155,7 @@ describe('End 2 End: Approval Flow', function () {
         for (let i = 0; i < ITEMS.length; i++) {
           const {
             rarity,
+            maxSupply,
             totalSupply,
             price,
             beneficiary,
@@ -146,13 +164,14 @@ describe('End 2 End: Approval Flow', function () {
           } = await collectionContract.items(i)
 
           expect(rarity).to.be.eq.BN(ITEMS[i][0])
-          expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-          expect(price).to.be.eq.BN(ITEMS[i][2])
+          expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+          expect(totalSupply).to.be.eq.BN(0)
+          expect(price).to.be.eq.BN(ITEMS[i][1])
           expect(beneficiary.toLowerCase()).to.be.equal(
-            ITEMS[i][3].toLowerCase()
+            ITEMS[i][2].toLowerCase()
           )
-          expect(metadata).to.be.equal(ITEMS[i][4])
-          expect(contentHash).to.be.equal(ITEMS[i][5])
+          expect(metadata).to.be.equal(ITEMS[i][3])
+          expect(contentHash).to.be.equal(EMPTY_HASH)
         }
       })
     })
@@ -231,6 +250,7 @@ describe('End 2 End: Approval Flow', function () {
         let item0 = await collectionContract.items(0)
         expect([
           item0.rarity.toString(),
+          item0.maxSupply.toString(),
           item0.totalSupply.toString(),
           item0.price.toString(),
           item0.beneficiary.toLowerCase(),
@@ -238,16 +258,18 @@ describe('End 2 End: Approval Flow', function () {
           item0.contentHash,
         ]).to.be.eql([
           ITEMS[0][0].toString(),
+          RARITIES[ITEMS[0][0]].value.toString(),
+          '0',
           ITEMS[0][1].toString(),
-          ITEMS[0][2],
-          ITEMS[0][3].toLowerCase(),
-          ITEMS[0][4],
-          ITEMS[0][5],
+          ITEMS[0][2].toLowerCase(),
+          ITEMS[0][3],
+          EMPTY_HASH,
         ])
 
         let item1 = await collectionContract.items(1)
         expect([
           item1.rarity.toString(),
+          item1.maxSupply.toString(),
           item1.totalSupply.toString(),
           item1.price.toString(),
           item1.beneficiary.toLowerCase(),
@@ -255,11 +277,12 @@ describe('End 2 End: Approval Flow', function () {
           item1.contentHash,
         ]).to.be.eql([
           ITEMS[1][0].toString(),
+          RARITIES[ITEMS[1][0]].value.toString(),
+          '0',
           ITEMS[1][1].toString(),
-          ITEMS[1][2],
-          ITEMS[1][3].toLowerCase(),
-          ITEMS[1][4],
-          ITEMS[1][5],
+          ITEMS[1][2].toLowerCase(),
+          ITEMS[1][3],
+          EMPTY_HASH,
         ])
 
         // Rescue items
@@ -303,16 +326,18 @@ describe('End 2 End: Approval Flow', function () {
         item0 = await collectionContract.items(0)
         expect([
           item0.rarity.toString(),
+          item0.maxSupply.toString(),
           item0.totalSupply.toString(),
           item0.price.toString(),
           item0.beneficiary.toLowerCase(),
           item0.metadata,
           item0.contentHash,
         ]).to.be.eql([
-          ITEMS[1][0].toString(),
-          ITEMS[1][1].toString(),
-          ITEMS[0][2],
-          ITEMS[0][3].toLowerCase(),
+          ITEMS[0][0].toString(),
+          RARITIES[ITEMS[0][0]].value.toString(),
+          '0',
+          ITEMS[0][1].toString(),
+          ITEMS[0][2].toLowerCase(),
           newMetadata0,
           newContentHash0,
         ])
@@ -320,6 +345,7 @@ describe('End 2 End: Approval Flow', function () {
         item1 = await collectionContract.items(1)
         expect([
           item1.rarity.toString(),
+          item0.maxSupply.toString(),
           item1.totalSupply.toString(),
           item1.price.toString(),
           item1.beneficiary.toLowerCase(),
@@ -327,9 +353,10 @@ describe('End 2 End: Approval Flow', function () {
           item1.contentHash,
         ]).to.be.eql([
           ITEMS[1][0].toString(),
+          RARITIES[ITEMS[1][0]].value.toString(),
+          '0',
           ITEMS[1][1].toString(),
-          ITEMS[1][2],
-          ITEMS[1][3].toLowerCase(),
+          ITEMS[1][2].toLowerCase(),
           newMetadata1,
           newContentHash1,
         ])
@@ -382,14 +409,9 @@ describe('End 2 End: Approval Flow', function () {
               {
                 components: [
                   {
-                    internalType: 'uint8',
+                    internalType: 'string',
                     name: 'rarity',
-                    type: 'uint8',
-                  },
-                  {
-                    internalType: 'uint256',
-                    name: 'totalSupply',
-                    type: 'uint256',
+                    type: 'string',
                   },
                   {
                     internalType: 'uint256',
@@ -406,13 +428,8 @@ describe('End 2 End: Approval Flow', function () {
                     name: 'metadata',
                     type: 'string',
                   },
-                  {
-                    internalType: 'bytes32',
-                    name: 'contentHash',
-                    type: 'bytes32',
-                  },
                 ],
-                internalType: 'struct IERC721CollectionV2.Item[]',
+                internalType: 'struct IERC721CollectionV2.ItemParam[]',
                 name: '_items',
                 type: 'tuple[]',
               },
@@ -467,6 +484,9 @@ describe('End 2 End: Approval Flow', function () {
         const isCompleted = await collectionContract.isCompleted()
         expect(isCompleted).to.be.equal(true)
 
+        const rarities = await collectionContract.rarities()
+        expect(rarities).to.be.equal(raritiesContract.address)
+
         const itemLength = await collectionContract.itemsCount()
 
         expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -474,6 +494,7 @@ describe('End 2 End: Approval Flow', function () {
         for (let i = 0; i < ITEMS.length; i++) {
           const {
             rarity,
+            maxSupply,
             totalSupply,
             price,
             beneficiary,
@@ -482,13 +503,14 @@ describe('End 2 End: Approval Flow', function () {
           } = await collectionContract.items(i)
 
           expect(rarity).to.be.eq.BN(ITEMS[i][0])
-          expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-          expect(price).to.be.eq.BN(ITEMS[i][2])
+          expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+          expect(totalSupply).to.be.eq.BN(0)
+          expect(price).to.be.eq.BN(ITEMS[i][1])
           expect(beneficiary.toLowerCase()).to.be.equal(
-            ITEMS[i][3].toLowerCase()
+            ITEMS[i][2].toLowerCase()
           )
-          expect(metadata).to.be.equal(ITEMS[i][4])
-          expect(contentHash).to.be.equal(ITEMS[i][5])
+          expect(metadata).to.be.equal(ITEMS[i][3])
+          expect(contentHash).to.be.equal(EMPTY_HASH)
         }
       })
     })
@@ -644,6 +666,7 @@ describe('End 2 End: Approval Flow', function () {
         let item0 = await collectionContract.items(0)
         expect([
           item0.rarity.toString(),
+          item0.maxSupply.toString(),
           item0.totalSupply.toString(),
           item0.price.toString(),
           item0.beneficiary.toLowerCase(),
@@ -651,16 +674,18 @@ describe('End 2 End: Approval Flow', function () {
           item0.contentHash,
         ]).to.be.eql([
           ITEMS[0][0].toString(),
+          RARITIES[ITEMS[0][0]].value.toString(),
+          '0',
           ITEMS[0][1].toString(),
-          ITEMS[0][2],
-          ITEMS[0][3].toLowerCase(),
-          ITEMS[0][4],
-          ITEMS[0][5],
+          ITEMS[0][2].toLowerCase(),
+          ITEMS[0][3],
+          EMPTY_HASH,
         ])
 
         let item1 = await collectionContract.items(1)
         expect([
           item1.rarity.toString(),
+          item1.maxSupply.toString(),
           item1.totalSupply.toString(),
           item1.price.toString(),
           item1.beneficiary.toLowerCase(),
@@ -668,11 +693,12 @@ describe('End 2 End: Approval Flow', function () {
           item1.contentHash,
         ]).to.be.eql([
           ITEMS[1][0].toString(),
+          RARITIES[ITEMS[1][0]].value.toString(),
+          '0',
           ITEMS[1][1].toString(),
-          ITEMS[1][2],
-          ITEMS[1][3].toLowerCase(),
-          ITEMS[1][4],
-          ITEMS[1][5],
+          ITEMS[1][2].toLowerCase(),
+          ITEMS[1][3],
+          EMPTY_HASH,
         ])
 
         // Rescue items
@@ -755,16 +781,18 @@ describe('End 2 End: Approval Flow', function () {
         item0 = await collectionContract.items(0)
         expect([
           item0.rarity.toString(),
+          item0.maxSupply.toString(),
           item0.totalSupply.toString(),
           item0.price.toString(),
           item0.beneficiary.toLowerCase(),
           item0.metadata,
           item0.contentHash,
         ]).to.be.eql([
-          ITEMS[1][0].toString(),
-          ITEMS[1][1].toString(),
-          ITEMS[0][2],
-          ITEMS[0][3].toLowerCase(),
+          ITEMS[0][0].toString(),
+          RARITIES[ITEMS[0][0]].value.toString(),
+          '0',
+          ITEMS[0][1].toString(),
+          ITEMS[0][2].toLowerCase(),
           newMetadata0,
           newContentHash0,
         ])
@@ -772,6 +800,7 @@ describe('End 2 End: Approval Flow', function () {
         item1 = await collectionContract.items(1)
         expect([
           item1.rarity.toString(),
+          item0.maxSupply.toString(),
           item1.totalSupply.toString(),
           item1.price.toString(),
           item1.beneficiary.toLowerCase(),
@@ -779,9 +808,10 @@ describe('End 2 End: Approval Flow', function () {
           item1.contentHash,
         ]).to.be.eql([
           ITEMS[1][0].toString(),
+          RARITIES[ITEMS[1][0]].value.toString(),
+          '0',
           ITEMS[1][1].toString(),
-          ITEMS[1][2],
-          ITEMS[1][3].toLowerCase(),
+          ITEMS[1][2].toLowerCase(),
           newMetadata1,
           newContentHash1,
         ])

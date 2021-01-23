@@ -3,15 +3,24 @@ import { randomBytes } from '@ethersproject/random'
 import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
-import { getInitData, ZERO_ADDRESS, ITEMS } from '../helpers/collectionV2'
+import {
+  getInitData,
+  ZERO_ADDRESS,
+  RARITIES,
+  ITEMS,
+  EMPTY_HASH,
+  getInitialRarities,
+} from '../helpers/collectionV2'
 import { expect } from 'chai'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
+const Rarities = artifacts.require('Rarities')
 
 describe('Factory V2', function () {
   let collectionImplementation
   let factoryContract
+  let raritiesContract
 
   // Accounts
   let accounts
@@ -49,6 +58,8 @@ describe('Factory V2', function () {
       factoryOwner,
       collectionImplementation.address
     )
+
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
   })
 
   describe('create factory', async function () {
@@ -90,6 +101,7 @@ describe('Factory V2', function () {
           creator: user,
           shouldComplete: true,
           isApproved: true,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -120,6 +132,7 @@ describe('Factory V2', function () {
           creator: user,
           shouldComplete: true,
           isApproved: true,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -162,6 +175,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           isApproved: true,
           items,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -217,6 +231,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           isApproved: true,
           items: ITEMS,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -249,6 +264,7 @@ describe('Factory V2', function () {
       const isApproved_ = await collection.isApproved()
       const isCompleted_ = await collection.isCompleted()
       const isEditable_ = await collection.isEditable()
+      const rarities_ = await collection.rarities()
 
       expect(baseURI_).to.be.equal(baseURI)
       expect(creator_).to.be.equal(user)
@@ -259,6 +275,7 @@ describe('Factory V2', function () {
       expect(isApproved_).to.be.equal(false)
       expect(isCompleted_).to.be.equal(shouldComplete)
       expect(isEditable_).to.be.equal(true)
+      expect(rarities_).to.be.equal(raritiesContract.address)
 
       const itemLength = await collection.itemsCount()
 
@@ -266,6 +283,7 @@ describe('Factory V2', function () {
 
       for (let i = 0; i < ITEMS.length; i++) {
         const {
+          rarity,
           maxSupply,
           totalSupply,
           price,
@@ -274,12 +292,13 @@ describe('Factory V2', function () {
           contentHash,
         } = await collection.items(i)
 
-        expect(maxSupply).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.eq.BN(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
 
       collectionsSize = await factoryContract.collectionsSize()
@@ -308,6 +327,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           isApproved: true,
           items: ITEMS,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -323,6 +343,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           isApproved: true,
           items: ITEMS,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -357,6 +378,7 @@ describe('Factory V2', function () {
             shouldComplete: true,
             isApproved: true,
             items: ITEMS,
+            rarities: raritiesContract.address,
           }),
           fromFactoryOwner
         ),
@@ -376,6 +398,7 @@ describe('Factory V2', function () {
           shouldComplete: true,
           isApproved: true,
           items: ITEMS,
+          rarities: raritiesContract.address,
         }),
         fromFactoryOwner
       )
@@ -391,6 +414,7 @@ describe('Factory V2', function () {
             shouldComplete: true,
             isApproved: true,
             items: ITEMS,
+            rarities: raritiesContract.address,
           }),
           fromFactoryOwner
         ),
@@ -411,6 +435,7 @@ describe('Factory V2', function () {
             shouldComplete: true,
             isApproved: true,
             items: ITEMS,
+            rarities: raritiesContract.address,
           }),
           fromUser
         ),

@@ -23,7 +23,7 @@ const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
 const Rarities = artifacts.require('Rarities')
 
-describe.only('Collection Manager', function () {
+describe('Collection Manager', function () {
   let manaContract
   let collectionImplementation
   let factoryContract
@@ -744,7 +744,7 @@ describe.only('Collection Manager', function () {
         ]
       )
 
-      const { logs } = await sendMetaTx(
+      const res = await sendMetaTx(
         collectionManagerContract,
         functionSignature,
         user,
@@ -753,6 +753,9 @@ describe.only('Collection Manager', function () {
         'Decentraland Collection Manager',
         '1'
       )
+
+      console.log(`Gas Used: ${res.receipt.gasUsed}`)
+      const logs = res.logs
 
       collectionContract = await ERC721CollectionV2.at(logs[1].address)
 
