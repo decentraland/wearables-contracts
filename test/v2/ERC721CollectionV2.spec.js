@@ -6,6 +6,7 @@ import {
   ITEMS,
   BASE_URI,
   GRACE_PERIOD,
+  getInitialRarities,
   encodeTokenId,
 } from '../helpers/collectionV2'
 
@@ -38,7 +39,7 @@ describe('Collection V2', function () {
       shouldPassGracePeriod,
       creationParams
     ) => {
-      const rarities = await Rarities.new(creator, 0)
+      const rarities = await Rarities.new(creator, getInitialRarities())
       const collectionContract = await ERC721CollectionV2.new()
       await collectionContract.initialize(
         CONTRACT_NAME,

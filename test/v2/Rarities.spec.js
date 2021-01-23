@@ -1,21 +1,19 @@
 import assertRevert from '../helpers/assertRevert'
-import { RARITIES } from '../helpers/collectionV2'
 import {
-  sendMetaTx,
-  getDomainSeparator,
-  getSignature,
-  DEFAULT_DOMAIN,
-  DEFAULT_VERSION,
-} from '../helpers/metaTx'
+  RARITIES,
+  getInitialRarities,
+  DEFAULT_RARITY_PRICE,
+} from '../helpers/collectionV2'
+import { sendMetaTx } from '../helpers/metaTx'
 const Rarities = artifacts.require('Rarities')
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
+const domain = 'Decentraland Rarities'
+const version = '1'
 
-describe.only('Rarities', function () {
+describe('Rarities', function () {
   this.timeout(100000)
-
-  let creationParams
 
   // Accounts
   let accounts
@@ -24,12 +22,9 @@ describe.only('Rarities', function () {
   let hacker
   let relayer
   let creator
-  let operator
-  let approvedForAll
   let fromUser
   let fromHacker
   let fromDeployer
-  let fromCreator
   let fromRelayer
 
   // Contracts
@@ -40,37 +35,31 @@ describe.only('Rarities', function () {
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
     user = accounts[1]
-    creator = accounts[2]
     hacker = accounts[3]
     relayer = accounts[4]
     fromUser = { from: user }
     fromHacker = { from: hacker }
     fromRelayer = { from: relayer }
-
     fromDeployer = { from: deployer }
 
-    creationParams = {
-      ...fromDeployer,
-      gasPrice: 21e9,
-    }
-
-    raritiesContract = await Rarities.new(creator, 0)
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
   })
 
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
-      const price = 10
-      const contract = await Rarities.new(creator, price)
+      const contract = await Rarities.new(deployer, getInitialRarities())
+
+      const owner = await contract.owner()
+      expect(owner).to.be.equal(deployer)
 
       const raritiesCount = await contract.raritiesCount()
       expect(raritiesCount).to.be.eq.BN(7)
 
       for (let i = 0; i < raritiesCount.toNumber(); i++) {
         const rarity = await contract.rarities(i)
-        console.log(rarity)
         expect(rarity.name).to.be.equal(RARITIES[rarity.name].name)
         expect(rarity.maxSupply).to.be.eq.BN(RARITIES[rarity.name].value)
-        expect(rarity.price).to.be.eq.BN(price)
+        expect(rarity.price).to.be.eq.BN(DEFAULT_RARITY_PRICE)
       }
     })
   })
@@ -87,7 +76,26 @@ describe.only('Rarities', function () {
 
         expect(rarity.name).to.be.equal(RARITIES[rarityName].name)
         expect(rarity.maxSupply).to.be.eq.BN(RARITIES[rarityName].value)
-        expect(rarity.price).to.be.eq.BN(0)
+        expect(rarity.price).to.be.eq.BN(DEFAULT_RARITY_PRICE)
+      }
+    })
+
+    it('should get rarity by using special characters', async function () {
+      const newRarity = ['newrarity-V2', '4', '2']
+
+      await raritiesContract.addRarities([newRarity], fromDeployer)
+      const inputs = [
+        newRarity[0],
+        'NEWRARITY-V2',
+        'NewRarity-V2',
+        'newrarity-v2',
+      ]
+      for (const input of inputs) {
+        const rarity = await raritiesContract.getRarityByName(input)
+
+        expect(rarity.name).to.be.equal(newRarity[0])
+        expect(rarity.maxSupply).to.be.eq.BN(newRarity[1])
+        expect(rarity.price).to.be.eq.BN(newRarity[2])
       }
     })
 
@@ -100,11 +108,454 @@ describe.only('Rarities', function () {
   })
 
   describe('addRarity', function () {
-    it.skip('reverts when rarity is invalid', async function () {
-      const values = Object.values(RARITIES)
-      await assertRevert(collectionContract.getRarityValue(values.length))
+    const newRarity1 = ['newrarity1', '2', '1']
+    const newRarity2 = ['newrarity2', '4', '2']
 
-      await assertRevert(collectionContract.getRarityName(values.length))
+    it('should add a rarity', async function () {
+      let raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(7)
+
+      const { logs } = await raritiesContract.addRarities(
+        [newRarity1],
+        fromDeployer
+      )
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('AddRarity')
+      expect(logs[0].args._rarity).to.be.eql(newRarity1)
+
+      raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(8)
+
+      const rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+    })
+
+    it('should add rarities', async function () {
+      let raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(7)
+
+      const { logs } = await raritiesContract.addRarities(
+        [newRarity1, newRarity2],
+        fromDeployer
+      )
+
+      expect(logs.length).to.be.equal(2)
+      expect(logs[0].event).to.be.equal('AddRarity')
+      expect(logs[0].args._rarity).to.be.eql(newRarity1)
+
+      expect(logs[1].event).to.be.equal('AddRarity')
+      expect(logs[1].args._rarity).to.be.eql(newRarity2)
+
+      raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(9)
+
+      let rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+    })
+
+    it('should add rarities :: Relayed EIP721', async function () {
+      let raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(7)
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: 'string',
+                  name: 'name',
+                  type: 'string',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'maxSupply',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'price',
+                  type: 'uint256',
+                },
+              ],
+              internalType: 'struct Rarities.Rarity[]',
+              name: '_rarities',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'addRarities',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [[newRarity1, newRarity2]]
+      )
+
+      const { logs } = await sendMetaTx(
+        raritiesContract,
+        functionSignature,
+        deployer,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      expect(logs.length).to.be.equal(3)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(deployer)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      expect(logs[1].event).to.be.equal('AddRarity')
+      expect(logs[1].args._rarity).to.be.eql(newRarity1)
+
+      expect(logs[2].event).to.be.equal('AddRarity')
+      expect(logs[2].args._rarity).to.be.eql(newRarity2)
+
+      raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(9)
+
+      let rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+    })
+
+    it('should accept a rarity with a mix of characters in the name', async function () {
+      const newRarity = ['newRarity-v2', '2', '1']
+
+      let raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(7)
+
+      const { logs } = await raritiesContract.addRarities(
+        [newRarity],
+        fromDeployer
+      )
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('AddRarity')
+      expect(logs[0].args._rarity).to.be.eql(newRarity)
+
+      raritiesCount = await raritiesContract.raritiesCount()
+      expect(raritiesCount).to.be.eq.BN(8)
+
+      const rarity = await raritiesContract.getRarityByName(newRarity[0])
+      expect(rarity.name).to.be.equal(newRarity[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity[1])
+      expect(rarity.price).to.be.eq.BN(newRarity[2])
+    })
+
+    it('reverts when trying to add an already added rarity', async function () {
+      await raritiesContract.addRarities([newRarity1], fromDeployer)
+
+      await assertRevert(
+        raritiesContract.addRarities([newRarity1], fromDeployer),
+        'Rarities#_addRarity: RARITY_ALREADY_ADDED'
+      )
+    })
+
+    it('reverts when trying to add a rarity with name greater than 32', async function () {
+      const rarity = ['thetexthasmore32charactersforname', '10', '10']
+
+      await assertRevert(
+        raritiesContract.addRarities([rarity], fromDeployer),
+        'Rarities#_addRarity: INVALID_LENGTH'
+      )
+    })
+
+    it('reverts when trying to add a rarity with empty name', async function () {
+      const rarity = ['', '10', '10']
+
+      await assertRevert(
+        raritiesContract.addRarities([rarity], fromDeployer),
+        'Rarities#_addRarity: INVALID_LENGTH'
+      )
+    })
+
+    it('reverts when trying to add a rarity by hacker', async function () {
+      const rarity = ['rarityname', '10', '10']
+
+      await assertRevert(
+        raritiesContract.addRarities([rarity], fromHacker),
+        'Ownable: caller is not the owner'
+      )
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              components: [
+                {
+                  internalType: 'string',
+                  name: 'name',
+                  type: 'string',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'maxSupply',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'price',
+                  type: 'uint256',
+                },
+              ],
+              internalType: 'struct Rarities.Rarity[]',
+              name: '_rarities',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'addRarities',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [[newRarity1, newRarity2]]
+      )
+
+      await assertRevert(
+        sendMetaTx(
+          raritiesContract,
+          functionSignature,
+          hacker,
+          relayer,
+          null,
+          domain,
+          version
+        ),
+        'NMT#executeMetaTransaction: CALL_FAILED'
+      )
+    })
+  })
+
+  describe('updatePrice', function () {
+    const newRarity1 = ['newrarity1', '2', '1']
+    const newRarity2 = ['newrarity-V2', '4', '2']
+
+    const newPrice1 = '10'
+    const newPrice2 = '0'
+
+    beforeEach(async () => {
+      await raritiesContract.addRarities([newRarity1, newRarity2], fromDeployer)
+    })
+
+    it("should update a rarity's price", async function () {
+      let rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+
+      const { logs } = await raritiesContract.updatePrices(
+        [newRarity1[0]],
+        [newPrice1]
+      )
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('UpdatePrice')
+      expect(logs[0].args._name).to.be.equal(newRarity1[0])
+      expect(logs[0].args._price).to.be.eq.BN(newPrice1)
+
+      rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newPrice1)
+    })
+
+    it("should update rarities' prices", async function () {
+      let rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+
+      const { logs } = await raritiesContract.updatePrices(
+        [newRarity1[0], newRarity2[0]],
+        [newPrice1, newPrice2]
+      )
+
+      expect(logs.length).to.be.equal(2)
+      expect(logs[0].event).to.be.equal('UpdatePrice')
+      expect(logs[0].args._name).to.be.equal(newRarity1[0])
+      expect(logs[0].args._price).to.eq.BN(newPrice1)
+
+      expect(logs[1].event).to.be.equal('UpdatePrice')
+      expect(logs[1].args._name).to.be.equal(newRarity2[0])
+      expect(logs[1].args._price).to.eq.BN(newPrice2)
+
+      rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newPrice1)
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newPrice2)
+    })
+
+    it("should update rarities' prices :: Relayed EIP721", async function () {
+      let rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string[]',
+              name: '_names',
+              type: 'string[]',
+            },
+            {
+              internalType: 'uint256[]',
+              name: '_prices',
+              type: 'uint256[]',
+            },
+          ],
+          name: 'updatePrices',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          [newRarity1[0], newRarity2[0]],
+          [newPrice1, newPrice2],
+        ]
+      )
+
+      const { logs } = await sendMetaTx(
+        raritiesContract,
+        functionSignature,
+        deployer,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      expect(logs.length).to.be.equal(3)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(deployer)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      expect(logs[1].event).to.be.equal('UpdatePrice')
+      expect(logs[1].args._name).to.be.equal(newRarity1[0])
+      expect(logs[1].args._price).to.be.eq.BN(newPrice1)
+
+      expect(logs[2].event).to.be.equal('UpdatePrice')
+      expect(logs[2].args._name).to.be.equal(newRarity2[0])
+      expect(logs[2].args._price).to.be.eq.BN(newPrice2)
+
+      rarity = await raritiesContract.getRarityByName(newRarity1[0])
+      expect(rarity.name).to.be.equal(newRarity1[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
+      expect(rarity.price).to.be.eq.BN(newPrice1)
+
+      rarity = await raritiesContract.getRarityByName(newRarity2[0])
+      expect(rarity.name).to.be.equal(newRarity2[0])
+      expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
+      expect(rarity.price).to.be.eq.BN(newPrice2)
+    })
+
+    it("reverts when params' length mismatch", async function () {
+      await assertRevert(
+        raritiesContract.updatePrices([newRarity1[0]], [newPrice1, newPrice2]),
+        'Rarities#updatePrices: LENGTH_MISMATCH'
+      )
+
+      await assertRevert(
+        raritiesContract.updatePrices(
+          [newRarity1[0], newRarity2[0]],
+          [newPrice1]
+        ),
+        'Rarities#updatePrices: LENGTH_MISMATCH'
+      )
+    })
+
+    it("reverts when trying to update an invalid rarity's price", async function () {
+      await assertRevert(
+        raritiesContract.updatePrices(
+          ['invalid', newRarity2[0]],
+          [newPrice1, newPrice2],
+          fromDeployer
+        ),
+        'Rarities#updatePrices: INVALID_RARITY'
+      )
+    })
+
+    it("reverts when trying to update a rarity's price by hacker", async function () {
+      await assertRevert(
+        raritiesContract.updatePrices([newRarity1[0]], [newPrice1], fromHacker),
+        'Ownable: caller is not the owner'
+      )
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string[]',
+              name: '_names',
+              type: 'string[]',
+            },
+            {
+              internalType: 'uint256[]',
+              name: '_prices',
+              type: 'uint256[]',
+            },
+          ],
+          name: 'updatePrices',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          [newRarity1[0], newRarity2[0]],
+          [newPrice1, newPrice2],
+        ]
+      )
+
+      await assertRevert(
+        sendMetaTx(
+          raritiesContract,
+          functionSignature,
+          hacker,
+          relayer,
+          null,
+          domain,
+          version
+        ),
+        'NMT#executeMetaTransaction: CALL_FAILED'
+      )
     })
   })
 })

@@ -22,64 +22,61 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
     /// @dev indexes will start in 1
     mapping(bytes32 => uint256) rarityIndex;
 
-    event AddRarity(string _name, uint256 _maxSupply, uint256 _price);
-    event UpdateRarity(string _name, uint256 _price);
+    event AddRarity(Rarity _rarity);
+    event UpdatePrice(string _name, uint256 _price);
 
 
    /**
     * @notice Create the contract
     * @param _owner - owner of the contract
     */
-    constructor(address _owner, uint256 _initialPrice) public {
+    constructor(address _owner,  Rarity[] memory _rarities) public {
         // EIP712 init
         _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init
         _initOwnable();
         transferOwnership(_owner);
 
-
-        _addRarity("common", 100000, _initialPrice);
-        _addRarity("uncommon", 10000, _initialPrice);
-        _addRarity("rare", 5000, _initialPrice);
-        _addRarity("epic", 1000, _initialPrice);
-        _addRarity("legendary", 100, _initialPrice);
-        _addRarity("mythic", 10, _initialPrice);
-        _addRarity("unique", 1, _initialPrice);
+        for (uint256 i = 0 ; i < _rarities.length; i++) {
+            _addRarity(_rarities[i]);
+        }
     }
 
-    function updatePrice(string[] calldata _rarities, uint256[] calldata _prices) external onlyOwner {
-        for (uint256 i = 0; i < _rarities.length; i++) {
-            string memory rarity = _rarities[i];
+    function updatePrices(string[] calldata _names, uint256[] calldata _prices) external onlyOwner {
+        require(_names.length == _prices.length, "Rarities#updatePrices: LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < _names.length; i++) {
+            string memory name = _names[i];
             uint256 price = _prices[i];
-            bytes32 rarityKey = keccak256(bytes(rarity));
+            bytes32 rarityKey = keccak256(bytes(name.toLowerCase()));
             uint256 index = rarityIndex[rarityKey];
 
-            require(rarityIndex[rarityKey] > 0, "Rarities#addRarity: INVALID_RARITY");
+            require(rarityIndex[rarityKey] > 0, "Rarities#updatePrices: INVALID_RARITY");
 
             rarities[index - 1].price = price;
 
-            emit UpdateRarity(rarity, price);
+            emit UpdatePrice(name, price);
         }
     }
 
-    function addRarity(string[] calldata _rarities, uint256[] calldata _maxSupplies, uint256[] calldata _prices) external onlyOwner {
+    function addRarities(Rarity[] memory _rarities) external onlyOwner {
         for (uint256 i = 0; i < _rarities.length; i++) {
-            _addRarity(_rarities[i].toLowerCase(), _maxSupplies[i], _prices[i]);
+            _addRarity(_rarities[i]);
         }
     }
 
-    function _addRarity(string memory _rarity, uint256 _maxSupply, uint256 _price) internal {
-        uint256 rarityLength = bytes(_rarity).length;
+    function _addRarity(Rarity memory _rarity) internal {
+        uint256 rarityLength = bytes(_rarity.name).length;
         require(rarityLength > 0 && rarityLength <= 32, "Rarities#_addRarity: INVALID_LENGTH");
 
-        bytes32 rarityKey = keccak256(bytes(_rarity));
+        bytes32 rarityKey = keccak256(bytes(_rarity.name.toLowerCase()));
         require(rarityIndex[rarityKey] == 0, "Rarities#_addRarity: RARITY_ALREADY_ADDED");
 
-        rarities.push(Rarity ({ name: _rarity, maxSupply: _maxSupply, price: _price }));
+        rarities.push(_rarity);
 
         rarityIndex[rarityKey] = rarities.length;
 
-        emit AddRarity(_rarity, _maxSupply, _price);
+        emit AddRarity(_rarity);
     }
 
     /**
@@ -96,7 +93,7 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
      * @return rarity for the given index
      */
     function getRarityByName(string memory _rarity) public view returns (Rarity memory) {
-        bytes32 rarityKey = keccak256(bytes(_rarity));
+        bytes32 rarityKey = keccak256(bytes(_rarity.toLowerCase()));
 
         uint256 index = rarityIndex[rarityKey];
 

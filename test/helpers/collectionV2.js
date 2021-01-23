@@ -15,6 +15,7 @@ export const BASE_URI =
 export const MAX_UINT256 = web3.utils.toBN(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
+export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 
@@ -80,6 +81,14 @@ export const ITEMS = [
     '1:tropical_mask:hat:female,male',
   ],
 ]
+
+export function getInitialRarities() {
+  return Object.keys(RARITIES).map((key) => [
+    key,
+    RARITIES[key].value,
+    DEFAULT_RARITY_PRICE,
+  ])
+}
 
 export async function createDummyFactory(owner) {
   const ERC721CollectionFactoryV2 = artifacts.require(
