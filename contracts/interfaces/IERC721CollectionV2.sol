@@ -16,7 +16,7 @@ interface IERC721CollectionV2 {
 
     function issueToken(address _beneficiary, uint256 _itemId) external;
     function setApproved(bool _value) external;
-    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter/
+    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter
     function initialize(
         string memory _name,
         string memory _symbol,

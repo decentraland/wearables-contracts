@@ -90,6 +90,14 @@ export function getInitialRarities() {
   ])
 }
 
+export function getRarityNames() {
+  return Object.keys(RARITIES)
+}
+
+export function getRarityDefaulPrices() {
+  return Object.keys(RARITIES).map((_) => DEFAULT_RARITY_PRICE)
+}
+
 export async function createDummyFactory(owner) {
   const ERC721CollectionFactoryV2 = artifacts.require(
     'ERC721CollectionFactoryV2'

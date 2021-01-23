@@ -592,7 +592,7 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
      * @return address of the item's beneficiary
      */
     function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-      (,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
+      (,,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
        return (price, beneficiary);
     }
 
