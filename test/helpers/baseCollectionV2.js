@@ -4628,7 +4628,7 @@ export function doTest(
           beneficiaries.push(beneficiary)
         }
 
-        await contract.issueTokens(beneficiaries, ids, fromCreator)
+        const { receipt } = await contract.issueTokens(beneficiaries, ids, fromCreator)
 
         // match issueance
         const item = await contract.items(anotherNewItemId)
@@ -4638,6 +4638,9 @@ export function doTest(
         // User
         const balance = await contract.balanceOf(beneficiary)
         expect(balance).to.eq.BN(itemsInTheSameTx)
+
+        console.log(`Gas used:: ${receipt.gasUsed}`)
+
       })
 
       it('should issue multiple tokens by minter', async function () {
