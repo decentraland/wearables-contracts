@@ -427,8 +427,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
         require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
 
-        address sender = _msgSender();
-        _issueToken(_beneficiary, _itemId, sender);
+        _issueToken(_beneficiary, _itemId, _msgSender());
     }
 
     /**
