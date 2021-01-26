@@ -62,8 +62,6 @@ export function doTest(
     let fromCreator
     let fromManager
     let fromMinter
-    let fromRelayer
-    let fromOperator
     let fromApprovedForAll
 
     // Contracts
@@ -92,8 +90,6 @@ export function doTest(
       fromCreator = { from: creator }
       fromManager = { from: manager }
       fromMinter = { from: minter }
-      fromRelayer = { from: relayer }
-      fromOperator = { from: operator }
       fromApprovedForAll = { from: approvedForAll }
 
       fromDeployer = { from: deployer }
@@ -1996,7 +1992,7 @@ export function doTest(
         ]
 
         const newItem2 = [
-          RARITIES.common.name,
+          RARITIES.mythic.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:turtle_mask:hat:female,male',
@@ -3986,7 +3982,7 @@ export function doTest(
 
       it('should issue a token', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -4001,7 +3997,7 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(2)
@@ -4028,7 +4024,7 @@ export function doTest(
 
       it('should issue a token and increase item total supply', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -4037,7 +4033,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         // match URI
@@ -4055,7 +4052,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(4)
 
         // match URI
@@ -4071,7 +4069,8 @@ export function doTest(
 
       it('should issue a token :: Relayed EIP721', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -4116,7 +4115,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs[2].event).to.be.equal('Issue')
@@ -4256,7 +4256,7 @@ export function doTest(
 
       it('should issue a token by minter and not reduce if allowance is infinity', async function () {
         // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [-1], fromCreator)
+        await contract.setItemsMinters([newItemId], [minter], [MAX_UINT256], fromCreator)
 
         let minterAllowance = await contract.itemMinters(newItemId, minter)
         expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
@@ -4445,7 +4445,8 @@ export function doTest(
 
       it('should issue multiple tokens', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4463,7 +4464,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(4)
@@ -4515,7 +4517,8 @@ export function doTest(
 
       it('should issue multiple token :: Relayed EIP721', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4566,7 +4569,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         const newItemTokenId = encodeTokenId(newItemId, 1)
@@ -4788,7 +4792,7 @@ export function doTest(
         await contract.setItemsMinters(
           [newItemId, anotherNewItemId],
           [minter, minter],
-          [-1, -1],
+          [MAX_UINT256, MAX_UINT256],
           fromCreator
         )
 

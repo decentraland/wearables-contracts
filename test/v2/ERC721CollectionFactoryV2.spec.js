@@ -1,5 +1,4 @@
 import { keccak256 } from '@ethersproject/solidity'
-import { randomBytes } from '@ethersproject/random'
 import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
@@ -11,7 +10,9 @@ import {
   EMPTY_HASH,
   getInitialRarities,
 } from '../helpers/collectionV2'
-import { expect } from 'chai'
+
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
@@ -89,7 +90,7 @@ describe('Factory V2', function () {
 
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const expectedAddress = await factoryContract.getAddress(
         salt,
         factoryOwner
@@ -114,7 +115,7 @@ describe('Factory V2', function () {
     it('should get a deterministic address off-chain', async function () {
       const codeHash = await factoryContract.codeHash()
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
 
       const expectedAddress = `0x${keccak256(
         ['bytes1', 'address', 'bytes32', 'bytes32'],
@@ -151,7 +152,7 @@ describe('Factory V2', function () {
     const items = []
 
     it('should create a collection', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const expectedAddress = await factoryContract.getAddress(
         salt,
         factoryOwner
@@ -207,7 +208,7 @@ describe('Factory V2', function () {
     })
 
     it('should create a collection with items', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const expectedAddress = await factoryContract.getAddress(
         salt,
         factoryOwner
@@ -311,8 +312,8 @@ describe('Factory V2', function () {
     })
 
     it('should create different addresses from different salts', async function () {
-      const salt1 = randomBytes(32)
-      const salt2 = randomBytes(32)
+      const salt1 = web3.utils.randomHex(32)
+      const salt2 = web3.utils.randomHex(32)
 
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
@@ -366,7 +367,7 @@ describe('Factory V2', function () {
     })
 
     it('reverts if initialize call failed', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       await assertRevert(
         factoryContract.createCollection(
           salt,
@@ -387,7 +388,7 @@ describe('Factory V2', function () {
     })
 
     it('reverts if trying to re-deploy the same collection', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       await factoryContract.createCollection(
         salt,
         getInitData({
@@ -423,7 +424,7 @@ describe('Factory V2', function () {
     })
 
     it('reverts if trying to create a collection by not the owner', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       await assertRevert(
         factoryContract.createCollection(
           salt,

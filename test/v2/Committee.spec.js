@@ -1,5 +1,3 @@
-import { randomBytes } from '@ethersproject/random'
-
 import assertRevert from '../helpers/assertRevert'
 import {
   ITEMS,
@@ -194,7 +192,7 @@ describe('Commitee', function () {
         Array(rarities.length).fill(0)
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,

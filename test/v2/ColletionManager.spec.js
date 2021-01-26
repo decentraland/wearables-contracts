@@ -1,5 +1,5 @@
+import hr from 'hardhat'
 import { Mana } from 'decentraland-contract-plugins'
-import { randomBytes } from '@ethersproject/random'
 import { expect } from 'chai'
 
 import assertRevert from '../helpers/assertRevert'
@@ -70,7 +70,7 @@ describe('Collection Manager', function () {
       gasPrice: 21e9,
     }
 
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 
@@ -340,7 +340,7 @@ describe('Collection Manager', function () {
     })
 
     it('should create a collection', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
 
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
@@ -404,7 +404,7 @@ describe('Collection Manager', function () {
     })
 
     it('should create a collection :: Relayed EIP721', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
           inputs: [
@@ -572,7 +572,7 @@ describe('Collection Manager', function () {
         'feeCollector'
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,
@@ -660,7 +660,7 @@ describe('Collection Manager', function () {
         'feeCollector'
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
           inputs: [
@@ -816,7 +816,7 @@ describe('Collection Manager', function () {
         getRarityDefaulPrices()
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
 
       await assertRevert(
         collectionManagerContract.createCollection(
@@ -872,7 +872,7 @@ describe('Collection Manager', function () {
         Array(rarities.length).fill(0)
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,

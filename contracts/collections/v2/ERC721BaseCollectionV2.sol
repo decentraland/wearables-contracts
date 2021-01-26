@@ -282,9 +282,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function addItems(ItemParam[] memory _items) external virtual onlyCreator {
         require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
 
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
-        }
+        _addItems(_items);
     }
 
     /**
@@ -362,13 +360,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _items - items to add
      */
     function _initializeItems(ItemParam[] memory _items) internal {
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
-        }
+        _addItems(_items);
     }
 
     /**
-     * @notice Add a new item to the collection.
+     * @notice Add new items to the collection.
      * @dev The item should follow:
      * rarity: Should be one of the RARITY enum
      * totalSupply: Should starts in 0
@@ -376,36 +372,49 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * price & beneficiary: Is the price is > 0, a beneficiary should be passed. If not, price and
      *   beneficiary should be empty.
      * contentHash: Should be the an empty hash
-     * @param _item - item to add
+     * @param _items - items to add
      */
-    function _addItem(ItemParam memory _item) internal {
-        IRarities.Rarity memory rarity = rarities.getRarityByName(_item.rarity);
-        require(
-           rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
-            "BCV2#_addItem: INVALID_RARITY"
-        );
-        require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
-        require(
-            _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
-        );
+    function _addItems(ItemParam[] memory _items) internal {
+        IRarities.Rarity memory rarity;
+        bytes32 lastRarityKey;
 
-        uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
+        for (uint256 i = 0; i < _items.length; i++) {
+            ItemParam memory _item = _items[i];
+            bytes32 rarityKey = keccak256(bytes(_item.rarity));
 
-        Item memory item = Item({
-            rarity: rarity.name,
-            maxSupply: rarity.maxSupply,
-            totalSupply: 0,
-            price: _item.price,
-            beneficiary: _item.beneficiary,
-            metadata: _item.metadata,
-            contentHash: EMPTY_CONTENT
-        });
+            if (lastRarityKey != rarityKey) {
+                rarity = rarities.getRarityByName(_item.rarity);
+                lastRarityKey = rarityKey;
 
-        items.push(item);
+                require(
+                    rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
+                    "BCV2#_addItem: INVALID_RARITY"
+                );
+            }
 
-        emit AddItem(newItemId, item);
+            require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
+            require(
+                _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
+                "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
+            );
+
+            uint256 newItemId = items.length;
+            require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
+
+            Item memory item = Item({
+                rarity: rarity.name,
+                maxSupply: rarity.maxSupply,
+                totalSupply: 0,
+                price: _item.price,
+                beneficiary: _item.beneficiary,
+                metadata: _item.metadata,
+                contentHash: EMPTY_CONTENT
+            });
+
+            items.push(item);
+
+            emit AddItem(newItemId, item);
+        }
     }
 
 

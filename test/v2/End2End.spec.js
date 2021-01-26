@@ -1,6 +1,5 @@
+import hr from 'hardhat'
 import { Mana } from 'decentraland-contract-plugins'
-import { randomBytes } from '@ethersproject/random'
-import { expect } from 'chai'
 
 import {
   ITEMS,
@@ -10,6 +9,9 @@ import {
   RARITIES,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
+
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
@@ -70,7 +72,7 @@ describe('End 2 End: Approval Flow', function () {
       gasPrice: 21e9,
     }
 
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 
@@ -110,7 +112,7 @@ describe('End 2 End: Approval Flow', function () {
   describe('User Tx', function () {
     describe('Deploy collection', async function () {
       it('should create a collection', async function () {
-        const salt = randomBytes(32)
+        const salt = web3.utils.randomHex(32)
         const { logs } = await collectionManagerContract.createCollection(
           forwarderContract.address,
           factoryContract.address,
@@ -367,7 +369,7 @@ describe('End 2 End: Approval Flow', function () {
   describe('Relayed EIP721', function () {
     describe('Deploy collection :: Relayed EIP721', async function () {
       it('should create a collection', async function () {
-        const salt = randomBytes(32)
+        const salt = web3.utils.randomHex(32)
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
             inputs: [

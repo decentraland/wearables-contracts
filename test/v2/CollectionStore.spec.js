@@ -1,3 +1,4 @@
+import hr from 'hardhat'
 import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
 import { balanceSnap } from '../helpers/balanceSnap'
@@ -14,6 +15,9 @@ import {
   ZERO_ADDRESS,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
+
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const Store = artifacts.require('DummyCollectionStore')
 const Rarities = artifacts.require('Rarities')
@@ -88,7 +92,7 @@ describe('Collection Store', function () {
     }
 
     // Set up MANA Contract
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 

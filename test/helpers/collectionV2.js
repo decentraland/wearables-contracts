@@ -69,13 +69,13 @@ export const ITEMS = [
     '1:serial_killer_mask:hat:female,male',
   ],
   [
-    RARITIES.common.name,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:theater_mask:hat:female,male',
   ],
   [
-    RARITIES.common.name,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:tropical_mask:hat:female,male',
