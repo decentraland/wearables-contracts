@@ -8,6 +8,9 @@ import {
   BASE_URI as URI,
 } from '../helpers/collection'
 
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
+
 const ERC721Collection = artifacts.require('DummyERC721MaxIssuanceCollection')
 
 async function issueWearable(contract, beneficiary, index, from) {
@@ -90,7 +93,7 @@ describe('Exhausted Collection', function () {
         )
         // match issued
         const issued = await contractInstance.issued(wearable0Hash)
-        expect(issued).to.eq.BN(1)
+        expect(issued).to.be.eq.BN(1)
         const totalSupply = await contractInstance.totalSupply()
         expect(logs.length).to.be.equal(2)
         expect(logs[1].event).to.be.equal('Issue')

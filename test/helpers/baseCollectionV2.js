@@ -62,12 +62,11 @@ export function doTest(
     let fromCreator
     let fromManager
     let fromMinter
-    let fromRelayer
-    let fromOperator
     let fromApprovedForAll
 
     // Contracts
     let collectionContract
+    let raritiesContractAddress
 
     beforeEach(async function () {
       // Create Listing environment
@@ -91,8 +90,6 @@ export function doTest(
       fromCreator = { from: creator }
       fromManager = { from: manager }
       fromMinter = { from: minter }
-      fromRelayer = { from: relayer }
-      fromOperator = { from: operator }
       fromApprovedForAll = { from: approvedForAll }
 
       fromDeployer = { from: deployer }
@@ -110,6 +107,8 @@ export function doTest(
         true,
         creationParams
       )
+
+      raritiesContractAddress = await collectionContract.rarities()
 
       // Issue some tokens
       await issueItem(collectionContract, holder, 0, fromCreator)
@@ -133,6 +132,7 @@ export function doTest(
           user,
           false,
           true,
+          raritiesContractAddress,
           items,
           creationParams
         )
@@ -147,6 +147,7 @@ export function doTest(
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
         const collectionHash = await contract.COLLECTION_HASH()
+        const rarities = await contract.rarities()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -158,6 +159,7 @@ export function doTest(
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
         expect(collectionHash).to.be.equal(COLLECTION_HASH)
+        expect(raritiesContractAddress).to.be.equal(rarities)
 
         const itemLength = await contract.itemsCount()
 
@@ -166,6 +168,7 @@ export function doTest(
         for (let i = 0; i < items.length; i++) {
           const {
             rarity,
+            maxSupply,
             totalSupply,
             price,
             beneficiary,
@@ -174,13 +177,14 @@ export function doTest(
           } = await contract.items(i)
 
           expect(rarity).to.be.eq.BN(items[i][0])
-          expect(totalSupply).to.be.eq.BN(items[i][1])
-          expect(price).to.be.eq.BN(items[i][2])
+          expect(maxSupply).to.be.eq.BN(RARITIES[rarity].value)
+          expect(totalSupply).to.be.eq.BN(0)
+          expect(price).to.be.eq.BN(items[i][1])
           expect(beneficiary.toLowerCase()).to.be.equal(
-            items[i][3].toLowerCase()
+            items[i][2].toLowerCase()
           )
-          expect(metadata).to.be.equal(items[i][4])
-          expect(contentHash).to.be.equal(items[i][5])
+          expect(metadata).to.be.equal(items[i][3])
+          expect(contentHash).to.be.equal(EMPTY_HASH)
         }
       })
 
@@ -193,6 +197,7 @@ export function doTest(
           user,
           false,
           true,
+          raritiesContractAddress,
           [],
           creationParams
         )
@@ -207,6 +212,7 @@ export function doTest(
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
         const collectionHash = await contract.COLLECTION_HASH()
+        const rarities = await contract.rarities()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -218,6 +224,7 @@ export function doTest(
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
         expect(collectionHash).to.be.equal(COLLECTION_HASH)
+        expect(raritiesContractAddress).to.be.equal(rarities)
 
         const itemLength = await contract.itemsCount()
 
@@ -233,6 +240,7 @@ export function doTest(
           user,
           true,
           true,
+          raritiesContractAddress,
           [],
           creationParams
         )
@@ -250,12 +258,49 @@ export function doTest(
           user,
           false,
           false,
+          raritiesContractAddress,
           [],
           creationParams
         )
 
         const isApproved_ = await contract.isApproved()
         expect(isApproved_).to.be.equal(false)
+      })
+
+      it('reverts when trying to initialize with an invalid creator', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            BASE_URI,
+            user,
+            true,
+            true,
+            ZERO_ADDRESS,
+            [],
+            creationParams
+          ),
+          'BCV2#initialize: INVALID_RARITIES'
+        )
+      })
+
+      it('reverts when trying to initialize with an invalid creator', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            BASE_URI,
+            ZERO_ADDRESS,
+            true,
+            true,
+            raritiesContractAddress,
+            [],
+            creationParams
+          ),
+          'BCV2#initialize: INVALID_CREATOR'
+        )
       })
 
       it('reverts when trying to initialize more than once', async function () {
@@ -267,6 +312,7 @@ export function doTest(
           user,
           true,
           true,
+          raritiesContractAddress,
           [],
           creationParams
         )
@@ -279,6 +325,7 @@ export function doTest(
             user,
             true,
             true,
+            raritiesContractAddress,
             [],
             creationParams
           ),
@@ -298,6 +345,7 @@ export function doTest(
           creator,
           true,
           true,
+          raritiesContractAddress,
           items,
           creationParams
         )
@@ -1794,43 +1842,58 @@ export function doTest(
 
       it('should add an item', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         let itemLength = await contract.itemsCount()
         const { logs } = await contract.addItems([newItem], fromCreator)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem)
+        expect(logs[0].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
-          item.rarity.toString(),
+          item.rarity,
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1],
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add an item :: Relayed EIP721', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         let itemLength = await contract.itemsCount()
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -1839,14 +1902,9 @@ export function doTest(
               {
                 components: [
                   {
-                    internalType: 'enum BaseCollectionV2.RARITY',
+                    internalType: 'string',
                     name: 'rarity',
-                    type: 'uint8',
-                  },
-                  {
-                    internalType: 'uint256',
-                    name: 'totalSupply',
-                    type: 'uint256',
+                    type: 'string',
                   },
                   {
                     internalType: 'uint256',
@@ -1863,13 +1921,8 @@ export function doTest(
                     name: 'metadata',
                     type: 'string',
                   },
-                  {
-                    internalType: 'bytes32',
-                    name: 'contentHash',
-                    type: 'bytes32',
-                  },
                 ],
-                internalType: 'struct BaseCollectionV2.Item[]',
+                internalType: 'struct BaseCollectionV2.ItemParam[]',
                 name: '_items',
                 type: 'tuple[]',
               },
@@ -1898,38 +1951,51 @@ export function doTest(
 
         expect(logs[1].event).to.be.equal('AddItem')
         expect(logs[1].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[1].args._item).to.be.eql(newItem)
+        expect(logs[1].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add items', async function () {
         const newItem1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const newItem2 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.mythic.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         let itemLength = await contract.itemsCount()
@@ -1941,46 +2007,78 @@ export function doTest(
         expect(logs.length).to.be.equal(2)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem1)
+        expect(logs[0].args._item).to.be.eql([
+          newItem1[0],
+          RARITIES[newItem1[0]].value.toString(),
+          '0',
+          newItem1[1].toString(),
+          newItem1[2],
+          newItem1[3],
+          EMPTY_HASH,
+        ])
 
         expect(logs[1].event).to.be.equal('AddItem')
         expect(logs[1].args._itemId).to.be.eq.BN(
           itemLength.add(web3.utils.toBN(1))
         )
-        expect(logs[1].args._item).to.be.eql(newItem2)
+        expect(logs[1].args._item).to.be.eql([
+          newItem2[0],
+          RARITIES[newItem2[0]].value.toString(),
+          '0',
+          newItem2[1].toString(),
+          newItem2[2],
+          newItem2[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         let item = await contract.items(itemLength.sub(web3.utils.toBN(2)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem1)
+        ]).to.be.eql([
+          newItem1[0],
+          RARITIES[newItem1[0]].value.toString(),
+          '0',
+          newItem1[1].toString(),
+          newItem1[2],
+          newItem1[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem2)
+        ]).to.be.eql([
+          newItem2[0],
+          RARITIES[newItem2[0]].value.toString(),
+          '0',
+          newItem2[1].toString(),
+          newItem2[2],
+          newItem2[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add an item with price 0 and no beneficiary', async function () {
         let itemLength = await contract.itemsCount()
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           '0',
           ZERO_ADDRESS,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const { logs } = await contract.addItems([newItem], fromCreator)
@@ -1988,66 +2086,62 @@ export function doTest(
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem)
+        expect(logs[0].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('reverts when one of the item is invalid', async function () {
         const newItem1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const newItem2 = [
-          Object.values(RARITIES).length, // invalid rarity
-          '0',
+          'invalid', // invalid rarity
           web3.utils.toWei('10'),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(contract.addItems([newItem1, newItem2], fromCreator))
       })
 
-      it('reverts when trying to add an item with current supply > 0', async function () {
-        const newItem = [
-          RARITIES.common.index.toString(),
-          '1',
-          web3.utils.toWei('10'),
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-        await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_TOTAL_SUPPLY'
-        )
-      })
-
       it('reverts when trying to add an item with invalid rarity', async function () {
         let newItem = [
-          Object.values(RARITIES).length, // Invalid rarity
-          '0',
+          'invalid', // Invalid rarity
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(contract.addItems([newItem], fromCreator))
@@ -2055,12 +2149,10 @@ export function doTest(
 
       it('reverts when trying to add an item with price and no beneficiary', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           ZERO_ADDRESS,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
@@ -2070,12 +2162,10 @@ export function doTest(
 
       it('reverts when trying to add an item without price but beneficiary', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('0'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
@@ -2085,31 +2175,14 @@ export function doTest(
 
       it('reverts when trying to add an item without metadata', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '',
-          EMPTY_HASH,
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
           'BCV2#_addItem: EMPTY_METADATA'
-        )
-      })
-
-      it('reverts when trying to add an item with content hash', async function () {
-        const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
-          web3.utils.toWei('10'),
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          '0x01',
-        ]
-        await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY'
         )
       })
 
@@ -2120,12 +2193,10 @@ export function doTest(
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(
@@ -2156,12 +2227,10 @@ export function doTest(
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -2170,14 +2239,9 @@ export function doTest(
               {
                 components: [
                   {
-                    internalType: 'enum BaseCollectionV2.RARITY',
+                    internalType: 'string',
                     name: 'rarity',
-                    type: 'uint8',
-                  },
-                  {
-                    internalType: 'uint256',
-                    name: 'totalSupply',
-                    type: 'uint256',
+                    type: 'string',
                   },
                   {
                     internalType: 'uint256',
@@ -2194,13 +2258,8 @@ export function doTest(
                     name: 'metadata',
                     type: 'string',
                   },
-                  {
-                    internalType: 'bytes32',
-                    name: 'contentHash',
-                    type: 'bytes32',
-                  },
                 ],
-                internalType: 'struct BaseCollectionV2.Item[]',
+                internalType: 'struct BaseCollectionV2.ItemParam[]',
                 name: '_items',
                 type: 'tuple[]',
               },
@@ -2238,12 +2297,10 @@ export function doTest(
         await contract.completeCollection(fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(
@@ -2270,21 +2327,17 @@ export function doTest(
         itemBeneficiary1 = beneficiary
 
         item0 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           itemPrice0,
           itemBeneficiary0,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         item1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           itemPrice1,
           itemBeneficiary1,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         contract = await createContract(
@@ -2305,12 +2358,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
@@ -2330,6 +2392,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2337,11 +2400,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          item0[3],
+          EMPTY_HASH,
         ])
       })
 
@@ -2349,12 +2413,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
@@ -2408,6 +2481,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2415,11 +2489,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          item0[3],
+          EMPTY_HASH,
         ])
       })
 
@@ -2427,22 +2502,40 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item1)
+        ]).to.be.eql([
+          item1[0],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
+          item1[2],
+          item1[3],
+          EMPTY_HASH,
+        ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
@@ -2470,6 +2563,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2477,16 +2571,18 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          item0[3],
+          EMPTY_HASH,
         ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2494,11 +2590,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item1[0],
-          item1[1],
+          RARITIES[item1[0]].value.toString(),
+          '0',
           newItemPrice1.toString(),
           newItemBeneficiary1,
-          item1[4],
-          item1[5],
+          item1[3],
+          EMPTY_HASH,
         ])
       })
 
@@ -2506,12 +2603,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const { logs } = await contract.editItemsSalesData(
           [itemId0],
@@ -2529,6 +2635,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2536,11 +2643,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
           '0',
           ZERO_ADDRESS,
-          item0[4],
-          item0[5],
+          item0[3],
+          EMPTY_HASH,
         ])
       })
 
@@ -2548,12 +2656,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newItemPrice0 = web3.utils.toWei('1')
         const newItemBeneficiary0 = anotherHolder
@@ -2573,6 +2690,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2580,11 +2698,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
-          newItemPrice0,
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          item0[3],
+          EMPTY_HASH,
         ])
       })
 
@@ -2862,21 +2981,17 @@ export function doTest(
 
       this.beforeEach(async () => {
         item0 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           metadata0,
-          EMPTY_HASH,
         ]
 
         item1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           metadata1,
-          EMPTY_HASH,
         ]
 
         contract = await createContract(
@@ -2897,12 +3012,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newMetadata0 = 'new:metadata:0'
         const { logs } = await contract.editItemsMetadata(
@@ -2919,6 +3043,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2926,11 +3051,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata0,
-          item0[5],
+          EMPTY_HASH,
         ])
       })
 
@@ -2938,22 +3064,40 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item1)
+        ]).to.be.eql([
+          item1[0],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
+          item1[2],
+          item1[3],
+          EMPTY_HASH,
+        ])
 
         const newMetadata0 = 'new:metadata:0'
         const newMetadata1 = 'new:metadata:1'
@@ -2976,6 +3120,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2983,16 +3128,18 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata0,
-          item0[5],
+          EMPTY_HASH,
         ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3000,11 +3147,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item1[0],
-          item1[1],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
           item1[2],
-          item1[3],
           newMetadata1,
-          item1[5],
+          EMPTY_HASH,
         ])
       })
 
@@ -3012,12 +3160,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newMetadata0 = 'new:metadata:0'
 
@@ -3064,6 +3221,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3071,11 +3229,12 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata0,
-          item0[5],
+          EMPTY_HASH,
         ])
       })
 
@@ -3275,21 +3434,17 @@ export function doTest(
 
       this.beforeEach(async () => {
         item0 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         item1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         contract = await createContract(
@@ -3314,12 +3469,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const { logs } = await contract.rescueItems(
           [itemId0],
@@ -3337,6 +3501,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3344,9 +3509,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata,
           newContentHash,
         ])
@@ -3356,22 +3522,40 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item1)
+        ]).to.be.eql([
+          item1[0],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
+          item1[2],
+          item1[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         const newMetadata0 = '1:crocodile_mask:earrings:female'
@@ -3399,6 +3583,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3406,9 +3591,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata0,
           newContentHash0,
         ])
@@ -3416,6 +3602,7 @@ export function doTest(
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3423,9 +3610,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item1[0],
-          item1[1],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
           item1[2],
-          item1[3],
           newMetadata1,
           newContentHash1,
         ])
@@ -3438,12 +3626,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -3494,6 +3691,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3501,9 +3699,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata,
           newContentHash,
         ])
@@ -3513,12 +3712,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         const { logs } = await contract.rescueItems(
@@ -3537,6 +3745,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3544,10 +3753,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           newContentHash0,
         ])
       })
@@ -3556,12 +3766,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         await contract.rescueItems(
@@ -3574,6 +3793,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3581,10 +3801,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           newContentHash0,
         ])
 
@@ -3593,6 +3814,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3600,10 +3822,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           EMPTY_HASH,
         ])
       })
@@ -3737,12 +3960,10 @@ export function doTest(
 
       beforeEach(async () => {
         newItem = [
-          RARITIES.mythic.index,
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         contract = await createContract(
@@ -3761,7 +3982,7 @@ export function doTest(
 
       it('should issue a token', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -3776,7 +3997,7 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(2)
@@ -3803,7 +4024,7 @@ export function doTest(
 
       it('should issue a token and increase item total supply', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -3812,7 +4033,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         // match URI
@@ -3830,7 +4052,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(4)
 
         // match URI
@@ -3846,7 +4069,8 @@ export function doTest(
 
       it('should issue a token :: Relayed EIP721', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         const currentTotalSupply = await contract.totalSupply()
@@ -3891,7 +4115,8 @@ export function doTest(
 
         // match issuance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs[2].event).to.be.equal('Issue')
@@ -4031,7 +4256,7 @@ export function doTest(
 
       it('should issue a token by minter and not reduce if allowance is infinity', async function () {
         // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [-1], fromCreator)
+        await contract.setItemsMinters([newItemId], [minter], [MAX_UINT256], fromCreator)
 
         let minterAllowance = await contract.itemMinters(newItemId, minter)
         expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
@@ -4159,12 +4384,10 @@ export function doTest(
 
       it('reverts when trying to issue a token when the the collection is not completed', async function () {
         const newItem = [
-          RARITIES.mythic.index,
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const contract = await createContract(
@@ -4192,21 +4415,17 @@ export function doTest(
 
       beforeEach(async () => {
         newItem = [
-          RARITIES.mythic.index.toString(),
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         anotherNewItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           '1',
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         contract = await createContract(
@@ -4226,7 +4445,8 @@ export function doTest(
 
       it('should issue multiple tokens', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4244,7 +4464,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(4)
@@ -4296,7 +4517,8 @@ export function doTest(
 
       it('should issue multiple token :: Relayed EIP721', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4347,7 +4569,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         const newItemTokenId = encodeTokenId(newItemId, 1)
@@ -4405,7 +4628,7 @@ export function doTest(
           beneficiaries.push(beneficiary)
         }
 
-        await contract.issueTokens(beneficiaries, ids, fromCreator)
+        const { receipt } = await contract.issueTokens(beneficiaries, ids, fromCreator)
 
         // match issueance
         const item = await contract.items(anotherNewItemId)
@@ -4415,6 +4638,9 @@ export function doTest(
         // User
         const balance = await contract.balanceOf(beneficiary)
         expect(balance).to.eq.BN(itemsInTheSameTx)
+
+        console.log(`Gas used:: ${receipt.gasUsed}`)
+
       })
 
       it('should issue multiple tokens by minter', async function () {
@@ -4569,7 +4795,7 @@ export function doTest(
         await contract.setItemsMinters(
           [newItemId, anotherNewItemId],
           [minter, minter],
-          [-1, -1],
+          [MAX_UINT256, MAX_UINT256],
           fromCreator
         )
 
@@ -4784,12 +5010,10 @@ export function doTest(
 
       it('reverts when trying to issue a token when the the collection is not completed', async function () {
         const newItem = [
-          RARITIES.mythic.index,
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const contract = await createContract(
@@ -4813,12 +5037,10 @@ export function doTest(
     describe('tokenURI', function () {
       it('should return the correct token URI', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const contract = await createContract(
@@ -5730,13 +5952,12 @@ export function doTest(
         expect(isCompleted).to.be.equal(true)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         await assertRevert(
           contract.addItems([newItem], fromCreator),
           'BCV2#_addItem: COLLECTION_COMPLETED'
@@ -6109,37 +6330,6 @@ export function doTest(
         )
         expect(expectedValues[0]).to.eq.BN(4569428193)
         expect(expectedValues[1]).to.eq.BN(90893249234)
-      })
-    })
-
-    describe('rarity', function () {
-      it('should get rarity values', async function () {
-        const values = Object.values(RARITIES)
-
-        for (let rarity of values) {
-          let expectedValue = await collectionContract.getRarityValue(
-            rarity.index
-          )
-          expect(expectedValue).to.eq.BN(rarity.value)
-        }
-      })
-
-      it('should get rarity names', async function () {
-        const values = Object.values(RARITIES)
-
-        for (let rarity of values) {
-          let expectedValue = await collectionContract.getRarityName(
-            rarity.index
-          )
-          expect(expectedValue).to.eq.BN(rarity.name)
-        }
-      })
-
-      it('reverts when rarity is invalid', async function () {
-        const values = Object.values(RARITIES)
-        await assertRevert(collectionContract.getRarityValue(values.length))
-
-        await assertRevert(collectionContract.getRarityName(values.length))
       })
     })
 

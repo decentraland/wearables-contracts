@@ -22,7 +22,7 @@ fi
 if [ "$NETWORK" != '' ]; then
   network=$NETWORK
 else
-  network='buidlerevm'
+  network='hardhat'
 fi
 
 ganache_running() {
@@ -63,4 +63,4 @@ fi
 
 
 #npx buidler test
-npx buidler --network "$network"  test
+npx hardhat --network "$network"  test

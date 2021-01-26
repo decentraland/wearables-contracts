@@ -15,6 +15,7 @@ export const BASE_URI =
 export const MAX_UINT256 = web3.utils.toBN(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
+export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 
@@ -32,70 +33,70 @@ export const RARITIES = {
 
 export const ITEMS = [
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:bird_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:classic_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:clown_nose:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:asian_fox:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:killer_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:serial_killer_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:theater_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:tropical_mask:hat:female,male',
-    EMPTY_HASH,
   ],
 ]
+
+export function getInitialRarities() {
+  return Object.keys(RARITIES).map((key) => [
+    key,
+    RARITIES[key].value,
+    DEFAULT_RARITY_PRICE,
+  ])
+}
+
+export function getRarityNames() {
+  return Object.keys(RARITIES)
+}
+
+export function getRarityDefaulPrices() {
+  return Object.keys(RARITIES).map((_) => DEFAULT_RARITY_PRICE)
+}
 
 export async function createDummyFactory(owner) {
   const ERC721CollectionFactoryV2 = artifacts.require(
@@ -160,16 +161,16 @@ export function getInitData(options) {
           type: 'bool',
         },
         {
+          internalType: 'address',
+          name: '_rarities',
+          type: 'address',
+        },
+        {
           components: [
             {
               internalType: 'enum ERC721BaseCollectionV2.RARITY',
               name: 'rarity',
-              type: 'uint8',
-            },
-            {
-              internalType: 'uint256',
-              name: 'totalSupply',
-              type: 'uint256',
+              type: 'string',
             },
             {
               internalType: 'uint256',
@@ -186,13 +187,8 @@ export function getInitData(options) {
               name: 'metadata',
               type: 'string',
             },
-            {
-              internalType: 'bytes32',
-              name: 'contentHash',
-              type: 'bytes32',
-            },
           ],
-          internalType: 'struct ERC721BaseCollectionV2.Item[]',
+          internalType: 'struct ERC721BaseCollectionV2.ItemParam[]',
           name: '_items',
           type: 'tuple[]',
         },
@@ -209,6 +205,7 @@ export function getInitData(options) {
       options.creator,
       options.shouldComplete,
       options.shouldApprove,
+      options.rarities,
       options.items || ITEMS,
     ]
   )

@@ -9,6 +9,7 @@ import "../interfaces/IForwarder.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IERC721CollectionV2.sol";
 import "../interfaces/IERC721CollectionFactoryV2.sol";
+import "../interfaces/IRarities.sol";
 import "../commons/OwnableInitializable.sol";
 import "../commons/NativeMetaTransaction.sol";
 
@@ -18,6 +19,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     IERC20  public acceptedToken;
+    IRarities public rarities;
     address public committee;
     address public feesCollector;
     uint256 public pricePerItem;
@@ -25,7 +27,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
     event CommitteeSet(address indexed _oldCommittee, address indexed _newCommittee);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
-    event PricePerItemSet(uint256 _oldPricePerItem, uint256 _newPricePerItem);
+    event RaritiesSet(IRarities indexed _oldRarities, IRarities indexed _newRarities);
 
     /**
     * @notice Create the contract
@@ -33,9 +35,9 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _acceptedToken - accepted ERC20 token for collection deployment
     * @param _committee - committee contract
     * @param _feesCollector - fees collector
-    * @param _pricePerItem - price per item
+    * @param _rarities - rarities contract
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, uint256 _pricePerItem) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, IRarities _rarities) public {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Manager', '1');
         // Ownable init
@@ -44,7 +46,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         setAcceptedToken(_acceptedToken);
         setCommittee(_committee);
         setFeesCollector(_feesCollector);
-        setPricePerItem(_pricePerItem);
+        setRarities(_rarities);
 
         transferOwnership(_owner);
     }
@@ -83,12 +85,14 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     }
 
     /**
-    * @notice Set the price per item
-    * @param _newPricePerItem - price per item
+    * @notice Set the rarities
+    * @param _newRarities - price per item
     */
-    function setPricePerItem(uint256 _newPricePerItem) onlyOwner public {
-        emit PricePerItemSet(pricePerItem, _newPricePerItem);
-        pricePerItem = _newPricePerItem;
+    function setRarities(IRarities _newRarities) onlyOwner public {
+        require(address(_newRarities) != address(0), "CollectionManager#setRarities: INVALID_RARITIES");
+
+        emit RaritiesSet(rarities, _newRarities);
+        rarities = _newRarities;
     }
 
     /**
@@ -110,9 +114,18 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         string memory _symbol,
         string memory _baseURI,
         address _creator,
-        IERC721CollectionV2.Item[] memory _items
+        IERC721CollectionV2.ItemParam[] memory _items
      ) external {
-        uint256 amount = _items.length.mul(pricePerItem);
+        uint256 amount = 0;
+
+        for (uint256 i = 0; i < _items.length; i++) {
+            IERC721CollectionV2.ItemParam memory item = _items[i];
+
+            IRarities.Rarity memory rarity = rarities.getRarityByName(item.rarity);
+
+            amount = amount.add(rarity.price);
+        }
+
         // Transfer fees to collector
         if (amount > 0) {
             require(
@@ -129,6 +142,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
             _creator,
             true, // Collection should be completed
             false, // Collection should start disapproved
+            rarities,
             _items
         );
 

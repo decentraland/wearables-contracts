@@ -6,10 +6,12 @@ import {
   ITEMS,
   BASE_URI,
   GRACE_PERIOD,
+  getInitialRarities,
   encodeTokenId,
 } from '../helpers/collectionV2'
 
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
+const Rarities = artifacts.require('Rarities')
 
 async function issueItem(contract, beneficiary, index, from) {
   await contract.issueToken(beneficiary, index, from)
@@ -37,6 +39,7 @@ describe('Collection V2', function () {
       shouldPassGracePeriod,
       creationParams
     ) => {
+      const rarities = await Rarities.new(creator, getInitialRarities())
       const collectionContract = await ERC721CollectionV2.new()
       await collectionContract.initialize(
         CONTRACT_NAME,
@@ -45,6 +48,7 @@ describe('Collection V2', function () {
         creator,
         shouldComplete,
         shouldApprove,
+        rarities.address,
         ITEMS,
         creationParams
       )

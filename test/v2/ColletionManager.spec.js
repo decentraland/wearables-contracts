@@ -1,10 +1,19 @@
+import hr from 'hardhat'
 import { Mana } from 'decentraland-contract-plugins'
-import { randomBytes } from '@ethersproject/random'
 import { expect } from 'chai'
 
 import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
-import { ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
+import {
+  ITEMS,
+  ZERO_ADDRESS,
+  RARITIES,
+  getInitialRarities,
+  getRarityNames,
+  getRarityDefaulPrices,
+  EMPTY_HASH,
+  DEFAULT_RARITY_PRICE,
+} from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
@@ -12,16 +21,16 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
+const Rarities = artifacts.require('Rarities')
 
 describe('Collection Manager', function () {
-  const PRICE_PER_ITEM = web3.utils.toBN(10)
-
   let manaContract
   let collectionImplementation
   let factoryContract
   let committeeContract
   let collectionManagerContract
   let forwarderContract
+  let raritiesContract
 
   // Accounts
   let accounts
@@ -61,18 +70,20 @@ describe('Collection Manager', function () {
       gasPrice: 21e9,
     }
 
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 
     committeeContract = await Committee.new(owner, [user], fromDeployer)
+
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
 
     collectionManagerContract = await CollectionManager.new(
       owner,
       manaContract.address,
       committeeContract.address,
       collector,
-      PRICE_PER_ITEM
+      raritiesContract.address
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -96,7 +107,7 @@ describe('Collection Manager', function () {
         manaContract.address,
         committeeContract.address,
         collector,
-        PRICE_PER_ITEM,
+        raritiesContract.address,
         fromDeployer
       )
 
@@ -104,13 +115,13 @@ describe('Collection Manager', function () {
       const mana = await contract.acceptedToken()
       const committee = await contract.committee()
       const feesCollector = await contract.feesCollector()
-      const pricePerItem = await contract.pricePerItem()
+      const rarities = await contract.rarities()
 
       expect(collectionManagerOwner).to.be.equal(owner)
       expect(mana).to.be.equal(manaContract.address)
       expect(committee).to.be.equal(committeeContract.address)
       expect(feesCollector).to.be.equal(collector)
-      expect(pricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
+      expect(rarities).to.be.equal(raritiesContract.address)
     })
   })
 
@@ -264,60 +275,49 @@ describe('Collection Manager', function () {
     })
   })
 
-  describe('setPricePerItem', async function () {
-    it('should set pricePerItem', async function () {
-      let pricePerItem = await collectionManagerContract.pricePerItem()
-      expect(pricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
+  describe('setRarities', async function () {
+    it('should set rarities', async function () {
+      let rarities = await collectionManagerContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
 
-      let res = await collectionManagerContract.setPricePerItem(1, fromOwner)
+      let res = await collectionManagerContract.setRarities(user, fromOwner)
 
       let logs = res.logs
 
       expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('PricePerItemSet')
-      expect(logs[0].args._oldPricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
-      expect(logs[0].args._newPricePerItem).to.be.eq.BN(1)
+      expect(logs[0].event).to.be.equal('RaritiesSet')
+      expect(logs[0].args._oldRarities).to.be.equal(raritiesContract.address)
+      expect(logs[0].args._newRarities).to.be.equal(user)
 
-      pricePerItem = await collectionManagerContract.pricePerItem()
-      expect(pricePerItem).to.be.eq.BN(1)
+      rarities = await collectionManagerContract.rarities()
+      expect(rarities).to.be.equal(user)
 
-      res = await collectionManagerContract.setPricePerItem(
-        PRICE_PER_ITEM,
+      res = await collectionManagerContract.setRarities(
+        raritiesContract.address,
         fromOwner
       )
 
       logs = res.logs
 
       expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('PricePerItemSet')
-      expect(logs[0].args._oldPricePerItem).to.be.eq.BN(1)
-      expect(logs[0].args._newPricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
+      expect(logs[0].event).to.be.equal('RaritiesSet')
+      expect(logs[0].args._oldRarities).to.be.equal(user)
+      expect(logs[0].args._newRarities).to.be.equal(raritiesContract.address)
 
-      pricePerItem = await collectionManagerContract.pricePerItem()
-      expect(pricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
+      rarities = await collectionManagerContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
     })
 
-    it('should set 0 as the pricePerItem', async function () {
-      let pricePerItem = await collectionManagerContract.pricePerItem()
-      expect(pricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
-
-      const { logs } = await collectionManagerContract.setPricePerItem(
-        0,
-        fromOwner
-      )
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('PricePerItemSet')
-      expect(logs[0].args._oldPricePerItem).to.be.eq.BN(PRICE_PER_ITEM)
-      expect(logs[0].args._newPricePerItem).to.be.eq.BN(0)
-
-      pricePerItem = await collectionManagerContract.pricePerItem()
-      expect(pricePerItem).to.be.eq.BN(0)
-    })
-
-    it('reverts when trying to set a pricePerItem by hacker', async function () {
+    it('reverts when trying to set the ZERO_ADDRESS as the rarities', async function () {
       await assertRevert(
-        collectionManagerContract.setPricePerItem(1, fromHacker),
+        collectionManagerContract.setRarities(ZERO_ADDRESS, fromOwner),
+        'CollectionManager#setRarities: INVALID_RARITIES'
+      )
+    })
+
+    it('reverts when trying to set a rarities by hacker', async function () {
+      await assertRevert(
+        collectionManagerContract.setRarities(user, fromHacker),
         'Ownable: caller is not the owner'
       )
     })
@@ -330,10 +330,18 @@ describe('Collection Manager', function () {
 
     let collectionContract
 
-    it('should create a collection', async function () {
-      await collectionManagerContract.setPricePerItem(0, fromOwner)
+    beforeEach(async () => {
+      const rarities = getInitialRarities()
 
-      const salt = randomBytes(32)
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        Array(rarities.length).fill(0)
+      )
+    })
+
+    it('should create a collection', async function () {
+      const salt = web3.utils.randomHex(32)
+
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,
@@ -367,6 +375,9 @@ describe('Collection Manager', function () {
       const isCompleted = await collectionContract.isCompleted()
       expect(isCompleted).to.be.equal(true)
 
+      const rarities = await collectionContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
+
       const itemLength = await collectionContract.itemsCount()
 
       expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -374,6 +385,7 @@ describe('Collection Manager', function () {
       for (let i = 0; i < ITEMS.length; i++) {
         const {
           rarity,
+          maxSupply,
           totalSupply,
           price,
           beneficiary,
@@ -381,19 +393,18 @@ describe('Collection Manager', function () {
           contentHash,
         } = await collectionContract.items(i)
 
-        expect(rarity).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.equal(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
     })
 
     it('should create a collection :: Relayed EIP721', async function () {
-      await collectionManagerContract.setPricePerItem(0, fromOwner)
-
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
           inputs: [
@@ -435,14 +446,9 @@ describe('Collection Manager', function () {
             {
               components: [
                 {
-                  internalType: 'uint8',
+                  internalType: 'string',
                   name: 'rarity',
-                  type: 'uint8',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'totalSupply',
-                  type: 'uint256',
+                  type: 'string',
                 },
                 {
                   internalType: 'uint256',
@@ -459,13 +465,8 @@ describe('Collection Manager', function () {
                   name: 'metadata',
                   type: 'string',
                 },
-                {
-                  internalType: 'bytes32',
-                  name: 'contentHash',
-                  type: 'bytes32',
-                },
               ],
-              internalType: 'struct IERC721CollectionV2.Item[]',
+              internalType: 'struct IERC721CollectionV2.ItemParam[]',
               name: '_items',
               type: 'tuple[]',
             },
@@ -520,6 +521,9 @@ describe('Collection Manager', function () {
       const isCompleted = await collectionContract.isCompleted()
       expect(isCompleted).to.be.equal(true)
 
+      const rarities = await collectionContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
+
       const itemLength = await collectionContract.itemsCount()
 
       expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -527,6 +531,7 @@ describe('Collection Manager', function () {
       for (let i = 0; i < ITEMS.length; i++) {
         const {
           rarity,
+          maxSupply,
           totalSupply,
           price,
           beneficiary,
@@ -534,18 +539,24 @@ describe('Collection Manager', function () {
           contentHash,
         } = await collectionContract.items(i)
 
-        expect(rarity).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.equal(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
     })
 
     it('should create a collection by paying the fees in acceptedToken', async function () {
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        getRarityDefaulPrices()
+      )
+
       const fee = web3.utils
-        .toBN(PRICE_PER_ITEM)
+        .toBN(DEFAULT_RARITY_PRICE)
         .mul(web3.utils.toBN(ITEMS.length))
 
       await manaContract.approve(
@@ -561,7 +572,7 @@ describe('Collection Manager', function () {
         'feeCollector'
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,
@@ -595,6 +606,9 @@ describe('Collection Manager', function () {
       const isCompleted = await collectionContract.isCompleted()
       expect(isCompleted).to.be.equal(true)
 
+      const rarities = await collectionContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
+
       const itemLength = await collectionContract.itemsCount()
 
       expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -602,6 +616,7 @@ describe('Collection Manager', function () {
       for (let i = 0; i < ITEMS.length; i++) {
         const {
           rarity,
+          maxSupply,
           totalSupply,
           price,
           beneficiary,
@@ -609,12 +624,13 @@ describe('Collection Manager', function () {
           contentHash,
         } = await collectionContract.items(i)
 
-        expect(rarity).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.equal(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
 
       await creatorBalance.requireDecrease(fee)
@@ -622,8 +638,13 @@ describe('Collection Manager', function () {
     })
 
     it('should create a collection by paying the fees in acceptedToken :: Relayed EIP721', async function () {
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        getRarityDefaulPrices()
+      )
+
       const fee = web3.utils
-        .toBN(PRICE_PER_ITEM)
+        .toBN(DEFAULT_RARITY_PRICE)
         .mul(web3.utils.toBN(ITEMS.length))
 
       await manaContract.approve(
@@ -639,7 +660,7 @@ describe('Collection Manager', function () {
         'feeCollector'
       )
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
           inputs: [
@@ -681,14 +702,9 @@ describe('Collection Manager', function () {
             {
               components: [
                 {
-                  internalType: 'uint8',
+                  internalType: 'string',
                   name: 'rarity',
-                  type: 'uint8',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'totalSupply',
-                  type: 'uint256',
+                  type: 'string',
                 },
                 {
                   internalType: 'uint256',
@@ -705,13 +721,8 @@ describe('Collection Manager', function () {
                   name: 'metadata',
                   type: 'string',
                 },
-                {
-                  internalType: 'bytes32',
-                  name: 'contentHash',
-                  type: 'bytes32',
-                },
               ],
-              internalType: 'struct IERC721CollectionV2.Item[]',
+              internalType: 'struct IERC721CollectionV2.ItemParam[]',
               name: '_items',
               type: 'tuple[]',
             },
@@ -733,7 +744,7 @@ describe('Collection Manager', function () {
         ]
       )
 
-      const { logs } = await sendMetaTx(
+      const res = await sendMetaTx(
         collectionManagerContract,
         functionSignature,
         user,
@@ -742,6 +753,9 @@ describe('Collection Manager', function () {
         'Decentraland Collection Manager',
         '1'
       )
+
+      console.log(`Gas Used: ${res.receipt.gasUsed}`)
+      const logs = res.logs
 
       collectionContract = await ERC721CollectionV2.at(logs[1].address)
 
@@ -765,6 +779,9 @@ describe('Collection Manager', function () {
       const isCompleted = await collectionContract.isCompleted()
       expect(isCompleted).to.be.equal(true)
 
+      const rarities = await collectionContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
+
       const itemLength = await collectionContract.itemsCount()
 
       expect(ITEMS.length).to.be.eq.BN(itemLength)
@@ -772,6 +789,7 @@ describe('Collection Manager', function () {
       for (let i = 0; i < ITEMS.length; i++) {
         const {
           rarity,
+          maxSupply,
           totalSupply,
           price,
           beneficiary,
@@ -779,12 +797,13 @@ describe('Collection Manager', function () {
           contentHash,
         } = await collectionContract.items(i)
 
-        expect(rarity).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.equal(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
 
       await creatorBalance.requireDecrease(fee)
@@ -792,7 +811,12 @@ describe('Collection Manager', function () {
     })
 
     it('reverts when creating a collection without paying the fees in acceptedToken', async function () {
-      const salt = randomBytes(32)
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        getRarityDefaulPrices()
+      )
+
+      const salt = web3.utils.randomHex(32)
 
       await assertRevert(
         collectionManagerContract.createCollection(
@@ -811,7 +835,7 @@ describe('Collection Manager', function () {
       await manaContract.approve(
         collectionManagerContract.address,
         web3.utils
-          .toBN(PRICE_PER_ITEM)
+          .toBN(DEFAULT_RARITY_PRICE)
           .mul(web3.utils.toBN(ITEMS.length))
           .sub(web3.utils.toBN(1)),
         fromUser
@@ -841,9 +865,14 @@ describe('Collection Manager', function () {
     let collectionContract
 
     beforeEach(async () => {
-      await collectionManagerContract.setPricePerItem(0, fromOwner)
+      const rarities = getInitialRarities()
 
-      const salt = randomBytes(32)
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        Array(rarities.length).fill(0)
+      )
+
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,

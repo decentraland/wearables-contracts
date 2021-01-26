@@ -1,3 +1,4 @@
+import hr from 'hardhat'
 import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
 import { balanceSnap } from '../helpers/balanceSnap'
@@ -7,7 +8,7 @@ import {
   RARITIES,
   BENEFICIARY_ADDRESS,
   OTHER_BENEFICIARY_ADDRESS,
-  EMPTY_HASH,
+  getInitialRarities,
   createDummyFactory,
   createDummyCollection,
   encodeTokenId,
@@ -15,7 +16,11 @@ import {
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
+
 const Store = artifacts.require('DummyCollectionStore')
+const Rarities = artifacts.require('Rarities')
 
 describe('Collection Store', function () {
   const ONE_MILLION = web3.utils.toBN(1000000)
@@ -25,29 +30,18 @@ describe('Collection Store', function () {
   // COLLECTION ITEMS 2
   const COLLECTION2_ITEMS = [
     [
-      RARITIES.legendary.index,
-      0,
+      RARITIES.legendary.name,
       web3.utils.toWei('10'),
       OTHER_BENEFICIARY_ADDRESS,
       '1:coco_maso:hat:female,male',
-      EMPTY_HASH,
     ],
     [
-      RARITIES.unique.index.toString(),
-      0,
+      RARITIES.unique.name,
       web3.utils.toWei('20'),
       OTHER_BENEFICIARY_ADDRESS,
       '1:banana_mask:hat:female,male',
-      EMPTY_HASH,
     ],
-    [
-      RARITIES.common.index.toString(),
-      0,
-      0,
-      ZERO_ADDRESS,
-      '1:apple_mask:hat:female,male',
-      EMPTY_HASH,
-    ],
+    [RARITIES.common.name, 0, ZERO_ADDRESS, '1:apple_mask:hat:female,male'],
   ]
 
   // Contract
@@ -66,7 +60,6 @@ describe('Collection Store', function () {
   let feeOwner
   let hacker
   let relayer
-  let fromUser
   let fromHacker
   let fromDeployer
   let fromStoreOwner
@@ -87,7 +80,6 @@ describe('Collection Store', function () {
     relayer = accounts[ADDRESS_INDEXES.anotherUser]
 
     fromStoreOwner = { from: storeOwner }
-    fromUser = { from: user }
     fromHacker = { from: hacker }
     fromBuyer = { from: buyer }
     fromAnotherBuyer = { from: anotherBuyer }
@@ -100,9 +92,11 @@ describe('Collection Store', function () {
     }
 
     // Set up MANA Contract
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
+
+    const raritiesContract = await Rarities.new(deployer, getInitialRarities())
 
     const factory = await createDummyFactory(deployer)
 
@@ -110,12 +104,14 @@ describe('Collection Store', function () {
       creator: deployer,
       items: ITEMS,
       shouldComplete: true,
+      rarities: raritiesContract.address,
     })
 
     collection2 = await createDummyCollection(factory, {
       creator: deployer,
       items: COLLECTION2_ITEMS,
       shouldComplete: true,
+      rarities: raritiesContract.address,
     })
 
     storeContract = await Store.new(
@@ -209,7 +205,8 @@ describe('Collection Store', function () {
       let itemsBalanceOfBuyer = await collection1.balanceOf(buyer)
       expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
 
-      const price = web3.utils.toBN(ITEMS[0][2])
+      const price = web3.utils.toBN(ITEMS[0][1])
+
       const { logs } = await storeContract.buy(
         [[collection1.address, [0], [price]]],
         buyer,
@@ -372,9 +369,9 @@ describe('Collection Store', function () {
       let itemsCollection2BalanceOfBuyer = await collection2.balanceOf(buyer)
       expect(itemsCollection2BalanceOfBuyer).to.be.eq.BN(0)
 
-      const price10 = web3.utils.toBN(ITEMS[0][2])
-      const price12 = web3.utils.toBN(ITEMS[2][2])
-      const price20 = web3.utils.toBN(COLLECTION2_ITEMS[0][2])
+      const price10 = web3.utils.toBN(ITEMS[0][1])
+      const price12 = web3.utils.toBN(ITEMS[2][1])
+      const price20 = web3.utils.toBN(COLLECTION2_ITEMS[0][1])
 
       const finalPrice = price10.add(price10).add(price12).add(price20)
 
@@ -552,9 +549,9 @@ describe('Collection Store', function () {
       let itemsCollection2BalanceOfBuyer = await collection2.balanceOf(buyer)
       expect(itemsCollection2BalanceOfBuyer).to.be.eq.BN(0)
 
-      const price10 = web3.utils.toBN(ITEMS[0][2])
-      const price12 = web3.utils.toBN(ITEMS[2][2])
-      const price20 = web3.utils.toBN(COLLECTION2_ITEMS[0][2])
+      const price10 = web3.utils.toBN(ITEMS[0][1])
+      const price12 = web3.utils.toBN(ITEMS[2][1])
+      const price20 = web3.utils.toBN(COLLECTION2_ITEMS[0][1])
 
       const finalPrice = price10.add(price10).add(price12).add(price20)
 
@@ -755,12 +752,14 @@ describe('Collection Store', function () {
           [
             collection1.address,
             ITEMS.map((_, index) => index),
-            ITEMS.map((i) => i[2]), // price
+            ITEMS.map((i) => i[1]), // price
           ],
         ],
         buyer,
         fromBuyer
       )
+
+      console.log(`Gas used:: ${receipt.gasUsed}`)
     })
 
     it('reverts when buyer has not balance', async function () {
@@ -775,7 +774,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [0], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -791,7 +790,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [0], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -808,7 +807,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [itemsCount], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -831,7 +830,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [0], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -849,7 +848,7 @@ describe('Collection Store', function () {
             [
               collection2.address,
               [1, 1], // id
-              [COLLECTION2_ITEMS[1][2], COLLECTION2_ITEMS[1][2]], // price
+              [COLLECTION2_ITEMS[1][1], COLLECTION2_ITEMS[1][1]], // price
             ],
           ],
           buyer,
@@ -864,7 +863,7 @@ describe('Collection Store', function () {
           [
             collection2.address,
             [1], // id
-            [COLLECTION2_ITEMS[1][2]], // price
+            [COLLECTION2_ITEMS[1][1]], // price
           ],
         ],
         buyer,
@@ -878,7 +877,7 @@ describe('Collection Store', function () {
             [
               collection2.address,
               [1], // id
-              [COLLECTION2_ITEMS[1][2]], // price
+              [COLLECTION2_ITEMS[1][1]], // price
             ],
           ],
           buyer,
@@ -896,8 +895,8 @@ describe('Collection Store', function () {
               collection1.address,
               [0, 0], // id
               [
-                ITEMS[0][2],
-                web3.utils.toBN(ITEMS[0][2]).add(web3.utils.toBN(1)),
+                ITEMS[0][1],
+                web3.utils.toBN(ITEMS[0][1]).add(web3.utils.toBN(1)),
               ], // price
             ],
           ],
@@ -915,7 +914,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [0, 0], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -930,7 +929,7 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [0], // id
-              [ITEMS[0][2], ITEMS[0][2]], // price
+              [ITEMS[0][1], ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -947,7 +946,7 @@ describe('Collection Store', function () {
             [
               storeContract.address,
               [0], // id
-              [ITEMS[0][2]], // price
+              [ITEMS[0][1]], // price
             ],
           ],
           buyer,
@@ -975,7 +974,7 @@ describe('Collection Store', function () {
       currentFee = await storeContract.fee()
       expect(currentFee).to.be.eq.BN(newFee)
 
-      const price = web3.utils.toBN(ITEMS[0][2])
+      const price = web3.utils.toBN(ITEMS[0][1])
       res = await storeContract.buy(
         [[collection1.address, [0], [price]]],
         buyer,
@@ -1024,7 +1023,7 @@ describe('Collection Store', function () {
       currentFee = await storeContract.fee()
       expect(currentFee).to.be.eq.BN(0)
 
-      const price = web3.utils.toBN(ITEMS[0][2])
+      const price = web3.utils.toBN(ITEMS[0][1])
       const { logs } = await storeContract.buy(
         [[collection1.address, [0], [price]]],
         buyer,
@@ -1103,7 +1102,7 @@ describe('Collection Store', function () {
       currentFeeOwner = await storeContract.feeOwner()
       expect(currentFeeOwner).to.be.equal(user)
 
-      const price = web3.utils.toBN(ITEMS[0][2])
+      const price = web3.utils.toBN(ITEMS[0][1])
       res = await storeContract.buy(
         [[collection1.address, [0], [price]]],
         buyer,

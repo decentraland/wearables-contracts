@@ -1,7 +1,9 @@
-import { randomBytes } from '@ethersproject/random'
-
 import assertRevert from '../helpers/assertRevert'
-import { ITEMS } from '../helpers/collectionV2'
+import {
+  ITEMS,
+  getInitialRarities,
+  getRarityNames,
+} from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import { expect } from 'chai'
 
@@ -10,6 +12,7 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Committee = artifacts.require('Committee')
 const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
+const Rarities = artifacts.require('Rarities')
 
 describe('Commitee', function () {
   let collectionImplementation
@@ -17,6 +20,7 @@ describe('Commitee', function () {
   let committeeContract
   let collectionManagerContract
   let forwarderContract
+  let raritiesContract
 
   // Accounts
   let accounts
@@ -47,13 +51,14 @@ describe('Commitee', function () {
     fromDeployer = { from: deployer }
 
     committeeContract = await Committee.new(owner, [user], fromDeployer)
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
 
     collectionManagerContract = await CollectionManager.new(
       owner,
       committeeContract.address,
       committeeContract.address,
       user,
-      0
+      raritiesContract.address
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -180,7 +185,14 @@ describe('Commitee', function () {
     let collectionContract
 
     beforeEach(async () => {
-      const salt = randomBytes(32)
+      const rarities = getInitialRarities()
+
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        Array(rarities.length).fill(0)
+      )
+
+      const salt = web3.utils.randomHex(32)
       const { logs } = await collectionManagerContract.createCollection(
         forwarderContract.address,
         factoryContract.address,
