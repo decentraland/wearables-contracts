@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "../interfaces/ICollectionManager.sol";
 import "../commons/OwnableInitializable.sol";
 import "../commons/NativeMetaTransaction.sol";
-import "../libs/String.sol";
+import "../libs/StringV2.sol";
 
 contract Rarities is OwnableInitializable, NativeMetaTransaction {
-    using String for string;
+    using StringV2 for string;
 
     struct Rarity {
         string name;

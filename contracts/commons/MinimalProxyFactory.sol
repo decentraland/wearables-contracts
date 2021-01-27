@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Address.sol";
+import "openzeppelin-solidity/contracts/utils/Address.sol";
 
 contract MinimalProxyFactory {
     using Address for address;
@@ -54,13 +54,15 @@ contract MinimalProxyFactory {
     */
     function getAddress(bytes32 _salt, address _address) public view returns (address) {
         return address(
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        byte(0xff),
-                        address(this),
-                        keccak256(abi.encodePacked(_salt, _address)),
-                        codeHash
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xff),
+                            address(this),
+                            keccak256(abi.encodePacked(_salt, _address)),
+                            codeHash
+                        )
                     )
                 )
             )

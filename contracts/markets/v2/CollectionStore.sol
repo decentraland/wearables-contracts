@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/IERC721CollectionV2.sol";
@@ -11,16 +9,12 @@ import "../../commons/OwnableInitializable.sol";
 import "../../commons/NativeMetaTransaction.sol";
 
 contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
-    using SafeMath for uint256;
-
-
     struct ItemToBuy {
         IERC721CollectionV2 collection;
         uint256[] ids;
         uint256[] prices;
         address[] beneficiaries;
     }
-
     uint256 constant public BASE_FEE = 1000000;
     IERC20 public acceptedToken;
     uint256 public fee;
