@@ -2194,11 +2194,8 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         isInitialized = true;
 
         require(_creator != address(0), "initialize: INVALID_CREATOR");
-<<<<<<< HEAD
         require(address(_rarities) != address(0), "initialize: INVALID_RARITIES");
 
-=======
->>>>>>> fix: tests
         // Ownable init
         _initOwnable();
         // EIP712 init
@@ -2372,11 +2369,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @notice Add items to the collection.
      * @param _items - items to add
      */
-<<<<<<< HEAD
     function addItems(ItemParam[] memory _items) external virtual onlyCreator {
-=======
-    function addItems(Item[] memory _items) external virtual onlyCreator {
->>>>>>> fix: tests
         require(!isCompleted, "_addItem: COLLECTION_COMPLETED");
 
         _addItems(_items);
@@ -2462,7 +2455,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * contentHash: Should be the an empty hash
      * @param _items - items to add
      */
-<<<<<<< HEAD
     function _addItems(ItemParam[] memory _items) internal {
         IRarities.Rarity memory rarity;
         bytes32 lastRarityKey;
@@ -2474,27 +2466,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             if (lastRarityKey != rarityKey) {
                 rarity = rarities.getRarityByName(_item.rarity);
                 lastRarityKey = rarityKey;
-=======
-    function _addItem(Item memory _item) internal {
-        uint256 rarity = getRarityValue(_item.rarity);
-        require(
-           rarity > 0 && rarity <= MAX_ISSUED_ID,
-            "_addItem: INVALID_RARITY"
-        );
-        require(
-            _item.totalSupply == 0,
-            "_addItem: INVALID_TOTAL_SUPPLY"
-        );
-        require(bytes(_item.metadata).length > 0, "_addItem: EMPTY_METADATA");
-        require(
-            _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "_addItem: INVALID_PRICE_AND_BENEFICIARY"
-        );
-        require(_item.contentHash == EMPTY_CONTENT, "_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
-
-        uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "_addItem: MAX_ITEM_ID_REACHED");
->>>>>>> fix: tests
 
                 require(
                     rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
@@ -2511,7 +2482,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             uint256 newItemId = items.length;
             require(newItemId < MAX_ITEM_ID, "_addItem: MAX_ITEM_ID_REACHED");
 
-<<<<<<< HEAD
             Item memory item = Item({
                 rarity: rarity.name,
                 maxSupply: rarity.maxSupply,
@@ -2521,16 +2491,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
                 metadata: _item.metadata,
                 contentHash: EMPTY_CONTENT
             });
-=======
-    /**
-     * @notice Issue a new token of the specified item.
-     * @dev that will throw if the item has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _itemId - item id
-     */
-    function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintingAllowed(), "issueToken: MINT_NOT_ALLOWED");
->>>>>>> fix: tests
 
             items.push(item);
 
@@ -2582,11 +2542,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-<<<<<<< HEAD
         require(currentIssuance <= item.maxSupply, "_issueToken: ITEM_EXHAUSTED");
-=======
-        require(currentIssuance <= getRarityValue(item.rarity), "_issueToken: ITEM_EXHAUSTED");
->>>>>>> fix: tests
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -2647,59 +2603,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         return items.length;
     }
 
-<<<<<<< HEAD
-=======
-    /**
-     * @notice Returns a rarity's maximum supply
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Max supply of the rarity given
-     */
-    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
-        if (_rarity == RARITY.common) {
-            return 100000;
-        } else  if (_rarity == RARITY.uncommon) {
-            return 10000;
-        } else  if (_rarity == RARITY.rare) {
-            return 5000;
-        } else  if (_rarity == RARITY.epic) {
-            return 1000;
-        } else  if (_rarity == RARITY.legendary) {
-            return 100;
-        } else  if (_rarity == RARITY.mythic) {
-            return 10;
-        } else  if (_rarity == RARITY.unique) {
-            return 1;
-        }
-
-        revert("#getRarityValue: INVALID_RARITY");
-    }
-
-    /**
-     * @notice Returns a rarity's name
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Name of the rarity given
-     */
-    function getRarityName(RARITY _rarity) public pure returns (string memory) {
-        if (_rarity == RARITY.common) {
-            return "common";
-        } else  if (_rarity == RARITY.uncommon) {
-            return "uncommon";
-        } else  if (_rarity == RARITY.rare) {
-            return "rare";
-        } else  if (_rarity == RARITY.epic) {
-            return "epic";
-        } else  if (_rarity == RARITY.legendary) {
-            return "legendary";
-        } else  if (_rarity == RARITY.mythic) {
-            return "mythic";
-        } else  if (_rarity == RARITY.unique) {
-            return "unique";
-        }
-
-        revert("#getRarityName: INVALID_RARITY");
-    }
-
->>>>>>> fix: tests
     /*
     * Status functions
     */
@@ -2709,14 +2612,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-<<<<<<< HEAD
         return isCompleted && isApproved;
-=======
-        require(isCompleted, "isMintingAllowed: NOT_COMPLETED");
-        require(isApproved, "isMintingAllowed: NOT_APPROVED");
-
-        return true;
->>>>>>> fix: tests
     }
 
     /**
