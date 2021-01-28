@@ -161,7 +161,7 @@ describe('Collection Store', function () {
           ONE_MILLION,
           fromStoreOwner
         ),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
 
       await assertRevert(
@@ -172,7 +172,7 @@ describe('Collection Store', function () {
           ONE_MILLION.add(web3.utils.toBN(1)),
           fromStoreOwner
         ),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
     })
   })
@@ -813,7 +813,8 @@ describe('Collection Store', function () {
             ],
           ],
           fromBuyer
-        )
+        ),
+        'invalid opcode'
       )
     })
 
