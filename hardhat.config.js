@@ -2,8 +2,8 @@ require('babel-register')
 require('babel-polyfill')
 
 require('@nomiclabs/hardhat-truffle5')
+require('hardhat-gas-reporter')
 require('decentraland-contract-plugins/dist/src/mana/tasks/load-mana')
-// usePlugin('buidler-gas-reporter')
 
 module.exports = {
   defaultNetwork: 'hardhat',

@@ -2108,8 +2108,8 @@ contract ERC721DeterministicCollection is ERC721BaseCollection {
     uint8 constant public OPTIONS_BITS = 40;
     uint8 constant public ISSUANCE_BITS = 216;
 
-    uint40 constant public MAX_OPTIONS = uint40(-1);
-    uint216 constant public MAX_ISSUANCE = uint216(-1);
+    uint40 constant public MAX_OPTIONS = type(uint40).max;
+    uint216 constant public MAX_ISSUANCE = type(uint216).max;
 
     /**
      * @dev Create the contract.
