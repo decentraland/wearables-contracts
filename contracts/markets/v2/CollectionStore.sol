@@ -15,6 +15,7 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
         uint256[] prices;
         address[] beneficiaries;
     }
+
     uint256 constant public BASE_FEE = 1000000;
     IERC20 public acceptedToken;
     uint256 public fee;
