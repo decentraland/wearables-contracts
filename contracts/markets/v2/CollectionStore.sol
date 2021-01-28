@@ -13,17 +13,20 @@ import "../../commons/NativeMetaTransaction.sol";
 contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
+
     struct ItemToBuy {
         IERC721CollectionV2 collection;
         uint256[] ids;
         uint256[] prices;
+        address[] beneficiaries;
     }
 
+    uint256 constant public BASE_FEE = 1000000;
     IERC20 public acceptedToken;
     uint256 public fee;
     address public feeOwner;
 
-    event Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
+    event Bought(ItemToBuy[] _itemsToBuy);
     event SetFee(uint256 _oldFee, uint256 _newFee);
     event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
 
@@ -50,9 +53,8 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
     * @notice Buy collection's items.
     * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
     * @param _itemsToBuy - items to buy
-    * @param _beneficiary - beneficiary address
     */
-    function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external {
+    function buy(ItemToBuy[] memory _itemsToBuy) external {
         uint256 totalFee = 0;
         address sender = _msgSender();
 
@@ -72,19 +74,19 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
 
                 if (itemPrice > 0) {
                     // Calculate sale share
-                    uint256 saleShareAmount = itemPrice.mul(fee).div(1000000);
-                    totalFee = totalFee.add(saleShareAmount);
+                    uint256 saleShareAmount = (itemPrice * fee) / BASE_FEE;
+                    totalFee = totalFee + saleShareAmount;
 
                     // Transfer sale amount to the item beneficiary
                     require(
-                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
+                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice - saleShareAmount),
                         "CollectionStore#buy: TRANSFER_PRICE_FAILED"
                     );
                 }
-
-                // Mint Token
-                collection.issueToken(_beneficiary, itemId);
             }
+
+            // Mint Token
+            collection.issueTokens(itemToBuy.beneficiaries, itemToBuy.ids);
         }
 
         if (totalFee > 0) {
@@ -94,7 +96,7 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
                 "CollectionStore#buy: TRANSFER_FEES_FAILED"
             );
         }
-        emit Bought(_itemsToBuy, _beneficiary);
+        emit Bought(_itemsToBuy);
     }
 
     /**
@@ -116,7 +118,7 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
      * @param _newFee - Fee from 0 to 999,999
      */
     function setFee(uint256 _newFee) public onlyOwner {
-        require(_newFee < 1000000, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000");
+        require(_newFee < BASE_FEE, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE");
         require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
 
         emit SetFee(fee, _newFee);
