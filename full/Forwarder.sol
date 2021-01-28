@@ -1,9 +1,10 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: @openzeppelin/contracts/GSN/Context.sol
+// File @openzeppelin/contracts/GSN/Context.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -26,10 +27,12 @@ abstract contract Context {
     }
 }
 
-// File: @openzeppelin/contracts/access/Ownable.sol
 
+// File @openzeppelin/contracts/access/Ownable.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -43,7 +46,7 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract Ownable is Context {
+abstract contract Ownable is Context {
     address private _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -95,12 +98,12 @@ contract Ownable is Context {
     }
 }
 
-// File: contracts/commons/Forwarder.sol
 
+// File contracts/commons/Forwarder.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
 
 contract Forwarder is Ownable {
 

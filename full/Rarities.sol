@@ -1,5 +1,122 @@
 // Sources flattened with hardhat v2.0.8 https://hardhat.org
 
+// File contracts/interfaces/ICollectionManager.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+
+interface ICollectionManager {
+   function manageCollection(address _forwarder, address _collection, bytes calldata _data) external;
+}
+
+
+// File contracts/commons/ContextMixin.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.6.12;
+
+
+abstract contract ContextMixin {
+    function _msgSender()
+        internal
+        view
+        virtual
+        returns (address payable sender)
+    {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = msg.sender;
+        }
+        return sender;
+    }
+}
+
+
+// File contracts/commons/OwnableInitializable.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.0;
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+abstract contract OwnableInitializable is ContextMixin {
+    address internal _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    function _initOwnable () internal {
+        address msgSender = _msgSender();
+        _owner = msgSender;
+        emit OwnershipTransferred(address(0), msgSender);
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+
+
 // File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
@@ -159,161 +276,6 @@ library SafeMath {
     function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b != 0, errorMessage);
         return a % b;
-    }
-}
-
-
-// File contracts/interfaces/IERC20.sol
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.6.12;
-
-
-interface IERC20 {
-    function balanceOf(address from) external view returns (uint256);
-    function transferFrom(address from, address to, uint tokens) external returns (bool);
-    function transfer(address to, uint tokens) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function burn(uint256 amount) external;
-}
-
-
-// File contracts/interfaces/IERC721CollectionV2.sol
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
-
-
-interface IERC721CollectionV2 {
-    function COLLECTION_HASH() external view returns (bytes32);
-
-    struct ItemParam {
-        string rarity;
-        uint256 price;
-        address beneficiary;
-        string metadata;
-    }
-
-    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external;
-    function setApproved(bool _value) external;
-    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter
-    function initialize(
-        string memory _name,
-        string memory _symbol,
-        string memory _baseURI,
-        address _creator,
-        bool _shouldComplete,
-        bool _isApproved,
-        address _rarities,
-        ItemParam[] memory _items
-    ) external;
-    function items(uint256 _itemId) external view returns (string memory, uint256, uint256, uint256, address, string memory, bytes32);
-}
-
-
-// File contracts/commons/ContextMixin.sol
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity 0.6.12;
-
-
-abstract contract ContextMixin {
-    function _msgSender()
-        internal
-        view
-        virtual
-        returns (address payable sender)
-    {
-        if (msg.sender == address(this)) {
-            bytes memory array = msg.data;
-            uint256 index = msg.data.length;
-            assembly {
-                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
-                sender := and(
-                    mload(add(array, index)),
-                    0xffffffffffffffffffffffffffffffffffffffff
-                )
-            }
-        } else {
-            sender = msg.sender;
-        }
-        return sender;
-    }
-}
-
-
-// File contracts/commons/OwnableInitializable.sol
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity ^0.6.0;
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-abstract contract OwnableInitializable is ContextMixin {
-    address internal _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    function _initOwnable () internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
-        _;
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
     }
 }
 
@@ -495,7 +457,108 @@ contract NativeMetaTransaction is EIP712Base {
 }
 
 
-// File contracts/markets/v2/CollectionStore.sol
+// File contracts/libs/String.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
+
+library String {
+
+    /**
+     * @dev Convert bytes32 to string.
+     * @param _x - to be converted to string.
+     * @return string
+     */
+    function bytes32ToString(bytes32 _x) internal pure returns (string memory) {
+        bytes memory bytesString = new bytes(32);
+        uint charCount = 0;
+        for (uint j = 0; j < 32; j++) {
+            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
+            if (char != 0) {
+                bytesString[charCount] = char;
+                charCount++;
+            }
+        }
+        bytes memory bytesStringTrimmed = new bytes(charCount);
+        for (uint j = 0; j < charCount; j++) {
+            bytesStringTrimmed[j] = bytesString[j];
+        }
+        return string(bytesStringTrimmed);
+    }
+
+    /**
+     * @dev Convert uint to string.
+     * @param _i - uint256 to be converted to string.
+     * @return _uintAsString uint in string
+     */
+    function uintToString(uint _i) internal pure returns (string memory _uintAsString) {
+        uint i = _i;
+
+        if (i == 0) {
+            return "0";
+        }
+        uint j = i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint k = len - 1;
+        while (i != 0) {
+            bstr[k--] = byte(uint8(48 + i % 10));
+            i /= 10;
+        }
+        return string(bstr);
+    }
+
+    /**
+     * @dev Convert an address to string.
+     * @param _x - address to be converted to string.
+     * @return string representation of the address
+     */
+    function addressToString(address _x) internal pure returns (string memory) {
+        bytes memory s = new bytes(40);
+        for (uint i = 0; i < 20; i++) {
+            byte b = byte(uint8(uint(_x) / (2**(8*(19 - i)))));
+            byte hi = byte(uint8(b) / 16);
+            byte lo = byte(uint8(b) - 16 * uint8(hi));
+            s[2*i] = char(hi);
+            s[2*i+1] = char(lo);
+        }
+        return string(s);
+    }
+
+    function char(byte b) internal pure returns (byte c) {
+        if (uint8(b) < 10) return byte(uint8(b) + 0x30);
+        else return byte(uint8(b) + 0x57);
+    }
+
+    /**
+     * @dev Lowercase a string.
+     * @param _str - to be converted to string.
+     * @return string
+     */
+    function toLowerCase(string memory _str) internal pure returns (string memory) {
+        bytes memory bStr = bytes(_str);
+        bytes memory bLower = new bytes(bStr.length);
+
+        for (uint i = 0; i < bStr.length; i++) {
+            // Uppercase character...
+            if ((bStr[i] >= 0x41) && (bStr[i] <= 0x5A)) {
+                // So we add 0x20 to make it lowercase
+                bLower[i] = bytes1(uint8(bStr[i]) + 0x20);
+            } else {
+                bLower[i] = bStr[i];
+            }
+        }
+        return string(bLower);
+    }
+}
+
+
+// File contracts/managers/Rarities.sol
 
 // SPDX-License-Identifier: MIT
 
@@ -505,130 +568,97 @@ pragma experimental ABIEncoderV2;
 
 
 
-contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
-    using SafeMath for uint256;
+contract Rarities is OwnableInitializable, NativeMetaTransaction {
+    using String for string;
 
-
-    struct ItemToBuy {
-        IERC721CollectionV2 collection;
-        uint256[] ids;
-        uint256[] prices;
-        address[] beneficiaries;
+    struct Rarity {
+        string name;
+        uint256 maxSupply;
+        uint256 price;
     }
 
-    uint256 constant public BASE_FEE = 1000000;
-    IERC20 public acceptedToken;
-    uint256 public fee;
-    address public feeOwner;
+    Rarity[] public rarities;
 
-    event Bought(ItemToBuy[] _itemsToBuy);
-    event SetFee(uint256 _oldFee, uint256 _newFee);
-    event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
+    /// @dev indexes will start in 1
+    mapping(bytes32 => uint256) rarityIndex;
 
-    /**
-    * @notice Constructor of the contract.
-    * @param _acceptedToken - Address of the ERC20 token accepted
-    * @param _feeOwner - address where fees will be transferred
-    * @param _fee - fee to charge for each sale
+    event AddRarity(Rarity _rarity);
+    event UpdatePrice(string _name, uint256 _price);
+
+
+   /**
+    * @notice Create the contract
+    * @param _owner - owner of the contract
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner,  Rarity[] memory _rarities) public {
         // EIP712 init
-        _initializeEIP712('Decentraland Collection Store', '1');
+        _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init
         _initOwnable();
-
-        acceptedToken = _acceptedToken;
-        feeOwner = _feeOwner;
-        setFee(_fee);
-
         transferOwnership(_owner);
-    }
 
-    /**
-    * @notice Buy collection's items.
-    * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
-    * @param _itemsToBuy - items to buy
-    */
-    function buy(ItemToBuy[] memory _itemsToBuy) external {
-        uint256 totalFee = 0;
-        address sender = _msgSender();
-
-        for (uint256 i = 0; i < _itemsToBuy.length; i++) {
-            ItemToBuy memory itemToBuy = _itemsToBuy[i];
-            IERC721CollectionV2 collection = itemToBuy.collection;
-            uint256 amountOfItems = itemToBuy.ids.length;
-
-            require(amountOfItems == itemToBuy.prices.length, "CollectionStore#buy: LENGTH_MISMATCH");
-
-            for (uint256 j = 0; j < amountOfItems; j++) {
-                uint256 itemId = itemToBuy.ids[j];
-                uint256 price = itemToBuy.prices[j];
-
-                (uint256 itemPrice, address itemBeneficiary) = getItemBuyData(collection, itemId);
-                require(price == itemPrice, "CollectionStore#buy: ITEM_PRICE_MISMATCH");
-
-                if (itemPrice > 0) {
-                    // Calculate sale share
-                    uint256 saleShareAmount = (itemPrice * fee) / BASE_FEE;
-                    totalFee = totalFee + saleShareAmount;
-
-                    // Transfer sale amount to the item beneficiary
-                    require(
-                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice - saleShareAmount),
-                        "CollectionStore#buy: TRANSFER_PRICE_FAILED"
-                    );
-                }
-            }
-
-            // Mint Token
-            collection.issueTokens(itemToBuy.beneficiaries, itemToBuy.ids);
+        for (uint256 i = 0 ; i < _rarities.length; i++) {
+            _addRarity(_rarities[i]);
         }
+    }
 
-        if (totalFee > 0) {
-            // Transfer share amount for fees owner
-            require(
-                acceptedToken.transferFrom(sender, feeOwner, totalFee),
-                "CollectionStore#buy: TRANSFER_FEES_FAILED"
-            );
+    function updatePrices(string[] calldata _names, uint256[] calldata _prices) external onlyOwner {
+        require(_names.length == _prices.length, "Rarities#updatePrices: LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < _names.length; i++) {
+            string memory name = _names[i];
+            uint256 price = _prices[i];
+            bytes32 rarityKey = keccak256(bytes(name.toLowerCase()));
+            uint256 index = rarityIndex[rarityKey];
+
+            require(rarityIndex[rarityKey] > 0, "Rarities#updatePrices: INVALID_RARITY");
+
+            rarities[index - 1].price = price;
+
+            emit UpdatePrice(name, price);
         }
-        emit Bought(_itemsToBuy);
+    }
+
+    function addRarities(Rarity[] memory _rarities) external onlyOwner {
+        for (uint256 i = 0; i < _rarities.length; i++) {
+            _addRarity(_rarities[i]);
+        }
+    }
+
+    function _addRarity(Rarity memory _rarity) internal {
+        uint256 rarityLength = bytes(_rarity.name).length;
+        require(rarityLength > 0 && rarityLength <= 32, "Rarities#_addRarity: INVALID_LENGTH");
+
+        bytes32 rarityKey = keccak256(bytes(_rarity.name.toLowerCase()));
+        require(rarityIndex[rarityKey] == 0, "Rarities#_addRarity: RARITY_ALREADY_ADDED");
+
+        rarities.push(_rarity);
+
+        rarityIndex[rarityKey] = rarities.length;
+
+        emit AddRarity(_rarity);
     }
 
     /**
-     * @notice Get item's price and beneficiary
-     * @param _collection - collection address
-     * @param _itemId - item id
-     * @return uint256 of the item's price
-     * @return address of the item's beneficiary
+     * @notice Returns the amount of item in the collection
+     * @return Amount of items in the collection
      */
-    function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-      (,,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
-       return (price, beneficiary);
-    }
-
-    // Owner functions
-
-    /**
-     * @notice Sets the fee of the contract that's charged to the seller on each sale
-     * @param _newFee - Fee from 0 to 999,999
-     */
-    function setFee(uint256 _newFee) public onlyOwner {
-        require(_newFee < BASE_FEE, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE");
-        require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
-
-        emit SetFee(fee, _newFee);
-        fee = _newFee;
+    function raritiesCount() external view returns (uint256) {
+        return rarities.length;
     }
 
     /**
-     * @notice Set a new fee owner.
-    * @param _newFeeOwner - Address of the new fee owner
+     * @notice Returns a rarity
+     * @dev will revert if the rarity is out of bounds
+     * @return rarity for the given index
      */
-    function setFeeOwner(address _newFeeOwner) external onlyOwner {
-        require(_newFeeOwner != address(0), "CollectionStore#setFeeOwner: INVALID_ADDRESS");
-        require(_newFeeOwner != feeOwner, "CollectionStore#setFeeOwner: SAME_FEE_OWNER");
+    function getRarityByName(string memory _rarity) public view returns (Rarity memory) {
+        bytes32 rarityKey = keccak256(bytes(_rarity.toLowerCase()));
 
-        emit SetFeeOwner(feeOwner, _newFeeOwner);
-        feeOwner = _newFeeOwner;
+        uint256 index = rarityIndex[rarityKey];
+
+        require(rarityIndex[rarityKey] > 0, "Rarities#getRarityByName: INVALID_RARITY");
+
+        return rarities[index - 1];
     }
 }

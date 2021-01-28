@@ -1,5 +1,6 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: contracts/interfaces/ICollectionManager.sol
+// File contracts/interfaces/ICollectionManager.sol
 
 // SPDX-License-Identifier: MIT
 
@@ -11,8 +12,10 @@ interface ICollectionManager {
    function manageCollection(address _forwarder, address _collection, bytes calldata _data) external;
 }
 
-// File: contracts/commons/ContextMixin.sol
 
+// File contracts/commons/ContextMixin.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
 
@@ -41,11 +44,12 @@ abstract contract ContextMixin {
     }
 }
 
-// File: contracts/commons/OwnableInitializable.sol
 
+// File contracts/commons/OwnableInitializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -59,12 +63,11 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is ContextMixin {
+abstract contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor() internal {}
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
@@ -113,10 +116,12 @@ contract OwnableInitializable is ContextMixin {
     }
 }
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
 
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -274,8 +279,10 @@ library SafeMath {
     }
 }
 
-// File: contracts/commons/EIP712Base.sol
 
+// File contracts/commons/EIP712Base.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
 
@@ -342,12 +349,12 @@ contract EIP712Base {
     }
 }
 
-// File: contracts/commons/NativeMetaTransaction.sol
 
+// File contracts/commons/NativeMetaTransaction.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
-
-
 
 contract NativeMetaTransaction is EIP712Base {
     using SafeMath for uint256;
@@ -358,7 +365,7 @@ contract NativeMetaTransaction is EIP712Base {
     );
     event MetaTransactionExecuted(
         address userAddress,
-        address payable relayerAddress,
+        address relayerAddress,
         bytes functionSignature
     );
     mapping(address => uint256) nonces;
@@ -449,12 +456,12 @@ contract NativeMetaTransaction is EIP712Base {
     }
 }
 
-// File: contracts/managers/Committee.sol
 
+// File contracts/managers/Committee.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
 
 
 

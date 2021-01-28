@@ -1,9 +1,10 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -161,11 +162,12 @@ library SafeMath {
     }
 }
 
-// File: @openzeppelin/contracts/math/Math.sol
+
+// File @openzeppelin/contracts/math/Math.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Standard math utilities missing in the Solidity language.
@@ -195,13 +197,12 @@ library Math {
     }
 }
 
-// File: contracts/markets/Donation.sol
+
+// File contracts/markets/Donation.sol
 
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
 
 
 interface IERC721Collection {
