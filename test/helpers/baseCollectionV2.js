@@ -281,7 +281,7 @@ export function doTest(
             [],
             creationParams
           ),
-          'BCV2#initialize: INVALID_RARITIES'
+          'initialize: INVALID_RARITIES'
         )
       })
 
@@ -299,7 +299,7 @@ export function doTest(
             [],
             creationParams
           ),
-          'BCV2#initialize: INVALID_CREATOR'
+          'initialize: INVALID_CREATOR'
         )
       })
 
@@ -329,7 +329,7 @@ export function doTest(
             [],
             creationParams
           ),
-          'BCV2#initialize: ALREADY_INITIALIZED'
+          'initialize: ALREADY_INITIALIZED'
         )
       })
     })
@@ -509,7 +509,7 @@ export function doTest(
       it('reverts when trying to approve with the same value', async function () {
         await assertRevert(
           contract.setApproved(true, fromDeployer),
-          'BCV2#setApproved: VALUE_IS_THE_SAME'
+          'setApproved: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -852,12 +852,12 @@ export function doTest(
       it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setMinters([minter], [true, false], fromCreator),
-          'BCV2#setMinters: LENGTH_MISMATCH'
+          'setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setMinters([minter, user], [true], fromCreator),
-          'BCV2#setMinters: LENGTH_MISMATCH'
+          'setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -867,7 +867,7 @@ export function doTest(
             [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -877,7 +877,7 @@ export function doTest(
             [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -887,7 +887,7 @@ export function doTest(
             [1, 1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
       })
 
@@ -909,42 +909,42 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [1], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [1], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [1], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([1], [user], [1], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -1097,7 +1097,7 @@ export function doTest(
       it('reverts when using an invalid address', async function () {
         await assertRevert(
           collectionContract.setMinters([ZERO_ADDRESS], [true], fromCreator),
-          'BCV2#setMinters: INVALID_MINTER_ADDRESS'
+          'setMinters: INVALID_MINTER_ADDRESS'
         )
 
         await assertRevert(
@@ -1107,7 +1107,7 @@ export function doTest(
             [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: INVALID_MINTER_ADDRESS'
+          'setItemsMinters: INVALID_MINTER_ADDRESS'
         )
       })
 
@@ -1119,7 +1119,7 @@ export function doTest(
             [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
+          'setItemsMinters: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -1134,7 +1134,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setMinters([minter], [true], fromCreator),
-          'BCV2#setMinters: VALUE_IS_THE_SAME'
+          'setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1143,12 +1143,12 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'BCV2#setMinters: VALUE_IS_THE_SAME'
+          'setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters([0], [minter], [1], fromCreator),
-          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
+          'setItemsMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1158,7 +1158,7 @@ export function doTest(
             [1, 1, 1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
+          'setItemsMinters: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -1501,12 +1501,12 @@ export function doTest(
       it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setManagers([manager], [true, false], fromCreator),
-          'BCV2#setManagers: LENGTH_MISMATCH'
+          'setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setManagers([manager, user], [true], fromCreator),
-          'BCV2#setManagers: LENGTH_MISMATCH'
+          'setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1516,7 +1516,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1526,7 +1526,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1536,7 +1536,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
       })
 
@@ -1558,22 +1558,22 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -1583,12 +1583,12 @@ export function doTest(
             [false],
             fromDeployer
           ),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -1598,12 +1598,12 @@ export function doTest(
             [false],
             fromManager
           ),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -1756,7 +1756,7 @@ export function doTest(
       it('reverts when the using an invalid address', async function () {
         await assertRevert(
           collectionContract.setManagers([ZERO_ADDRESS], [true], fromCreator),
-          'BCV2#setManagers: INVALID_MANAGER_ADDRESS'
+          'setManagers: INVALID_MANAGER_ADDRESS'
         )
 
         await assertRevert(
@@ -1766,7 +1766,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS'
+          'setItemsManagers: INVALID_MANAGER_ADDRESS'
         )
       })
 
@@ -1778,7 +1778,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST'
+          'setItemsManagers: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -1793,7 +1793,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([manager], [true], fromCreator),
-          'BCV2#setManagers: VALUE_IS_THE_SAME'
+          'setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1802,7 +1802,7 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'BCV2#setManagers: VALUE_IS_THE_SAME'
+          'setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1812,7 +1812,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'setItemsManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1822,7 +1822,7 @@ export function doTest(
             [true, true, true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'setItemsManagers: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -2156,7 +2156,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -2169,7 +2169,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -2182,7 +2182,7 @@ export function doTest(
         ]
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: EMPTY_METADATA'
+          '_addItem: EMPTY_METADATA'
         )
       })
 
@@ -2201,22 +2201,22 @@ export function doTest(
 
         await assertRevert(
           contract.addItems([newItem], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -2305,7 +2305,7 @@ export function doTest(
 
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: COLLECTION_COMPLETED'
+          '_addItem: COLLECTION_COMPLETED'
         )
       })
     })
@@ -2715,7 +2715,7 @@ export function doTest(
             [itemBeneficiary0],
             fromManager
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
@@ -2735,7 +2735,7 @@ export function doTest(
             [itemBeneficiary0],
             fromManager
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -2825,7 +2825,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2835,7 +2835,7 @@ export function doTest(
             [itemBeneficiary0, itemBeneficiary1],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsSalesData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -2845,7 +2845,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsSalesData: LENGTH_MISMATCH'
         )
       })
 
@@ -2860,7 +2860,7 @@ export function doTest(
             [itemBeneficiary0],
             fromDeployer
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
@@ -2870,7 +2870,7 @@ export function doTest(
             [itemBeneficiary0],
             fromMinter
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
@@ -2880,7 +2880,7 @@ export function doTest(
             [itemBeneficiary0],
             fromHacker
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
       })
 
@@ -2940,7 +2940,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST'
+          'editItemsSalesData: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -2952,7 +2952,7 @@ export function doTest(
             [ZERO_ADDRESS],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
@@ -2964,7 +2964,7 @@ export function doTest(
             [itemBeneficiary0],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
     })
@@ -3241,7 +3241,7 @@ export function doTest(
       it('should allow managers to edit items metadata', async function () {
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
@@ -3251,7 +3251,7 @@ export function doTest(
         await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -3325,7 +3325,7 @@ export function doTest(
             [metadata0, metadata1],
             fromCreator
           ),
-          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
+          'editItemsMetadata: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -3334,7 +3334,7 @@ export function doTest(
             [metadata0],
             fromCreator
           ),
-          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
+          'editItemsMetadata: LENGTH_MISMATCH'
         )
       })
 
@@ -3344,17 +3344,17 @@ export function doTest(
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromMinter),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromHacker),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
       })
 
@@ -3404,14 +3404,14 @@ export function doTest(
         const itemLength = await contract.itemsCount()
         await assertRevert(
           contract.editItemsMetadata([itemLength], [metadata0], fromCreator),
-          'BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST'
+          'editItemsMetadata: ITEM_DOES_NOT_EXIST'
         )
       })
 
       it('reverts when trying to edit an item with empty metadata', async function () {
         await assertRevert(
           contract.editItemsMetadata([itemId0], [''], fromCreator),
-          'BCV2#editItemsMetadata: EMPTY_METADATA'
+          'editItemsMetadata: EMPTY_METADATA'
         )
       })
 
@@ -3420,7 +3420,7 @@ export function doTest(
 
         await assertRevert(
           contract.editItemsMetadata([itemId0], [metadata0], fromCreator),
-          'BCV2#editItemsMetadata: NOT_EDITABLE'
+          'editItemsMetadata: NOT_EDITABLE'
         )
       })
     })
@@ -3839,7 +3839,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -3849,7 +3849,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -3859,7 +3859,7 @@ export function doTest(
             [''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
       })
 
@@ -3948,460 +3948,7 @@ export function doTest(
         const itemLength = await contract.itemsCount()
         await assertRevert(
           contract.rescueItems([itemLength], [EMPTY_HASH], [''], fromDeployer),
-          'BCV2#rescueItems: ITEM_DOES_NOT_EXIST'
-        )
-      })
-    })
-
-    describe('issueToken', function () {
-      let contract
-      let newItem
-      let newItemId
-
-      beforeEach(async () => {
-        newItem = [
-          RARITIES.mythic.name,
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-        ]
-
-        contract = await createContract(
-          creator,
-          false,
-          true,
-          true,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
-      })
-
-      it('should issue a token', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        const { logs } = await contract.issueToken(
-          anotherHolder,
-          newItemId,
-          fromCreator
-        )
-
-        const tokenId = encodeTokenId(newItemId, 1)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-        expect(item.totalSupply).to.eq.BN(1)
-
-        expect(logs.length).to.be.equal(2)
-        expect(logs[1].event).to.be.equal('Issue')
-        expect(logs[1].args._beneficiary).to.be.equal(anotherHolder)
-        expect(logs[1].args._tokenId).to.be.eq.BN(tokenId)
-        expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
-        expect(logs[1].args._issuedId).to.eq.BN(1)
-
-        // match total supply
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
-
-        // match owner
-        const owner = await contract.ownerOf(tokenId)
-        expect(owner).to.be.equal(anotherHolder)
-
-        // match URI
-        const uri = await contract.tokenURI(tokenId)
-        const uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-      })
-
-      it('should issue a token and increase item total supply', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        await contract.issueToken(anotherHolder, newItemId, fromCreator)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-
-        expect(item.totalSupply).to.eq.BN(1)
-
-        // match URI
-        let tokenId = encodeTokenId(newItemId, 1)
-        let uri = await contract.tokenURI(tokenId)
-        let uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-
-        await Promise.all([
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-        ])
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-
-        expect(item.totalSupply).to.eq.BN(4)
-
-        // match URI
-        tokenId = encodeTokenId(newItemId, 3)
-        uri = await contract.tokenURI(tokenId)
-        uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(3).to.eq.BN(uri.split('/')[uriArr.length - 1])
-
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(4)))
-      })
-
-      it('should issue a token :: Relayed EIP721', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiary',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemId',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        const { logs } = await sendMetaTx(
-          contract,
-          functionSignature,
-          creator,
-          relayer
-        )
-
-        expect(logs.length).to.be.equal(3)
-
-        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
-        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
-
-        const tokenId = encodeTokenId(newItemId, 1)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.be.equal(newItem[0])
-
-        expect(item.totalSupply).to.eq.BN(1)
-
-        expect(logs[2].event).to.be.equal('Issue')
-        expect(logs[2].args._beneficiary).to.be.equal(anotherHolder)
-        expect(logs[2].args._tokenId).to.be.eq.BN(tokenId)
-        expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
-        expect(logs[2].args._issuedId).to.eq.BN(1)
-
-        // match total supply
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
-
-        // match owner
-        const owner = await contract.ownerOf(tokenId)
-        expect(owner).to.be.equal(anotherHolder)
-
-        // match URI
-        const uri = await contract.tokenURI(tokenId)
-        const uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-      })
-
-      it('should issue a token by minter', async function () {
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        // Set global Minter
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-
-        await contract.setMinters([minter], [false], fromCreator)
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
-
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-      })
-
-      it('should issue a token by minter :: Relayed EIP721', async function () {
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiary',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemId',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set global Minter
-        await contract.setMinters([minter], [true], fromCreator)
-        await sendMetaTx(contract, functionSignature, minter, relayer)
-
-        await contract.setMinters([minter], [false], fromCreator)
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
-
-        await sendMetaTx(contract, functionSignature, minter, relayer)
-      })
-
-      it('should issue a token by minter and reduce the allowance', async function () {
-        // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
-
-        let minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(1)
-
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-
-        minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(0)
-      })
-
-      it('should issue a token by minter and reduce the allowance :: Relayed EIP721', async function () {
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiary',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemId',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
-
-        let minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(1)
-
-        await sendMetaTx(contract, functionSignature, minter, relayer)
-
-        minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(0)
-      })
-
-      it('should issue a token by minter and not reduce if allowance is infinity', async function () {
-        // Set item Minter
-        await contract.setItemsMinters([newItemId], [minter], [MAX_UINT256], fromCreator)
-
-        let minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
-
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-
-        minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
-      })
-
-      it('reverts when issue a token by minter without allowance', async function () {
-        // Set items Minter
-        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
-
-        let minterAllowance = await contract.itemMinters(newItemId, minter)
-        expect(minterAllowance).to.be.eq.BN(1)
-
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-      })
-
-      it('reverts when issuing a token by not the creator or minter', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [1], fromCreator)
-        await contract.setItemsManagers([0], [manager], [true], fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromDeployer),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromManager),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromHacker),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-      })
-
-      it('reverts when issuing a token by not the creator or minter :: Relayed EIP721', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [1], fromCreator)
-        await contract.setItemsManagers([0], [manager], [true], fromCreator)
-
-        let functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiaries',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemIds',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, hacker, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-      })
-
-      it('reverts when issuing a token to an invalid address', async function () {
-        await assertRevert(
-          contract.issueToken(ZERO_ADDRESS, newItemId, fromCreator),
-          'ERC721: mint to the zero address'
-        )
-      })
-
-      it('reverts when trying to issue an invalid item option id', async function () {
-        const length = await contract.itemsCount()
-        await assertRevert(
-          contract.issueToken(holder, length, fromCreator),
-          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
-        )
-      })
-
-      it('reverts when trying to issue an exhausted item', async function () {
-        for (let i = 0; i < RARITIES.mythic.value; i++) {
-          await contract.issueToken(anotherHolder, newItemId, fromCreator)
-        }
-        await assertRevert(
-          contract.issueToken(holder, newItemId, fromCreator),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the the collection is not approved', async function () {
-        await contract.setApproved(false, fromDeployer)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the the collection is not completed', async function () {
-        const newItem = [
-          RARITIES.mythic.name,
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          true,
-          true,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: NOT_COMPLETED'
+          'rescueItems: ITEM_DOES_NOT_EXIST'
         )
       })
     })
@@ -4628,7 +4175,11 @@ export function doTest(
           beneficiaries.push(beneficiary)
         }
 
-        const { receipt } = await contract.issueTokens(beneficiaries, ids, fromCreator)
+        const { receipt } = await contract.issueTokens(
+          beneficiaries,
+          ids,
+          fromCreator
+        )
 
         // match issueance
         const item = await contract.items(anotherNewItemId)
@@ -4640,13 +4191,12 @@ export function doTest(
         expect(balance).to.eq.BN(itemsInTheSameTx)
 
         console.log(`Gas used:: ${receipt.gasUsed}`)
-
       })
 
       it('should issue multiple tokens by minter', async function () {
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
@@ -4656,7 +4206,7 @@ export function doTest(
         await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
@@ -4839,7 +4389,7 @@ export function doTest(
             [newItemId, newItemId, anotherNewItemId, newItemId],
             fromMinter
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
       })
 
@@ -4855,7 +4405,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromDeployer
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -4864,7 +4414,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromManager
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -4873,7 +4423,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromHacker
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
       })
 
@@ -4927,7 +4477,7 @@ export function doTest(
       it('reverts if trying to issue tokens with invalid argument length', async function () {
         await assertRevert(
           contract.issueTokens([user], [newItemId, anotherNewItemId], fromUser),
-          'BCV2#issueTokens: LENGTH_MISMATCH'
+          'issueTokens: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -4936,7 +4486,7 @@ export function doTest(
             [anotherNewItemId],
             fromUser
           ),
-          'BCV2#issueTokens: LENGTH_MISMATCH'
+          'issueTokens: LENGTH_MISMATCH'
         )
       })
 
@@ -4959,7 +4509,7 @@ export function doTest(
             [length, newItemId],
             fromCreator
           ),
-          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
+          '_issueToken: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -4976,7 +4526,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens(beneficiaries, ids, fromCreator),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
+          '_issueToken: ITEM_EXHAUSTED'
         )
 
         await contract.issueTokens(
@@ -4991,7 +4541,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
+          '_issueToken: ITEM_EXHAUSTED'
         )
       })
 
@@ -5004,7 +4554,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
+          'issueTokens: MINT_NOT_ALLOWED'
         )
       })
 
@@ -5029,7 +4579,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'BCV2#isMintingAllowed: NOT_COMPLETED'
+          'issueTokens: MINT_NOT_ALLOWED'
         )
       })
     })
@@ -5057,7 +4607,7 @@ export function doTest(
 
         const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
-        await contract.issueToken(holder, itemId, fromCreator)
+        await contract.issueTokens([holder], [itemId], fromCreator)
 
         // match token id
         let uri = await contract.tokenURI(encodeTokenId(itemId.toString(), 1))
@@ -5069,12 +4619,12 @@ export function doTest(
       it('reverts if the token does not exist', async function () {
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(0, 100)),
-          'BCV2#tokenURI: INVALID_TOKEN_ID'
+          'tokenURI: INVALID_TOKEN_ID'
         )
 
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(100, 1)),
-          'BCV2#tokenURI: INVALID_TOKEN_ID'
+          'tokenURI: INVALID_TOKEN_ID'
         )
       })
     })
@@ -5135,13 +4685,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -5185,6 +4745,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHolder
         )
 
@@ -5219,6 +4780,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHacker
         )
 
@@ -5267,13 +4829,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: 'data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -5323,6 +4895,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromApprovedForAll
         )
 
@@ -5374,13 +4947,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -5418,8 +5001,8 @@ export function doTest(
         await collectionContract.setApproved(false, fromDeployer)
 
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, 0, fromCreator),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
+          collectionContract.issueTokens([anotherHolder], [0], fromCreator),
+          'issueTokens: MINT_NOT_ALLOWED'
         )
 
         let ownerToken1 = await collectionContract.ownerOf(token1)
@@ -5433,6 +5016,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHacker
         )
 
@@ -5505,13 +5089,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         await assertRevert(
@@ -5537,6 +5131,11 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
@@ -5547,6 +5146,7 @@ export function doTest(
             holder,
             anotherHolder,
             [token1.toString(), token2.toString(), token3.toString()],
+            '0x',
           ]
         )
 
@@ -5724,7 +5324,7 @@ export function doTest(
       it('reverts when trying to set the same value as before', async function () {
         await assertRevert(
           collectionContract.setEditable(true, fromDeployer),
-          'BCV2#setEditable: VALUE_IS_THE_SAME'
+          'setEditable: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -5960,7 +5560,7 @@ export function doTest(
 
         await assertRevert(
           contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: COLLECTION_COMPLETED'
+          '_addItem: COLLECTION_COMPLETED'
         )
       })
 
@@ -5969,29 +5569,29 @@ export function doTest(
 
         await assertRevert(
           contract.completeCollection(fromCreator),
-          'BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED'
+          'completeCollection: COLLECTION_ALREADY_COMPLETED'
         )
       })
 
       it('reverts when completing collection by other than the creator', async function () {
         await assertRevert(
           contract.completeCollection(fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -6174,17 +5774,17 @@ export function doTest(
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromMinter),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromManager),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromHacker),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
       })
 
@@ -6240,7 +5840,7 @@ export function doTest(
       it('reverts when trying to transfer creator role to an invalid address', async function () {
         await assertRevert(
           collectionContract.transferCreatorship(ZERO_ADDRESS, fromDeployer),
-          'BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS'
+          'transferCreatorship: INVALID_CREATOR_ADDRESS'
         )
       })
     })
@@ -6287,7 +5887,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(max.add(one), 0),
-          'BCV2#encodeTokenId: INVALID_ITEM_ID'
+          'encodeTokenId: INVALID_ITEM_ID'
         )
       })
 
@@ -6300,7 +5900,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(0, max.add(one)),
-          'BCV2#encodeTokenId: INVALID_ISSUED_ID'
+          'encodeTokenId: INVALID_ISSUED_ID'
         )
       })
     })

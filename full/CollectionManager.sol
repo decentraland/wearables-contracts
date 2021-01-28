@@ -1,9 +1,10 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -161,8 +162,10 @@ library SafeMath {
     }
 }
 
-// File: contracts/interfaces/IForwarder.sol
 
+// File contracts/interfaces/IForwarder.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 
@@ -171,8 +174,10 @@ interface IForwarder {
    function forwardCall(address _address, bytes calldata _data) external returns (bool, bytes memory);
 }
 
-// File: contracts/interfaces/IERC20.sol
 
+// File contracts/interfaces/IERC20.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 
@@ -185,8 +190,10 @@ interface IERC20 {
     function burn(uint256 amount) external;
 }
 
-// File: contracts/interfaces/IERC721CollectionV2.sol
 
+// File contracts/interfaces/IERC721CollectionV2.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
@@ -195,18 +202,16 @@ pragma experimental ABIEncoderV2;
 interface IERC721CollectionV2 {
     function COLLECTION_HASH() external view returns (bytes32);
 
-    struct Item {
-        uint8 rarity;
-        uint256 totalSupply; // current supply
+    struct ItemParam {
+        string rarity;
         uint256 price;
         address beneficiary;
         string metadata;
-        bytes32 contentHash; // used for safe purposes
     }
 
-    function issueToken(address _beneficiary, uint256 _itemId) external;
+    function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external;
     function setApproved(bool _value) external;
-    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter/
+    /// @dev For some reason using the Struct Item as an output parameter fails, but works as an input parameter
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -214,15 +219,19 @@ interface IERC721CollectionV2 {
         address _creator,
         bool _shouldComplete,
         bool _isApproved,
-        Item[] memory _items
+        address _rarities,
+        ItemParam[] memory _items
     ) external;
-    function items(uint256 _itemId) external view returns (uint256, uint256, uint256, address, string memory, bytes32);
+    function items(uint256 _itemId) external view returns (string memory, uint256, uint256, uint256, address, string memory, bytes32);
 }
 
-// File: contracts/interfaces/IERC721CollectionFactoryV2.sol
 
+// File contracts/interfaces/IERC721CollectionFactoryV2.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 
 interface IERC721CollectionFactoryV2 {
@@ -230,8 +239,30 @@ interface IERC721CollectionFactoryV2 {
     function transferOwnership(address newOwner) external;
 }
 
-// File: contracts/commons/ContextMixin.sol
 
+// File contracts/interfaces/IRarities.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+
+interface IRarities {
+
+    struct Rarity {
+        string name;
+        uint256 maxSupply;
+        uint256 price;
+    }
+
+    function getRarityByName(string calldata rarity) external view returns (Rarity memory);
+}
+
+
+// File contracts/commons/ContextMixin.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
 
@@ -260,11 +291,12 @@ abstract contract ContextMixin {
     }
 }
 
-// File: contracts/commons/OwnableInitializable.sol
 
+// File contracts/commons/OwnableInitializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -278,12 +310,11 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is ContextMixin {
+abstract contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor() internal {}
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
@@ -332,8 +363,10 @@ contract OwnableInitializable is ContextMixin {
     }
 }
 
-// File: contracts/commons/EIP712Base.sol
 
+// File contracts/commons/EIP712Base.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
 
@@ -400,12 +433,12 @@ contract EIP712Base {
     }
 }
 
-// File: contracts/commons/NativeMetaTransaction.sol
 
+// File contracts/commons/NativeMetaTransaction.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
-
-
 
 contract NativeMetaTransaction is EIP712Base {
     using SafeMath for uint256;
@@ -416,7 +449,7 @@ contract NativeMetaTransaction is EIP712Base {
     );
     event MetaTransactionExecuted(
         address userAddress,
-        address payable relayerAddress,
+        address relayerAddress,
         bytes functionSignature
     );
     mapping(address => uint256) nonces;
@@ -507,12 +540,13 @@ contract NativeMetaTransaction is EIP712Base {
     }
 }
 
-// File: contracts/managers/CollectionManager.sol
 
+// File contracts/managers/CollectionManager.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
+pragma experimental ABIEncoderV2;
 
 
 
@@ -525,6 +559,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     IERC20  public acceptedToken;
+    IRarities public rarities;
     address public committee;
     address public feesCollector;
     uint256 public pricePerItem;
@@ -532,7 +567,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
     event CommitteeSet(address indexed _oldCommittee, address indexed _newCommittee);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
-    event PricePerItemSet(uint256 _oldPricePerItem, uint256 _newPricePerItem);
+    event RaritiesSet(IRarities indexed _oldRarities, IRarities indexed _newRarities);
 
     /**
     * @notice Create the contract
@@ -540,9 +575,9 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _acceptedToken - accepted ERC20 token for collection deployment
     * @param _committee - committee contract
     * @param _feesCollector - fees collector
-    * @param _pricePerItem - price per item
+    * @param _rarities - rarities contract
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, uint256 _pricePerItem) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, IRarities _rarities) public {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Manager', '1');
         // Ownable init
@@ -551,7 +586,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         setAcceptedToken(_acceptedToken);
         setCommittee(_committee);
         setFeesCollector(_feesCollector);
-        setPricePerItem(_pricePerItem);
+        setRarities(_rarities);
 
         transferOwnership(_owner);
     }
@@ -590,12 +625,14 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     }
 
     /**
-    * @notice Set the price per item
-    * @param _newPricePerItem - price per item
+    * @notice Set the rarities
+    * @param _newRarities - price per item
     */
-    function setPricePerItem(uint256 _newPricePerItem) onlyOwner public {
-        emit PricePerItemSet(pricePerItem, _newPricePerItem);
-        pricePerItem = _newPricePerItem;
+    function setRarities(IRarities _newRarities) onlyOwner public {
+        require(address(_newRarities) != address(0), "CollectionManager#setRarities: INVALID_RARITIES");
+
+        emit RaritiesSet(rarities, _newRarities);
+        rarities = _newRarities;
     }
 
     /**
@@ -617,9 +654,18 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         string memory _symbol,
         string memory _baseURI,
         address _creator,
-        IERC721CollectionV2.Item[] memory _items
+        IERC721CollectionV2.ItemParam[] memory _items
      ) external {
-        uint256 amount = _items.length.mul(pricePerItem);
+        uint256 amount = 0;
+
+        for (uint256 i = 0; i < _items.length; i++) {
+            IERC721CollectionV2.ItemParam memory item = _items[i];
+
+            IRarities.Rarity memory rarity = rarities.getRarityByName(item.rarity);
+
+            amount = amount.add(rarity.price);
+        }
+
         // Transfer fees to collector
         if (amount > 0) {
             require(
@@ -636,6 +682,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
             _creator,
             true, // Collection should be completed
             false, // Collection should start disapproved
+            rarities,
             _items
         );
 

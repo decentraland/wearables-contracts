@@ -161,7 +161,7 @@ describe('Collection Store', function () {
           ONE_MILLION,
           fromStoreOwner
         ),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
 
       await assertRevert(
@@ -172,7 +172,7 @@ describe('Collection Store', function () {
           ONE_MILLION.add(web3.utils.toBN(1)),
           fromStoreOwner
         ),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
     })
   })
@@ -208,8 +208,7 @@ describe('Collection Store', function () {
       const price = web3.utils.toBN(ITEMS[0][1])
 
       const { logs } = await storeContract.buy(
-        [[collection1.address, [0], [price]]],
-        buyer,
+        [[collection1.address, [0], [price], [buyer]]],
         fromBuyer
       )
 
@@ -246,9 +245,8 @@ describe('Collection Store', function () {
 
       expect(logs[3].event).to.be.equal('Bought')
       expect(logs[3].args._itemsToBuy).to.be.eql([
-        [collection1.address, ['0'], [price.toString()]],
+        [collection1.address, ['0'], [price.toString()], [buyer]],
       ])
-      expect(logs[3].args._beneficiary).to.be.equal(buyer)
 
       await buyerBalance.requireDecrease(price)
       await beneficiaryBalance.requireIncrease(price.sub(feeCharged))
@@ -259,7 +257,8 @@ describe('Collection Store', function () {
       expect(itemsBalanceOfBuyer).to.be.eq.BN(1)
 
       const itemId = await collection1.tokenOfOwnerByIndex(buyer, 0)
-      const uri = await collection1.tokenURI(itemId)
+      console.log(itemId)
+      const uri = await collection1.tokenURI(encodeTokenId(0, 1))
       const uriArr = uri.split('/')
       expect(0).to.eq.BN(uriArr[uriArr.length - 2])
     })
@@ -292,8 +291,7 @@ describe('Collection Store', function () {
       expect(itemsBalanceOfBuyer).to.be.eq.BN(0)
 
       const { logs } = await storeContract.buy(
-        [[collection2.address, [2], [0]]],
-        buyer,
+        [[collection2.address, [2], [0], [buyer]]],
         fromBuyer
       )
 
@@ -316,9 +314,8 @@ describe('Collection Store', function () {
 
       expect(logs[1].event).to.be.equal('Bought')
       expect(logs[1].args._itemsToBuy).to.be.eql([
-        [collection2.address, ['2'], ['0']],
+        [collection2.address, ['2'], ['0'], [buyer]],
       ])
-      expect(logs[1].args._beneficiary).to.be.equal(buyer)
 
       await buyerBalance.requireConstant()
       await beneficiaryBalance.requireConstant()
@@ -377,10 +374,14 @@ describe('Collection Store', function () {
 
       const { logs } = await storeContract.buy(
         [
-          [collection1.address, [0, 0, 2], [price10, price10, price12]],
-          [collection2.address, [0], [price20]],
+          [
+            collection1.address,
+            [0, 0, 2],
+            [price10, price10, price12],
+            [buyer, buyer, buyer],
+          ],
+          [collection2.address, [0], [price20], [buyer]],
         ],
-        buyer,
         fromBuyer
       )
 
@@ -410,34 +411,34 @@ describe('Collection Store', function () {
       )
       expect(logs[0].args._value).to.be.eq.BN(price10.sub(price10Fee))
 
-      expect(logs[1].event).to.be.equal('Issue')
-      expect(logs[1].args._beneficiary).to.be.equal(buyer)
-      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
-      expect(logs[1].args._itemId).to.be.eq.BN(0)
-      expect(logs[1].args._issuedId).to.be.eq.BN(1)
-
       feeCharged = feeCharged.add(price10Fee)
+      expect(logs[1].event).to.be.equal('Transfer')
+      expect(logs[1].args._from).to.be.equal(buyer)
+      expect(logs[1].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[1].args._value).to.be.eq.BN(price10.sub(price10Fee))
+
+      const price12Fee = price12.mul(FEE).div(ONE_MILLION)
+      feeCharged = feeCharged.add(price12Fee)
       expect(logs[2].event).to.be.equal('Transfer')
       expect(logs[2].args._from).to.be.equal(buyer)
       expect(logs[2].args._to.toLowerCase()).to.be.equal(
         BENEFICIARY_ADDRESS.toLowerCase()
       )
-      expect(logs[2].args._value).to.be.eq.BN(price10.sub(price10Fee))
+      expect(logs[2].args._value).to.be.eq.BN(price12.sub(price12Fee))
 
       expect(logs[3].event).to.be.equal('Issue')
       expect(logs[3].args._beneficiary).to.be.equal(buyer)
-      expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
+      expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[3].args._itemId).to.be.eq.BN(0)
-      expect(logs[3].args._issuedId).to.be.eq.BN(2)
+      expect(logs[3].args._issuedId).to.be.eq.BN(1)
 
-      const price12Fee = price12.mul(FEE).div(ONE_MILLION)
-      feeCharged = feeCharged.add(price12Fee)
-      expect(logs[4].event).to.be.equal('Transfer')
-      expect(logs[4].args._from).to.be.equal(buyer)
-      expect(logs[4].args._to.toLowerCase()).to.be.equal(
-        BENEFICIARY_ADDRESS.toLowerCase()
-      )
-      expect(logs[4].args._value).to.be.eq.BN(price12.sub(price12Fee))
+      expect(logs[4].event).to.be.equal('Issue')
+      expect(logs[4].args._beneficiary).to.be.equal(buyer)
+      expect(logs[4].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
+      expect(logs[4].args._itemId).to.be.eq.BN(0)
+      expect(logs[4].args._issuedId).to.be.eq.BN(2)
 
       expect(logs[5].event).to.be.equal('Issue')
       expect(logs[5].args._beneficiary).to.be.equal(buyer)
@@ -471,10 +472,10 @@ describe('Collection Store', function () {
           collection1.address,
           ['0', '0', '2'],
           [price10.toString(), price10.toString(), price12.toString()],
+          [buyer, buyer, buyer],
         ],
-        [collection2.address, ['0'], [price20.toString()]],
+        [collection2.address, ['0'], [price20.toString()], [buyer]],
       ])
-      expect(logs[9].args._beneficiary).to.be.equal(buyer)
 
       await buyerBalance.requireDecrease(finalPrice)
       await beneficiaryBalance.requireIncrease(
@@ -575,15 +576,15 @@ describe('Collection Store', function () {
                   name: 'prices',
                   type: 'uint256[]',
                 },
+                {
+                  internalType: 'address[]',
+                  name: 'beneficiaries',
+                  type: 'address[]',
+                },
               ],
               internalType: 'struct CollectionStore.ItemToBuy[]',
               name: '_itemsToBuy',
               type: 'tuple[]',
-            },
-            {
-              internalType: 'address',
-              name: '_beneficiary',
-              type: 'address',
             },
           ],
           name: 'buy',
@@ -597,10 +598,10 @@ describe('Collection Store', function () {
               collection1.address,
               [0, 0, 2],
               [price10.toString(), price10.toString(), price12.toString()],
+              [buyer, buyer, buyer],
             ],
-            [collection2.address, [0], [price20.toString()]],
+            [collection2.address, [0], [price20.toString()], [buyer]],
           ],
-          buyer,
         ]
       )
 
@@ -642,34 +643,34 @@ describe('Collection Store', function () {
       )
       expect(logs[0].args._value).to.be.eq.BN(price10.sub(price10Fee))
 
-      expect(logs[1].event).to.be.equal('Issue')
-      expect(logs[1].args._beneficiary).to.be.equal(buyer)
-      expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
-      expect(logs[1].args._itemId).to.be.eq.BN(0)
-      expect(logs[1].args._issuedId).to.be.eq.BN(1)
-
       feeCharged = feeCharged.add(price10Fee)
+      expect(logs[1].event).to.be.equal('Transfer')
+      expect(logs[1].args._from).to.be.equal(buyer)
+      expect(logs[1].args._to.toLowerCase()).to.be.equal(
+        BENEFICIARY_ADDRESS.toLowerCase()
+      )
+      expect(logs[1].args._value).to.be.eq.BN(price10.sub(price10Fee))
+
+      const price12Fee = price12.mul(FEE).div(ONE_MILLION)
+      feeCharged = feeCharged.add(price12Fee)
       expect(logs[2].event).to.be.equal('Transfer')
       expect(logs[2].args._from).to.be.equal(buyer)
       expect(logs[2].args._to.toLowerCase()).to.be.equal(
         BENEFICIARY_ADDRESS.toLowerCase()
       )
-      expect(logs[2].args._value).to.be.eq.BN(price10.sub(price10Fee))
+      expect(logs[2].args._value).to.be.eq.BN(price12.sub(price12Fee))
 
       expect(logs[3].event).to.be.equal('Issue')
       expect(logs[3].args._beneficiary).to.be.equal(buyer)
-      expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
+      expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[3].args._itemId).to.be.eq.BN(0)
-      expect(logs[3].args._issuedId).to.be.eq.BN(2)
+      expect(logs[3].args._issuedId).to.be.eq.BN(1)
 
-      const price12Fee = price12.mul(FEE).div(ONE_MILLION)
-      feeCharged = feeCharged.add(price12Fee)
-      expect(logs[4].event).to.be.equal('Transfer')
-      expect(logs[4].args._from).to.be.equal(buyer)
-      expect(logs[4].args._to.toLowerCase()).to.be.equal(
-        BENEFICIARY_ADDRESS.toLowerCase()
-      )
-      expect(logs[4].args._value).to.be.eq.BN(price12.sub(price12Fee))
+      expect(logs[4].event).to.be.equal('Issue')
+      expect(logs[4].args._beneficiary).to.be.equal(buyer)
+      expect(logs[4].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
+      expect(logs[4].args._itemId).to.be.eq.BN(0)
+      expect(logs[4].args._issuedId).to.be.eq.BN(2)
 
       expect(logs[5].event).to.be.equal('Issue')
       expect(logs[5].args._beneficiary).to.be.equal(buyer)
@@ -703,10 +704,10 @@ describe('Collection Store', function () {
           collection1.address,
           ['0', '0', '2'],
           [price10.toString(), price10.toString(), price12.toString()],
+          [buyer, buyer, buyer],
         ],
-        [collection2.address, ['0'], [price20.toString()]],
+        [collection2.address, ['0'], [price20.toString()], [buyer]],
       ])
-      expect(logs[9].args._beneficiary).to.be.equal(buyer)
 
       await buyerBalance.requireDecrease(finalPrice)
       await beneficiaryBalance.requireIncrease(
@@ -753,9 +754,9 @@ describe('Collection Store', function () {
             collection1.address,
             ITEMS.map((_, index) => index),
             ITEMS.map((i) => i[1]), // price
+            ITEMS.map((_) => buyer),
           ],
         ],
-        buyer,
         fromBuyer
       )
 
@@ -775,9 +776,9 @@ describe('Collection Store', function () {
               collection1.address,
               [0], // id
               [ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromHacker
         )
       )
@@ -791,9 +792,9 @@ describe('Collection Store', function () {
               collection1.address,
               [0], // id
               [ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromAnotherBuyer
         )
       )
@@ -807,10 +808,10 @@ describe('Collection Store', function () {
             [
               collection1.address,
               [itemsCount], // id
-              [ITEMS[0][1]], // price
+              [ITEMS[0][1]], // price,
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
         'invalid opcode'
@@ -831,12 +832,12 @@ describe('Collection Store', function () {
               collection1.address,
               [0], // id
               [ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
-        'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+        '_issueToken: CALLER_CAN_NOT_MINT'
       )
     })
 
@@ -849,12 +850,12 @@ describe('Collection Store', function () {
               collection2.address,
               [1, 1], // id
               [COLLECTION2_ITEMS[1][1], COLLECTION2_ITEMS[1][1]], // price
+              [buyer, buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
-        'BCV2#_issueToken: ITEM_EXHAUSTED'
+        '_issueToken: ITEM_EXHAUSTED'
       )
 
       // Buy item left
@@ -864,9 +865,9 @@ describe('Collection Store', function () {
             collection2.address,
             [1], // id
             [COLLECTION2_ITEMS[1][1]], // price
+            [buyer],
           ],
         ],
-        buyer,
         fromBuyer
       )
 
@@ -878,12 +879,12 @@ describe('Collection Store', function () {
               collection2.address,
               [1], // id
               [COLLECTION2_ITEMS[1][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
-        'BCV2#_issueToken: ITEM_EXHAUSTED'
+        '_issueToken: ITEM_EXHAUSTED'
       )
     })
 
@@ -898,9 +899,9 @@ describe('Collection Store', function () {
                 ITEMS[0][1],
                 web3.utils.toBN(ITEMS[0][1]).add(web3.utils.toBN(1)),
               ], // price
+              [buyer, buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
         'CollectionStore#buy: ITEM_PRICE_MISMATCH'
@@ -915,9 +916,9 @@ describe('Collection Store', function () {
               collection1.address,
               [0, 0], // id
               [ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
         'CollectionStore#buy: LENGTH_MISMATCH'
@@ -930,9 +931,9 @@ describe('Collection Store', function () {
               collection1.address,
               [0], // id
               [ITEMS[0][1], ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         ),
         'CollectionStore#buy: LENGTH_MISMATCH'
@@ -947,9 +948,9 @@ describe('Collection Store', function () {
               storeContract.address,
               [0], // id
               [ITEMS[0][1]], // price
+              [buyer],
             ],
           ],
-          buyer,
           fromBuyer
         )
       )
@@ -976,8 +977,7 @@ describe('Collection Store', function () {
 
       const price = web3.utils.toBN(ITEMS[0][1])
       res = await storeContract.buy(
-        [[collection1.address, [0], [price]]],
-        buyer,
+        [[collection1.address, [0], [price], [buyer]]],
         fromBuyer
       )
       logs = res.logs
@@ -1009,9 +1009,8 @@ describe('Collection Store', function () {
 
       expect(logs[3].event).to.be.equal('Bought')
       expect(logs[3].args._itemsToBuy).to.be.eql([
-        [collection1.address, ['0'], [price.toString()]],
+        [collection1.address, ['0'], [price.toString()], [buyer]],
       ])
-      expect(logs[3].args._beneficiary).to.be.equal(buyer)
     })
 
     it('should set fee = 0', async function () {
@@ -1025,8 +1024,7 @@ describe('Collection Store', function () {
 
       const price = web3.utils.toBN(ITEMS[0][1])
       const { logs } = await storeContract.buy(
-        [[collection1.address, [0], [price]]],
-        buyer,
+        [[collection1.address, [0], [price], [buyer]]],
         fromBuyer
       )
 
@@ -1050,15 +1048,14 @@ describe('Collection Store', function () {
 
       expect(logs[2].event).to.be.equal('Bought')
       expect(logs[2].args._itemsToBuy).to.be.eql([
-        [collection1.address, ['0'], [price.toString()]],
+        [collection1.address, ['0'], [price.toString()], [buyer]],
       ])
-      expect(logs[2].args._beneficiary).to.be.equal(buyer)
     })
 
     it('reverts when set the fee >= ONE_MILLION', async function () {
       await assertRevert(
         storeContract.setFee(ONE_MILLION, fromStoreOwner),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
 
       await assertRevert(
@@ -1066,7 +1063,7 @@ describe('Collection Store', function () {
           ONE_MILLION.add(web3.utils.toBN(1)),
           fromStoreOwner
         ),
-        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000'
+        'CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE'
       )
     })
 
@@ -1104,8 +1101,7 @@ describe('Collection Store', function () {
 
       const price = web3.utils.toBN(ITEMS[0][1])
       res = await storeContract.buy(
-        [[collection1.address, [0], [price]]],
-        buyer,
+        [[collection1.address, [0], [price], [buyer]]],
         fromBuyer
       )
       logs = res.logs
@@ -1137,9 +1133,8 @@ describe('Collection Store', function () {
 
       expect(logs[3].event).to.be.equal('Bought')
       expect(logs[3].args._itemsToBuy).to.be.eql([
-        [collection1.address, ['0'], [price.toString()]],
+        [collection1.address, ['0'], [price.toString()], [buyer]],
       ])
-      expect(logs[3].args._beneficiary).to.be.equal(buyer)
     })
 
     it('reverts when set the ZERO_ADDRESS as the fee owner', async function () {

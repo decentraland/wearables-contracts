@@ -14,7 +14,7 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Rarities = artifacts.require('Rarities')
 
 async function issueItem(contract, beneficiary, index, from) {
-  await contract.issueToken(beneficiary, index, from)
+  await contract.issueTokens([beneficiary], [index], from)
 }
 
 describe('Collection V2', function () {

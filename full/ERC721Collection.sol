@@ -1,9 +1,10 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: @openzeppelin/contracts/GSN/Context.sol
+// File @openzeppelin/contracts/GSN/Context.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -26,11 +27,12 @@ abstract contract Context {
     }
 }
 
-// File: @openzeppelin/contracts/access/Ownable.sol
+
+// File @openzeppelin/contracts/access/Ownable.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -44,7 +46,7 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract Ownable is Context {
+abstract contract Ownable is Context {
     address private _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -96,11 +98,12 @@ contract Ownable is Context {
     }
 }
 
-// File: @openzeppelin/contracts/introspection/IERC165.sol
+
+// File @openzeppelin/contracts/introspection/IERC165.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the
@@ -123,19 +126,19 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721.sol
+
+// File @openzeppelin/contracts/token/ERC721/IERC721.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.2;
-
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @dev Required interface of an ERC721 compliant contract.
  */
 interface IERC721 is IERC165 {
     /**
-     * @dev Emitted when `tokenId` token is transfered from `from` to `to`.
+     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
      */
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
@@ -254,12 +257,12 @@ interface IERC721 is IERC165 {
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol
+
+// File @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.2;
-
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional metadata extension
@@ -283,12 +286,12 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol
+
+// File @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.2;
-
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional enumeration extension
@@ -314,11 +317,12 @@ interface IERC721Enumerable is IERC721 {
     function tokenByIndex(uint256 index) external view returns (uint256);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
+
+// File @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @title ERC721 token receiver interface
@@ -335,16 +339,15 @@ interface IERC721Receiver {
      *
      * The selector can be obtained in Solidity with `IERC721.onERC721Received.selector`.
      */
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
-    external returns (bytes4);
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
 }
 
-// File: @openzeppelin/contracts/introspection/ERC165.sol
+
+// File @openzeppelin/contracts/introspection/ERC165.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
-
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Implementation of the {IERC165} interface.
@@ -352,7 +355,7 @@ pragma solidity ^0.6.0;
  * Contracts may inherit from this and call {_registerInterface} to declare
  * their support of an interface.
  */
-contract ERC165 is IERC165 {
+abstract contract ERC165 is IERC165 {
     /*
      * bytes4(keccak256('supportsInterface(bytes4)')) == 0x01ffc9a7
      */
@@ -395,11 +398,12 @@ contract ERC165 is IERC165 {
     }
 }
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
+
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -557,11 +561,12 @@ library SafeMath {
     }
 }
 
-// File: @openzeppelin/contracts/utils/Address.sol
+
+// File @openzeppelin/contracts/utils/Address.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.2;
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @dev Collection of functions related to the address type
@@ -585,14 +590,14 @@ library Address {
      * ====
      */
     function isContract(address account) internal view returns (bool) {
-        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
-        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
-        // for accounts without code, i.e. `keccak256('')`
-        bytes32 codehash;
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // This method relies on extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
         // solhint-disable-next-line no-inline-assembly
-        assembly { codehash := extcodehash(account) }
-        return (codehash != accountHash && codehash != 0x0);
+        assembly { size := extcodesize(account) }
+        return size > 0;
     }
 
     /**
@@ -648,7 +653,7 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        return _functionCallWithValue(target, data, 0, errorMessage);
+        return functionCallWithValue(target, data, 0, errorMessage);
     }
 
     /**
@@ -674,14 +679,38 @@ library Address {
      */
     function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
         require(address(this).balance >= value, "Address: insufficient balance for call");
-        return _functionCallWithValue(target, data, value, errorMessage);
-    }
-
-    function _functionCallWithValue(address target, bytes memory data, uint256 weiValue, string memory errorMessage) private returns (bytes memory) {
         require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{ value: weiValue }(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
+        require(isContract(target), "Address: static call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
         } else {
@@ -701,11 +730,12 @@ library Address {
     }
 }
 
-// File: @openzeppelin/contracts/utils/EnumerableSet.sol
+
+// File @openzeppelin/contracts/utils/EnumerableSet.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Library for managing
@@ -728,8 +758,8 @@ pragma solidity ^0.6.0;
  * }
  * ```
  *
- * As of v3.0.0, only sets of type `address` (`AddressSet`) and `uint256`
- * (`UintSet`) are supported.
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
  */
 library EnumerableSet {
     // To implement this library for multiple types with as little code
@@ -835,6 +865,60 @@ library EnumerableSet {
     function _at(Set storage set, uint256 index) private view returns (bytes32) {
         require(set._values.length > index, "EnumerableSet: index out of bounds");
         return set._values[index];
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+   /**
+    * @dev Returns the value stored at position `index` in the set. O(1).
+    *
+    * Note that there are no guarantees on the ordering of values inside the
+    * array, and it may change when more values are added or removed.
+    *
+    * Requirements:
+    *
+    * - `index` must be strictly less than {length}.
+    */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
     }
 
     // AddressSet
@@ -947,11 +1031,12 @@ library EnumerableSet {
     }
 }
 
-// File: @openzeppelin/contracts/utils/EnumerableMap.sol
+
+// File @openzeppelin/contracts/utils/EnumerableMap.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Library for managing an enumerable variant of Solidity's
@@ -1187,11 +1272,12 @@ library EnumerableMap {
     }
 }
 
-// File: @openzeppelin/contracts/utils/Strings.sol
+
+// File @openzeppelin/contracts/utils/Strings.sol@v3.3.0
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev String operations.
@@ -1224,12 +1310,12 @@ library Strings {
     }
 }
 
-// File: contracts/tokens/ERC721.sol
+
+// File contracts/tokens/ERC721.sol
 
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-
 
 
 
@@ -1700,7 +1786,8 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata, IERC721Enumerable 
     function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual { }
 }
 
-// File: contracts/libs/String.sol
+
+// File contracts/libs/String.sol
 
 // SPDX-License-Identifier: MIT
 
@@ -1773,19 +1860,39 @@ library String {
         return string(s);
     }
 
-    function char(byte b) private pure returns (byte c) {
+    function char(byte b) internal pure returns (byte c) {
         if (uint8(b) < 10) return byte(uint8(b) + 0x30);
         else return byte(uint8(b) + 0x57);
     }
+
+    /**
+     * @dev Lowercase a string.
+     * @param _str - to be converted to string.
+     * @return string
+     */
+    function toLowerCase(string memory _str) internal pure returns (string memory) {
+        bytes memory bStr = bytes(_str);
+        bytes memory bLower = new bytes(bStr.length);
+
+        for (uint i = 0; i < bStr.length; i++) {
+            // Uppercase character...
+            if ((bStr[i] >= 0x41) && (bStr[i] <= 0x5A)) {
+                // So we add 0x20 to make it lowercase
+                bLower[i] = bytes1(uint8(bStr[i]) + 0x20);
+            } else {
+                bLower[i] = bStr[i];
+            }
+        }
+        return string(bLower);
+    }
 }
 
-// File: contracts/collections/v1/ERC721BaseCollection.sol
+
+// File contracts/collections/v1/ERC721BaseCollection.sol
 
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
 
 
 contract ERC721BaseCollection is Ownable, ERC721 {
@@ -1990,12 +2097,12 @@ contract ERC721BaseCollection is Ownable, ERC721 {
     }
 }
 
-// File: contracts/collections/v1/ERC721Collection.sol
+
+// File contracts/collections/v1/ERC721Collection.sol
 
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
 
 contract ERC721Collection is ERC721BaseCollection {
     /**

@@ -1,5 +1,26 @@
+// Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File: contracts/commons/ContextMixin.sol
+// File contracts/interfaces/IRarities.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+
+interface IRarities {
+
+    struct Rarity {
+        string name;
+        uint256 maxSupply;
+        uint256 price;
+    }
+
+    function getRarityByName(string calldata rarity) external view returns (Rarity memory);
+}
+
+
+// File contracts/commons/ContextMixin.sol
 
 // SPDX-License-Identifier: MIT
 
@@ -30,11 +51,12 @@ abstract contract ContextMixin {
     }
 }
 
-// File: contracts/commons/OwnableInitializable.sol
 
+// File contracts/commons/OwnableInitializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -48,12 +70,11 @@ pragma solidity ^0.6.0;
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is ContextMixin {
+abstract contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor() internal {}
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
@@ -102,10 +123,12 @@ contract OwnableInitializable is ContextMixin {
     }
 }
 
-// File: @openzeppelin/contracts/math/SafeMath.sol
 
+// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -263,8 +286,10 @@ library SafeMath {
     }
 }
 
-// File: contracts/commons/EIP712Base.sol
 
+// File contracts/commons/EIP712Base.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
 
@@ -331,12 +356,12 @@ contract EIP712Base {
     }
 }
 
-// File: contracts/commons/NativeMetaTransaction.sol
 
+// File contracts/commons/NativeMetaTransaction.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
-
-
 
 contract NativeMetaTransaction is EIP712Base {
     using SafeMath for uint256;
@@ -347,7 +372,7 @@ contract NativeMetaTransaction is EIP712Base {
     );
     event MetaTransactionExecuted(
         address userAddress,
-        address payable relayerAddress,
+        address relayerAddress,
         bytes functionSignature
     );
     mapping(address => uint256) nonces;
@@ -438,10 +463,12 @@ contract NativeMetaTransaction is EIP712Base {
     }
 }
 
-// File: @openzeppelin/contracts/introspection/IERC165.sol
 
+// File @openzeppelin/contracts/introspection/IERC165.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the
@@ -464,18 +491,19 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721.sol
 
+// File @openzeppelin/contracts/token/ERC721/IERC721.sol@v3.3.0
 
-pragma solidity ^0.6.2;
+// SPDX-License-Identifier: MIT
 
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @dev Required interface of an ERC721 compliant contract.
  */
 interface IERC721 is IERC165 {
     /**
-     * @dev Emitted when `tokenId` token is transfered from `from` to `to`.
+     * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
      */
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
@@ -594,11 +622,12 @@ interface IERC721 is IERC165 {
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol
 
+// File @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol@v3.3.0
 
-pragma solidity ^0.6.2;
+// SPDX-License-Identifier: MIT
 
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional metadata extension
@@ -622,11 +651,12 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol
 
+// File @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol@v3.3.0
 
-pragma solidity ^0.6.2;
+// SPDX-License-Identifier: MIT
 
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional enumeration extension
@@ -652,10 +682,12 @@ interface IERC721Enumerable is IERC721 {
     function tokenByIndex(uint256 index) external view returns (uint256);
 }
 
-// File: @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol
 
+// File @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @title ERC721 token receiver interface
@@ -672,15 +704,15 @@ interface IERC721Receiver {
      *
      * The selector can be obtained in Solidity with `IERC721.onERC721Received.selector`.
      */
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
-    external returns (bytes4);
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
 }
 
-// File: @openzeppelin/contracts/introspection/ERC165.sol
 
+// File @openzeppelin/contracts/introspection/ERC165.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
 
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Implementation of the {IERC165} interface.
@@ -688,7 +720,7 @@ pragma solidity ^0.6.0;
  * Contracts may inherit from this and call {_registerInterface} to declare
  * their support of an interface.
  */
-contract ERC165 is IERC165 {
+abstract contract ERC165 is IERC165 {
     /*
      * bytes4(keccak256('supportsInterface(bytes4)')) == 0x01ffc9a7
      */
@@ -731,10 +763,12 @@ contract ERC165 is IERC165 {
     }
 }
 
-// File: @openzeppelin/contracts/utils/Address.sol
 
+// File @openzeppelin/contracts/utils/Address.sol@v3.3.0
 
-pragma solidity ^0.6.2;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.2 <0.8.0;
 
 /**
  * @dev Collection of functions related to the address type
@@ -758,14 +792,14 @@ library Address {
      * ====
      */
     function isContract(address account) internal view returns (bool) {
-        // According to EIP-1052, 0x0 is the value returned for not-yet created accounts
-        // and 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 is returned
-        // for accounts without code, i.e. `keccak256('')`
-        bytes32 codehash;
-        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // This method relies on extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
         // solhint-disable-next-line no-inline-assembly
-        assembly { codehash := extcodehash(account) }
-        return (codehash != accountHash && codehash != 0x0);
+        assembly { size := extcodesize(account) }
+        return size > 0;
     }
 
     /**
@@ -821,7 +855,7 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        return _functionCallWithValue(target, data, 0, errorMessage);
+        return functionCallWithValue(target, data, 0, errorMessage);
     }
 
     /**
@@ -847,14 +881,38 @@ library Address {
      */
     function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
         require(address(this).balance >= value, "Address: insufficient balance for call");
-        return _functionCallWithValue(target, data, value, errorMessage);
-    }
-
-    function _functionCallWithValue(address target, bytes memory data, uint256 weiValue, string memory errorMessage) private returns (bytes memory) {
         require(isContract(target), "Address: call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{ value: weiValue }(data);
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a static call.
+     *
+     * _Available since v3.3._
+     */
+    function functionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
+        require(isContract(target), "Address: static call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
+    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
         } else {
@@ -874,10 +932,12 @@ library Address {
     }
 }
 
-// File: @openzeppelin/contracts/utils/EnumerableSet.sol
 
+// File @openzeppelin/contracts/utils/EnumerableSet.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Library for managing
@@ -900,8 +960,8 @@ pragma solidity ^0.6.0;
  * }
  * ```
  *
- * As of v3.0.0, only sets of type `address` (`AddressSet`) and `uint256`
- * (`UintSet`) are supported.
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
  */
 library EnumerableSet {
     // To implement this library for multiple types with as little code
@@ -1007,6 +1067,60 @@ library EnumerableSet {
     function _at(Set storage set, uint256 index) private view returns (bytes32) {
         require(set._values.length > index, "EnumerableSet: index out of bounds");
         return set._values[index];
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+   /**
+    * @dev Returns the value stored at position `index` in the set. O(1).
+    *
+    * Note that there are no guarantees on the ordering of values inside the
+    * array, and it may change when more values are added or removed.
+    *
+    * Requirements:
+    *
+    * - `index` must be strictly less than {length}.
+    */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
     }
 
     // AddressSet
@@ -1119,10 +1233,12 @@ library EnumerableSet {
     }
 }
 
-// File: @openzeppelin/contracts/utils/EnumerableMap.sol
 
+// File @openzeppelin/contracts/utils/EnumerableMap.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev Library for managing an enumerable variant of Solidity's
@@ -1358,10 +1474,12 @@ library EnumerableMap {
     }
 }
 
-// File: @openzeppelin/contracts/utils/Strings.sol
 
+// File @openzeppelin/contracts/utils/Strings.sol@v3.3.0
 
-pragma solidity ^0.6.0;
+// SPDX-License-Identifier: MIT
+
+pragma solidity >=0.6.0 <0.8.0;
 
 /**
  * @dev String operations.
@@ -1394,12 +1512,12 @@ library Strings {
     }
 }
 
-// File: contracts/tokens/ERC721Initializable.sol
 
+// File contracts/tokens/ERC721Initializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
-
-
 
 
 
@@ -1871,8 +1989,10 @@ contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, 
     function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal virtual { }
 }
 
-// File: contracts/libs/String.sol
 
+// File contracts/libs/String.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 
@@ -1943,14 +2063,37 @@ library String {
         return string(s);
     }
 
-    function char(byte b) private pure returns (byte c) {
+    function char(byte b) internal pure returns (byte c) {
         if (uint8(b) < 10) return byte(uint8(b) + 0x30);
         else return byte(uint8(b) + 0x57);
     }
+
+    /**
+     * @dev Lowercase a string.
+     * @param _str - to be converted to string.
+     * @return string
+     */
+    function toLowerCase(string memory _str) internal pure returns (string memory) {
+        bytes memory bStr = bytes(_str);
+        bytes memory bLower = new bytes(bStr.length);
+
+        for (uint i = 0; i < bStr.length; i++) {
+            // Uppercase character...
+            if ((bStr[i] >= 0x41) && (bStr[i] <= 0x5A)) {
+                // So we add 0x20 to make it lowercase
+                bLower[i] = bytes1(uint8(bStr[i]) + 0x20);
+            } else {
+                bLower[i] = bStr[i];
+            }
+        }
+        return string(bLower);
+    }
 }
 
-// File: contracts/collections/v2/ERC721BaseCollectionV2.sol
 
+// File contracts/collections/v2/ERC721BaseCollectionV2.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
@@ -1959,7 +2102,7 @@ pragma experimental ABIEncoderV2;
 
 
 
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
+abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
@@ -1967,29 +2110,28 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
-    uint40 constant public MAX_ITEM_ID = uint40(-1);
-    uint216 constant public MAX_ISSUED_ID = uint216(-1);
-
+    uint40 constant public MAX_ITEM_ID = type(uint40).max;
+    uint216 constant public MAX_ISSUED_ID = type(uint216).max;
     bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
-    enum RARITY {
-        common,
-        uncommon,
-        rare,
-        epic,
-        legendary,
-        mythic,
-        unique
+    struct ItemParam {
+        string rarity;
+        uint256 price;
+        address beneficiary;
+        string metadata;
     }
 
     struct Item {
-        RARITY rarity;
+        string rarity;
+        uint256 maxSupply; // max supply
         uint256 totalSupply; // current supply
         uint256 price;
         address beneficiary;
         string metadata;
         bytes32 contentHash; // used for safe purposes
     }
+
+    IRarities public rarities;
 
     // Roles
     address public creator;
@@ -2008,7 +2150,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     bool public isApproved;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
-
     event SetGlobalMinter(address indexed _minter, bool _value);
     event SetGlobalManager(address indexed _manager, bool _value);
     event SetItemMinter(uint256 indexed _itemId, address indexed _minter, uint256 _value);
@@ -2027,7 +2168,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
    /*
     * Init functions
     */
-    constructor() internal {}
 
     /**
      * @notice Create the contract
@@ -2037,6 +2177,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _creator - creator address
      * @param _shouldComplete - Whether the collection should be completed by the end of this call
      * @param _isApproved - Whether the collection should be approved by the end of this call
+     * @param _rarities - rarities address
      * @param _items - items to be added
      */
     function initialize(
@@ -2046,12 +2187,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         address _creator,
         bool _shouldComplete,
         bool _isApproved,
-        Item[] memory _items
+        IRarities _rarities,
+        ItemParam[] memory _items
     ) public virtual {
-        require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
+        require(!isInitialized, "initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
-        require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
+        require(_creator != address(0), "initialize: INVALID_CREATOR");
+        require(address(_rarities) != address(0), "initialize: INVALID_RARITIES");
+
         // Ownable init
         _initOwnable();
         // EIP712 init
@@ -2062,8 +2206,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         setBaseURI(_baseURI);
         // Creator init
         creator = _creator;
+        // Rarities init
+        rarities = _rarities;
         // Items init
-        _initializeItems(_items);
+        _addItems(_items);
 
         if (_shouldComplete) {
             _completeCollection();
@@ -2072,7 +2218,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         isApproved = _isApproved;
 
         isEditable = true;
-        createdAt = now;
+        createdAt = block.timestamp;
     }
 
     /*
@@ -2091,7 +2237,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     modifier onlyCreator() {
         require(
             _isCreator(),
-            "BCV2#onlyCreator: CALLER_IS_NOT_CREATOR"
+            "onlyCreator: CALLER_IS_NOT_CREATOR"
         );
         _;
     }
@@ -2108,14 +2254,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setMinters(address[] calldata _minters, bool[] calldata _values) external onlyCreator {
         require(
             _minters.length == _values.length,
-            "BCV2#setMinters: LENGTH_MISMATCH"
+            "setMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             bool value = _values[i];
-            require(minter != address(0), "BCV2#setMinters: INVALID_MINTER_ADDRESS");
-            require(globalMinters[minter] != value, "BCV2#setMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "setMinters: INVALID_MINTER_ADDRESS");
+            require(globalMinters[minter] != value, "setMinters: VALUE_IS_THE_SAME");
 
             globalMinters[minter] = value;
             emit SetGlobalMinter(minter, value);
@@ -2135,16 +2281,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
-            "BCV2#setItemsMinters: LENGTH_MISMATCH"
+            "setItemsMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             uint256 itemId = _itemIds[i];
             uint256 value = _values[i];
-            require(minter != address(0), "BCV2#setItemsMinters: INVALID_MINTER_ADDRESS");
-            require(itemId < items.length, "BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
-            require(itemMinters[itemId][minter] != value, "BCV2#setItemsMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "setItemsMinters: INVALID_MINTER_ADDRESS");
+            require(itemId < items.length, "setItemsMinters: ITEM_DOES_NOT_EXIST");
+            require(itemMinters[itemId][minter] != value, "setItemsMinters: VALUE_IS_THE_SAME");
 
             itemMinters[itemId][minter] = value;
             emit SetItemMinter(itemId, minter, value);
@@ -2159,14 +2305,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setManagers(address[] calldata _managers, bool[] calldata _values) external onlyCreator {
         require(
             _managers.length == _values.length,
-            "BCV2#setManagers: LENGTH_MISMATCH"
+            "setManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             bool value = _values[i];
-            require(manager != address(0), "BCV2#setManagers: INVALID_MANAGER_ADDRESS");
-            require(globalManagers[manager] != value, "BCV2#setManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "setManagers: INVALID_MANAGER_ADDRESS");
+            require(globalManagers[manager] != value, "setManagers: VALUE_IS_THE_SAME");
 
             globalManagers[manager] = value;
             emit SetGlobalManager(manager, value);
@@ -2186,16 +2332,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     ) external onlyCreator {
         require(
             _itemIds.length == _managers.length && _managers.length == _values.length,
-            "BCV2#setItemsManagers: LENGTH_MISMATCH"
+            "setItemsManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(manager != address(0), "BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
-            require(itemId < items.length, "BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
-            require(itemManagers[itemId][manager] != value, "BCV2#setItemsManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "setItemsManagers: INVALID_MANAGER_ADDRESS");
+            require(itemId < items.length, "setItemsManagers: ITEM_DOES_NOT_EXIST");
+            require(itemManagers[itemId][manager] != value, "setItemsManagers: VALUE_IS_THE_SAME");
 
             itemManagers[itemId][manager] = value;
             emit SetItemManager(itemId, manager, value);
@@ -2206,10 +2352,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Transfers ownership of the contract to a new account (`newOwner`).
      * @dev Forced owner to check against msg.sender always
      */
-    function transferCreatorship(address _newCreator) public virtual {
+    function transferCreatorship(address _newCreator) external virtual {
         address sender = _msgSender();
-        require(sender == owner() || sender == creator, "BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
-        require(_newCreator != address(0), "BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
+        require(sender == owner() || sender == creator, "transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        require(_newCreator != address(0), "transferCreatorship: INVALID_CREATOR_ADDRESS");
 
         emit CreatorshipTransferred(creator, _newCreator);
         creator = _newCreator;
@@ -2223,12 +2369,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Add items to the collection.
      * @param _items - items to add
      */
-    function addItems(Item[] memory _items) external virtual onlyCreator {
-        require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
+    function addItems(ItemParam[] memory _items) external virtual onlyCreator {
+        require(!isCompleted, "_addItem: COLLECTION_COMPLETED");
 
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
-        }
+        _addItems(_items);
     }
 
     /**
@@ -2245,7 +2389,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         // Check lengths
         require(
             _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "BCV2#editItemsSalesData: LENGTH_MISMATCH"
+            "editItemsSalesData: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -2254,11 +2398,11 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
 
-            require(_isCreator() || _isManager(itemId), "BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "editItemsSalesData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
+                "editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
             );
 
             Item storage item = items[itemId];
@@ -2278,10 +2422,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         uint256[] calldata _itemIds,
         string[] calldata _metadatas
     ) external virtual {
-        require(isEditable, "BCV2#editItemsMetadata: NOT_EDITABLE");
+        require(isEditable, "editItemsMetadata: NOT_EDITABLE");
         require(
             _itemIds.length == _metadatas.length,
-            "BCV2#editItemsMetadata: LENGTH_MISMATCH"
+            "editItemsMetadata: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -2289,9 +2433,9 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             uint256 itemId = _itemIds[i];
             string memory metadata = _metadatas[i];
 
-            require(_isCreator() || _isManager(itemId), "BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
-            require(bytes(metadata).length > 0, "BCV2#editItemsMetadata: EMPTY_METADATA");
+            require(_isCreator() || _isManager(itemId), "editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "editItemsMetadata: ITEM_DOES_NOT_EXIST");
+            require(bytes(metadata).length > 0, "editItemsMetadata: EMPTY_METADATA");
 
             Item storage item = items[itemId];
             item.metadata = metadata;
@@ -2300,19 +2444,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         }
     }
 
-     /**
-     * @notice Add items to the collection
-     * @dev Used only at initialize
-     * @param _items - items to add
-     */
-    function _initializeItems(Item[] memory _items) internal {
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
-        }
-    }
-
     /**
-     * @notice Add a new item to the collection.
+     * @notice Add new items to the collection.
      * @dev The item should follow:
      * rarity: Should be one of the RARITY enum
      * totalSupply: Should starts in 0
@@ -2320,45 +2453,49 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * price & beneficiary: Is the price is > 0, a beneficiary should be passed. If not, price and
      *   beneficiary should be empty.
      * contentHash: Should be the an empty hash
-     * @param _item - item to add
+     * @param _items - items to add
      */
-    function _addItem(Item memory _item) internal {
-        uint256 rarity = getRarityValue(_item.rarity);
-        require(
-           rarity > 0 && rarity <= MAX_ISSUED_ID,
-            "BCV2#_addItem: INVALID_RARITY"
-        );
-        require(
-            _item.totalSupply == 0,
-            "BCV2#_addItem: INVALID_TOTAL_SUPPLY"
-        );
-        require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
-        require(
-            _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
-        );
-        require(_item.contentHash == EMPTY_CONTENT, "BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
+    function _addItems(ItemParam[] memory _items) internal {
+        IRarities.Rarity memory rarity;
+        bytes32 lastRarityKey;
 
-        uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
+        for (uint256 i = 0; i < _items.length; i++) {
+            ItemParam memory _item = _items[i];
+            bytes32 rarityKey = keccak256(bytes(_item.rarity));
 
-        items.push(_item);
+            if (lastRarityKey != rarityKey) {
+                rarity = rarities.getRarityByName(_item.rarity);
+                lastRarityKey = rarityKey;
 
-        emit AddItem(newItemId, _item);
-    }
+                require(
+                    rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
+                    "_addItem: INVALID_RARITY"
+                );
+            }
 
+            require(bytes(_item.metadata).length > 0, "_addItem: EMPTY_METADATA");
+            require(
+                _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
+                "_addItem: INVALID_PRICE_AND_BENEFICIARY"
+            );
 
-    /**
-     * @notice Issue a new token of the specified item.
-     * @dev that will throw if the item has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _itemId - item id
-     */
-    function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
+            uint256 newItemId = items.length;
+            require(newItemId < MAX_ITEM_ID, "_addItem: MAX_ITEM_ID_REACHED");
 
-        address sender = _msgSender();
-        _issueToken(_beneficiary, _itemId, sender);
+            Item memory item = Item({
+                rarity: rarity.name,
+                maxSupply: rarity.maxSupply,
+                totalSupply: 0,
+                price: _item.price,
+                beneficiary: _item.beneficiary,
+                metadata: _item.metadata,
+                contentHash: EMPTY_CONTENT
+            });
+
+            items.push(item);
+
+            emit AddItem(newItemId, item);
+        }
     }
 
     /**
@@ -2368,8 +2505,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
-        require(isMintingAllowed(), "BCV2#issueTokens: MINT_NOT_ALLOWED");
-        require(_beneficiaries.length == _itemIds.length, "BCV2#issueTokens: LENGTH_MISMATCH");
+        require(isMintingAllowed(), "issueTokens: MINT_NOT_ALLOWED");
+        require(_beneficiaries.length == _itemIds.length, "issueTokens: LENGTH_MISMATCH");
 
         address sender = _msgSender();
         for (uint256 i = 0; i < _itemIds.length; i++) {
@@ -2391,21 +2528,21 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         // Check sender role
         require(
             canMint,
-            "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
+            "_issueToken: CALLER_CAN_NOT_MINT"
         );
 
-        if (allowance > 0 && allowance != uint256(-1)) {
+        if (allowance > 0 && allowance != type(uint256).max) {
             itemMinters[_itemId][_sender] = allowance - 1;
         }
 
         // Check item id
-        require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
+        require(_itemId < items.length, "_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "BCV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= item.maxSupply, "_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -2436,12 +2573,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         // Check lengths
         require(
             _itemIds.length == _contentHashes.length && _contentHashes.length == _metadatas.length,
-            "BCV2#rescueItems: LENGTH_MISMATCH"
+            "rescueItems: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             uint256 itemId = _itemIds[i];
-            require(itemId < items.length, "BCV2#rescueItems: ITEM_DOES_NOT_EXIST");
+            require(itemId < items.length, "rescueItems: ITEM_DOES_NOT_EXIST");
 
             Item storage item = items[itemId];
 
@@ -2466,56 +2603,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         return items.length;
     }
 
-    /**
-     * @notice Returns a rarity's maximum supply
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Max supply of the rarity given
-     */
-    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
-        if (_rarity == RARITY.common) {
-            return 100000;
-        } else  if (_rarity == RARITY.uncommon) {
-            return 10000;
-        } else  if (_rarity == RARITY.rare) {
-            return 5000;
-        } else  if (_rarity == RARITY.epic) {
-            return 1000;
-        } else  if (_rarity == RARITY.legendary) {
-            return 100;
-        } else  if (_rarity == RARITY.mythic) {
-            return 10;
-        } else  if (_rarity == RARITY.unique) {
-            return 1;
-        }
-
-        revert("#BCV2#getRarityValue: INVALID_RARITY");
-    }
-
-    /**
-     * @notice Returns a rarity's name
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Name of the rarity given
-     */
-    function getRarityName(RARITY _rarity) public pure returns (string memory) {
-        if (_rarity == RARITY.common) {
-            return "common";
-        } else  if (_rarity == RARITY.uncommon) {
-            return "uncommon";
-        } else  if (_rarity == RARITY.rare) {
-            return "rare";
-        } else  if (_rarity == RARITY.epic) {
-            return "epic";
-        } else  if (_rarity == RARITY.legendary) {
-            return "legendary";
-        } else  if (_rarity == RARITY.mythic) {
-            return "mythic";
-        } else  if (_rarity == RARITY.unique) {
-            return "unique";
-        }
-
-        revert("#BCV2#getRarityName: INVALID_RARITY");
-    }
-
     /*
     * Status functions
     */
@@ -2525,10 +2612,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
-        require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
-
-        return true;
+        return isCompleted && isApproved;
     }
 
     /**
@@ -2537,7 +2621,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * The issuance is still allowed.
      */
     function completeCollection() external onlyCreator {
-        require(!isCompleted, "BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+        require(!isCompleted, "completeCollection: COLLECTION_ALREADY_COMPLETED");
 
         _completeCollection();
     }
@@ -2556,7 +2640,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Approve a collection
      */
     function setApproved(bool _value) external virtual onlyOwner {
-        require(isApproved != _value, "BCV2#setApproved: VALUE_IS_THE_SAME");
+        require(isApproved != _value, "setApproved: VALUE_IS_THE_SAME");
 
         emit SetApproved(isApproved, _value);
 
@@ -2570,7 +2654,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _value - Value to set
      */
     function setEditable(bool _value) external onlyOwner {
-        require(isEditable != _value, "BCV2#setEditable: VALUE_IS_THE_SAME");
+        require(isEditable != _value, "setEditable: VALUE_IS_THE_SAME");
 
         emit SetEditable(isEditable, _value);
 
@@ -2597,7 +2681,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        require(_exists(_tokenId), "BCV2#tokenURI: INVALID_TOKEN_ID");
+        require(_exists(_tokenId), "tokenURI: INVALID_TOKEN_ID");
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
 
@@ -2626,25 +2710,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _to address to receive the ownership of the given token ID
      * @param _tokenIds uint256 ID of the token to be transferred
      */
-    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) public {
+    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             transferFrom(_from, _to, _tokenIds[i]);
         }
-    }
-
-    /**
-     * @notice Safely transfers the ownership of given token IDs to another address
-     * If the target address is a contract, it must implement {IERC721Receiver-onERC721Received},
-     * which is called upon a safe transfer, and return the magic value
-     * `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`; otherwise,
-     * the transfer is reverted.
-     * Requires the msg.sender to be the owner, approved, or operator
-     * @param _from - current owner of the token
-     * @param _to - address to receive the ownership of the given token ID
-     * @param _tokenIds - uint256 IDs of the tokens to be transferred
-     */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds) public {
-        safeBatchTransferFrom(_from, _to, _tokenIds, "");
     }
 
     /**
@@ -2677,8 +2746,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return id uint256 of the encoded id
      */
     function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
-        require(_itemId <= MAX_ITEM_ID, "BCV2#encodeTokenId: INVALID_ITEM_ID");
-        require(_issuedId <= MAX_ISSUED_ID, "BCV2#encodeTokenId: INVALID_ISSUED_ID");
+        require(_itemId <= MAX_ITEM_ID, "encodeTokenId: INVALID_ITEM_ID");
+        require(_issuedId <= MAX_ISSUED_ID, "encodeTokenId: INVALID_ISSUED_ID");
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {
@@ -2703,12 +2772,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     }
 }
 
-// File: contracts/collections/v2/ERC721CollectionV2.sol
 
+// File contracts/collections/v2/ERC721CollectionV2.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.12;
-
-
+pragma experimental ABIEncoderV2;
 
 contract ERC721CollectionV2 is ERC721BaseCollectionV2 {
     constructor() public {}

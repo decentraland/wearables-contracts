@@ -373,7 +373,9 @@ describe('Factory', function () {
 
     it('reverts for an invalid option', async function () {
       const wearablesCount = await erc721Contract.wearablesCount()
-      await assertRevert(factoryContract.balanceOf(wearablesCount.toNumber( + 1)))
+      await assertRevert(
+        factoryContract.balanceOf(wearablesCount.toNumber() + 1)
+      )
     })
   })
 
