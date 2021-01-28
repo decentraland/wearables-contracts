@@ -82,6 +82,7 @@ module.exports = {
     deploy: getDeployParams()
   },
   gasReporter: {
+    chainId: 1,
     enabled: !!process.env.REPORT_GAS === true,
     currency: 'USD',
     gasPrice: 21,

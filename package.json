@@ -55,7 +55,7 @@
     "hardhat-gas-reporter": "^1.0.4",
     "husky": "^4.2.5",
     "mocha": "^6.0.2",
-    "openzeppelin-solidity": "github:OpenZeppelin/openzeppelin-contracts#solc-0.8",
+    "openzeppelin-solidity": "github:OpenZeppelin/openzeppelin-contracts#0db76e98f90550f1ebbb3dea71c7d12d5c533b5c",
     "prettier": "^2.0.2",
     "semantic-release": "^17.0.7",
     "solium": "^1.2.5",
