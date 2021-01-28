@@ -17,8 +17,8 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
-    uint40 constant public MAX_ITEM_ID = uint40(-1);
-    uint216 constant public MAX_ISSUED_ID = uint216(-1);
+    uint40 constant public MAX_ITEM_ID = type(uint40).max;
+    uint216 constant public MAX_ISSUED_ID = type(uint216).max;
     bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
     struct ItemParam {
@@ -57,7 +57,6 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     bool public isApproved;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
-
     event SetGlobalMinter(address indexed _minter, bool _value);
     event SetGlobalManager(address indexed _manager, bool _value);
     event SetItemMinter(uint256 indexed _itemId, address indexed _minter, uint256 _value);
@@ -439,7 +438,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             "_issueToken: CALLER_CAN_NOT_MINT"
         );
 
-        if (allowance > 0 && allowance != uint256(-1)) {
+        if (allowance > 0 && allowance != type(uint256).max) {
             itemMinters[_itemId][_sender] = allowance - 1;
         }
 
