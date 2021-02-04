@@ -41,10 +41,11 @@ struct ItemToBuy {
     IERC721CollectionV2 collection;
     uint256[] ids;
     uint256[] prices;
+    address[] beneficiaries;
 }
 ```
 
-Where the _`collection`_ is the address of the collection, _`ids`_ is the collection's item ids, and _`prices`_ are the prices in MANA that the user will pay for each item to prevent a price-change front-running.
+Where the _`collection`_ is the address of the collection, _`ids`_ is the collection's item ids, _`prices`_ are the prices in MANA that the user will pay for each item to prevent a price-change front-running, and `beneficiaries` are the future owners of the tokens.
 
 This can be used by:
 
@@ -56,9 +57,9 @@ await storeContract.buy(
       collection.address,
       [itemId_0, itemId_0, itemId_1], // ids
       [itemId_0_price, itemId_0_price, itemId_1_price], // prices
+      [beneficiary_1, beneficiary_1, beneficiary_1], // beneficiaries
     ],
   ],
-  beneficiary, // items beneficiary
   account // sender
 )
 
@@ -69,14 +70,15 @@ await storeContract.buy(
       collection.address,
       [itemId_0, itemId_0, itemId_1], // ids
       [itemId_0_price, itemId_0_price, itemId_1_price], // prices
+      [beneficiary_1, beneficiary_1, beneficiary_2], // beneficiaries
     ],
     [
       anotherCollection.address,
       [itemId_0, itemId_1, itemId_2], // ids
       [itemId_0_price, itemId_1_price, itemId_2_price], // prices
+      [beneficiary_2, beneficiary_2, beneficiary_3], // beneficiaries
     ],
   ],
-  beneficiary, // items beneficiary
   account // sender
 )
 ```
@@ -100,7 +102,7 @@ The owner must be a multisig or a DAO which decides crucial things related to th
 Emitted on items primary sales.
 
 ```solidity
-Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
+Bought(ItemToBuy[] _itemsToBuy);
 ```
 
 **SetFee**
@@ -130,7 +132,7 @@ _...along with all the Ownable events._
 Buy items.
 
 ```solidity
-function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external
+function buy(ItemToBuy[] memory _itemsToBuy) external
 ```
 
 ### Roles

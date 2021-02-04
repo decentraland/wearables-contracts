@@ -65,8 +65,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     event AddItem(uint256 indexed _itemId, Item _item);
     event RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata);
     event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId);
-    event UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
-    event UpdateItemMetadata(uint256 indexed _itemId, string _metadata);
+    event UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
     event SetApproved(bool _previousValue, bool _newValue);
     event SetEditable(bool _previousValue, bool _newValue);
@@ -288,15 +287,18 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @param _prices - new prices
      * @param _beneficiaries - new beneficiaries
      */
-    function editItemsSalesData(
+    function editItemsData(
         uint256[] calldata _itemIds,
         uint256[] calldata _prices,
-        address[] calldata _beneficiaries
+        address[] calldata _beneficiaries,
+        string[] calldata _metadatas
     ) external virtual {
         // Check lengths
         require(
-            _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "editItemsSalesData: LENGTH_MISMATCH"
+            _itemIds.length == _prices.length &&
+            _prices.length == _beneficiaries.length &&
+            _beneficiaries.length == _metadatas.length,
+            "editItemsData: LENGTH_MISMATCH"
         );
 
         // Check item id
@@ -304,50 +306,22 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             uint256 itemId = _itemIds[i];
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
+            string memory metadata = _metadatas[i];
 
-            require(_isCreator() || _isManager(itemId), "editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "editItemsSalesData: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "editItemsData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
+                "editItemsData: INVALID_PRICE_AND_BENEFICIARY"
             );
+            require(bytes(metadata).length > 0, "editItemsData: EMPTY_METADATA");
 
             Item storage item = items[itemId];
             item.price = price;
             item.beneficiary = beneficiary;
-
-            emit UpdateItemSalesData(itemId, price, beneficiary);
-        }
-    }
-
-    /**
-     * @notice Edit the metadata of multiple items
-     * @param _itemIds - items ids to edit
-     * @param _metadatas - new metadatas
-     */
-    function editItemsMetadata(
-        uint256[] calldata _itemIds,
-        string[] calldata _metadatas
-    ) external virtual {
-        require(isEditable, "editItemsMetadata: NOT_EDITABLE");
-        require(
-            _itemIds.length == _metadatas.length,
-            "editItemsMetadata: LENGTH_MISMATCH"
-        );
-
-        // Check item id
-        for (uint256 i = 0; i < _itemIds.length; i++) {
-            uint256 itemId = _itemIds[i];
-            string memory metadata = _metadatas[i];
-
-            require(_isCreator() || _isManager(itemId), "editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "editItemsMetadata: ITEM_DOES_NOT_EXIST");
-            require(bytes(metadata).length > 0, "editItemsMetadata: EMPTY_METADATA");
-
-            Item storage item = items[itemId];
             item.metadata = metadata;
 
-            emit UpdateItemMetadata(itemId, metadata);
+            emit UpdateItemData(itemId, price, beneficiary, metadata);
         }
     }
 

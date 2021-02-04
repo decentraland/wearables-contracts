@@ -68,6 +68,9 @@ export function doTest(
     let collectionContract
     let raritiesContractAddress
 
+    // contract variable
+    let chainId
+
     beforeEach(async function () {
       // Create Listing environment
       accounts = await web3.eth.getAccounts()
@@ -114,6 +117,8 @@ export function doTest(
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, anotherHolder, 1, fromCreator)
+
+      chainId = await web3.eth.net.getId()
     })
 
     this.afterEach(async () => {
@@ -2310,9 +2315,11 @@ export function doTest(
       })
     })
 
-    describe('editItemsSalesData', function () {
+    describe('editItemsData', function () {
       const itemPrice0 = web3.utils.toWei('10')
       const itemPrice1 = web3.utils.toWei('100')
+      const metadata0 = 'metadata:0'
+      const metadata1 = 'metadata:1'
 
       let contract
       let itemId0
@@ -2326,19 +2333,9 @@ export function doTest(
         itemBeneficiary0 = beneficiary
         itemBeneficiary1 = beneficiary
 
-        item0 = [
-          RARITIES.common.name,
-          itemPrice0,
-          itemBeneficiary0,
-          '1:crocodile_mask:hat:female,male',
-        ]
+        item0 = [RARITIES.common.name, itemPrice0, itemBeneficiary0, metadata0]
 
-        item1 = [
-          RARITIES.common.name,
-          itemPrice1,
-          itemBeneficiary1,
-          '1:turtle_mask:hat:female,male',
-        ]
+        item1 = [RARITIES.common.name, itemPrice1, itemBeneficiary1, metadata1]
 
         contract = await createContract(
           creator,
@@ -2354,7 +2351,7 @@ export function doTest(
         itemId1 = itemLength.sub(web3.utils.toBN(1))
       })
 
-      it('should edit an item sales data', async function () {
+      it('should edit an item data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
@@ -2376,18 +2373,21 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
-        const { logs } = await contract.editItemsSalesData(
+        const newMetadata0 = 'new:metadata:0'
+        const { logs } = await contract.editItemsData(
           [itemId0],
           [newItemPrice0],
           [newItemBeneficiary0],
+          [newMetadata0],
           fromCreator
         )
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[0].event).to.be.equal('UpdateItemData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.equal(newMetadata0)
 
         item = await contract.items(itemId0)
         expect([
@@ -2404,12 +2404,12 @@ export function doTest(
           '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[3],
+          newMetadata0,
           EMPTY_HASH,
         ])
       })
 
-      it('should edit an item sales data :: Relayed EIP721', async function () {
+      it('should edit an item data :: Relayed EIP721', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
@@ -2431,6 +2431,7 @@ export function doTest(
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
+        const newMetadata0 = 'new:metadata:0'
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -2450,13 +2451,23 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [newItemPrice0], [newItemBeneficiary0]]
+          [
+            [itemId0.toString()],
+            [newItemPrice0],
+            [newItemBeneficiary0],
+            [newMetadata0],
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -2473,10 +2484,11 @@ export function doTest(
         expect(logs[0].args.relayerAddress).to.be.equal(relayer)
         expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[1].event).to.be.equal('UpdateItemData')
         expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[1].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[1].args._metadata).to.be.equal(newMetadata0)
 
         item = await contract.items(itemId0)
         expect([
@@ -2493,12 +2505,12 @@ export function doTest(
           '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[3],
+          newMetadata0,
           EMPTY_HASH,
         ])
       })
 
-      it('should edit items sales data', async function () {
+      it('should edit items data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
@@ -2541,24 +2553,29 @@ export function doTest(
         const newItemBeneficiary0 = holder
         const newItemPrice1 = web3.utils.toWei('1')
         const newItemBeneficiary1 = anotherHolder
+        const newMetadata0 = 'new:metadata:0'
+        const newMetadata1 = 'new:metadata:1'
 
-        const { logs } = await contract.editItemsSalesData(
+        const { logs } = await contract.editItemsData(
           [itemId0, itemId1],
           [newItemPrice0, newItemPrice1],
           [newItemBeneficiary0, newItemBeneficiary1],
+          [newMetadata0, newMetadata1],
           fromCreator
         )
 
         expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[0].event).to.be.equal('UpdateItemData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
 
-        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[1].event).to.be.equal('UpdateItemData')
         expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
         expect(logs[1].args._price).to.be.eq.BN(newItemPrice1)
         expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary1)
+        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata1)
 
         item = await contract.items(itemId0)
         expect([
@@ -2575,7 +2592,7 @@ export function doTest(
           '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[3],
+          newMetadata0,
           EMPTY_HASH,
         ])
 
@@ -2594,60 +2611,7 @@ export function doTest(
           '0',
           newItemPrice1.toString(),
           newItemBeneficiary1,
-          item1[3],
-          EMPTY_HASH,
-        ])
-      })
-
-      it('should edit an item with price and beneficiary', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          item0[3],
-          EMPTY_HASH,
-        ])
-
-        const { logs } = await contract.editItemsSalesData(
-          [itemId0],
-          [0],
-          [ZERO_ADDRESS],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
-        expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          '0',
-          ZERO_ADDRESS,
-          item0[3],
+          newMetadata1,
           EMPTY_HASH,
         ])
       })
@@ -2672,20 +2636,77 @@ export function doTest(
           EMPTY_HASH,
         ])
 
-        const newItemPrice0 = web3.utils.toWei('1')
-        const newItemBeneficiary0 = anotherHolder
-        const { logs } = await contract.editItemsSalesData(
+        const { logs } = await contract.editItemsData(
           [itemId0],
-          [newItemPrice0],
-          [newItemBeneficiary0],
+          [0],
+          [ZERO_ADDRESS],
+          [item0[3]],
           fromCreator
         )
 
         expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[0].event).to.be.equal('UpdateItemData')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
+        expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
+        expect(logs[0].args._metadata).to.be.equal(item0[3])
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          '0',
+          ZERO_ADDRESS,
+          item0[3],
+          EMPTY_HASH,
+        ])
+      })
+
+      it('should edit an item with price and beneficiary', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
+
+        const newItemPrice0 = web3.utils.toWei('1')
+        const newItemBeneficiary0 = anotherHolder
+        const { logs } = await contract.editItemsData(
+          [itemId0],
+          [newItemPrice0],
+          [newItemBeneficiary0],
+          [item0[3]],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('UpdateItemData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.equal(item0[3])
 
         item = await contract.items(itemId0)
         expect([
@@ -2707,35 +2728,38 @@ export function doTest(
         ])
       })
 
-      it('should allow managers to edit items sales data', async function () {
+      it('should allow managers to edit items data', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromManager
           ),
-          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.editItemsSalesData(
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromManager
         )
 
         await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromManager
           ),
-          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -2746,15 +2770,16 @@ export function doTest(
           fromCreator
         )
 
-        await contract.editItemsSalesData(
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromManager
         )
       })
 
-      it('should allow managers to edit items sales data :: Relayed EIP721', async function () {
+      it('should allow managers to edit items data :: Relayed EIP721', async function () {
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
             inputs: [
@@ -2773,13 +2798,18 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0], [metadata0]]
         )
 
         await assertRevert(
@@ -2808,83 +2838,101 @@ export function doTest(
         await sendMetaTx(contract, functionSignature, manager, relayer)
       })
 
-      it('should allow the creator to edit items sales data', async function () {
-        await contract.editItemsSalesData(
+      it('should allow the creator to edit items data', async function () {
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromCreator
         )
       })
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0, itemId1],
             [itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0, itemId1],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
+        )
+
+        await assertRevert(
+          contract.editItemsData(
+            [itemId0, itemId1],
+            [itemPrice0, itemPrice1],
+            [itemBeneficiary0, itemBeneficiary1],
+            [metadata0],
+            fromCreator
+          ),
+          'editItemsData: LENGTH_MISMATCH'
         )
       })
 
-      it('reverts when trying to edit sales data by not the creator or manager', async function () {
+      it('reverts when trying to edit data by not the creator or manager', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromDeployer
           ),
-          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromMinter
           ),
-          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromHacker
           ),
-          'editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
       })
 
-      it('reverts when trying to edit sales data by not the creator or manager :: Relayed EIP721', async function () {
+      it('reverts when trying to edit data by not the creator or manager :: Relayed EIP721', async function () {
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
             inputs: [
@@ -2903,13 +2951,18 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0], [metadata0]]
         )
 
         await contract.setMinters([minter], [true], fromCreator)
@@ -2931,496 +2984,56 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to edit an invalid item sales data', async function () {
+      it('reverts when trying to edit an invalid item data', async function () {
         const itemLength = await contract.itemsCount()
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemLength],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromCreator
           ),
-          'editItemsSalesData: ITEM_DOES_NOT_EXIST'
+          'editItemsData: ITEM_DOES_NOT_EXIST'
         )
       })
 
-      it('reverts when trying to edit an item with price 0 and without beneficiary', async function () {
+      it('reverts when trying to edit an item with price and without beneficiary', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [ZERO_ADDRESS],
+            [metadata0],
             fromCreator
           ),
-          'editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'editItemsData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
       it('reverts when trying to edit an item without price but beneficiary', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [0],
             [itemBeneficiary0],
-            fromCreator
-          ),
-          'editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
-        )
-      })
-    })
-
-    describe('editItemsMetadata', function () {
-      const metadata0 = 'metadata:0'
-      const metadata1 = 'metadata:1'
-
-      let contract
-      let itemId0
-      let item0
-      let itemId1
-      let item1
-
-      this.beforeEach(async () => {
-        item0 = [
-          RARITIES.common.name,
-          web3.utils.toBN(10).toString(),
-          beneficiary,
-          metadata0,
-        ]
-
-        item1 = [
-          RARITIES.common.name,
-          web3.utils.toBN(10).toString(),
-          beneficiary,
-          metadata1,
-        ]
-
-        contract = await createContract(
-          creator,
-          false,
-          true,
-          true,
-          creationParams
-        )
-        await contract.addItems([item0, item1], fromCreator)
-
-        const itemLength = await contract.itemsCount()
-        itemId0 = itemLength.sub(web3.utils.toBN(2))
-        itemId1 = itemLength.sub(web3.utils.toBN(1))
-      })
-
-      it('should edit an item metadata', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          item0[3],
-          EMPTY_HASH,
-        ])
-
-        const newMetadata0 = 'new:metadata:0'
-        const { logs } = await contract.editItemsMetadata(
-          [itemId0],
-          [newMetadata0],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          newMetadata0,
-          EMPTY_HASH,
-        ])
-      })
-
-      it('should edit items metadata', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          item0[3],
-          EMPTY_HASH,
-        ])
-
-        item = await contract.items(itemId1)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item1[0],
-          RARITIES[item1[0]].value.toString(),
-          '0',
-          item1[1].toString(),
-          item1[2],
-          item1[3],
-          EMPTY_HASH,
-        ])
-
-        const newMetadata0 = 'new:metadata:0'
-        const newMetadata1 = 'new:metadata:1'
-
-        const { logs } = await contract.editItemsMetadata(
-          [itemId0, itemId1],
-          [newMetadata0, newMetadata1],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
-
-        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
-        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata1)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          newMetadata0,
-          EMPTY_HASH,
-        ])
-
-        item = await contract.items(itemId1)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item1[0],
-          RARITIES[item1[0]].value.toString(),
-          '0',
-          item1[1].toString(),
-          item1[2],
-          newMetadata1,
-          EMPTY_HASH,
-        ])
-      })
-
-      it('should edit an item metadata :: Relayed EIP721', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          item0[3],
-          EMPTY_HASH,
-        ])
-
-        const newMetadata0 = 'new:metadata:0'
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [newMetadata0]]
-        )
-
-        const { logs } = await sendMetaTx(
-          contract,
-          functionSignature,
-          creator,
-          relayer
-        )
-
-        expect(logs.length).to.be.equal(2)
-
-        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
-        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
-
-        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.maxSupply.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          RARITIES[item0[0]].value.toString(),
-          '0',
-          item0[1].toString(),
-          item0[2],
-          newMetadata0,
-          EMPTY_HASH,
-        ])
-      })
-
-      it('should allow managers to edit items metadata', async function () {
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        // Set global Manager
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
-
-        await contract.setManagers([manager], [false], fromCreator)
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        // Set item Manager
-        await contract.setItemsManagers(
-          [itemId0],
-          [manager],
-          [true],
-          fromCreator
-        )
-
-        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
-      })
-
-      it('should allow managers to edit items metadata :: Relayed EIP721', async function () {
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [metadata0]]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set global Manager
-        await contract.setManagers([manager], [true], fromCreator)
-        await sendMetaTx(contract, functionSignature, manager, relayer)
-
-        await contract.setManagers([manager], [false], fromCreator)
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set item Manager
-        await contract.setItemsManagers(
-          [itemId0],
-          [manager],
-          [true],
-          fromCreator
-        )
-
-        await sendMetaTx(contract, functionSignature, manager, relayer)
-      })
-
-      it('should allow the creator to edit items', async function () {
-        await contract.editItemsMetadata([itemId0], [metadata0], fromCreator)
-      })
-
-      it('reverts when passing different length parameters', async function () {
-        await assertRevert(
-          contract.editItemsMetadata(
-            [itemId0],
-            [metadata0, metadata1],
-            fromCreator
-          ),
-          'editItemsMetadata: LENGTH_MISMATCH'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata(
-            [itemId0, itemId1],
             [metadata0],
             fromCreator
           ),
-          'editItemsMetadata: LENGTH_MISMATCH'
+          'editItemsData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
-      it('reverts when trying to edit metadata by not the creator or manager', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [1], fromCreator)
-
+      it('reverts when trying to edit an item without metadata', async function () {
         await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
-          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromMinter),
-          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromHacker),
-          'editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-      })
-
-      it('reverts when trying to edit metadata by not the creator or manager :: Relayed EIP721', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [1], fromCreator)
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [metadata0]]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, hacker, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-      })
-
-      it('reverts when trying to edit an invalid item metadata', async function () {
-        const itemLength = await contract.itemsCount()
-        await assertRevert(
-          contract.editItemsMetadata([itemLength], [metadata0], fromCreator),
-          'editItemsMetadata: ITEM_DOES_NOT_EXIST'
-        )
-      })
-
-      it('reverts when trying to edit an item with empty metadata', async function () {
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [''], fromCreator),
-          'editItemsMetadata: EMPTY_METADATA'
-        )
-      })
-
-      it('reverts when trying to edit when the collection is not editable', async function () {
-        await contract.setEditable(false, fromDeployer)
-
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromCreator),
-          'editItemsMetadata: NOT_EDITABLE'
+          contract.editItemsData(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            [''],
+            fromCreator
+          ),
+          'editItemsData: EMPTY_METADATA'
         )
       })
     })
