@@ -1,10 +1,10 @@
 // Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File @openzeppelin/contracts/GSN/Context.sol@v3.3.0
+// File openzeppelin-solidity/contracts/utils/Context.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.6.0 <0.9.0;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -17,7 +17,7 @@ pragma solidity >=0.6.0 <0.8.0;
  * This contract is only required for intermediate, library-like contracts.
  */
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
+    function _msgSender() internal view virtual returns (address) {
         return msg.sender;
     }
 
@@ -28,11 +28,11 @@ abstract contract Context {
 }
 
 
-// File @openzeppelin/contracts/access/Ownable.sol@v3.3.0
+// File openzeppelin-solidity/contracts/access/Ownable.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -54,7 +54,7 @@ abstract contract Ownable is Context {
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
-    constructor () internal {
+    constructor () {
         address msgSender = _msgSender();
         _owner = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
@@ -63,7 +63,7 @@ abstract contract Ownable is Context {
     /**
      * @dev Returns the address of the current owner.
      */
-    function owner() public view returns (address) {
+    function owner() public view virtual returns (address) {
         return _owner;
     }
 
@@ -71,7 +71,7 @@ abstract contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -99,11 +99,11 @@ abstract contract Ownable is Context {
 }
 
 
-// File @openzeppelin/contracts/utils/Address.sol@v3.3.0
+// File openzeppelin-solidity/contracts/utils/Address.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Collection of functions related to the address type
@@ -247,6 +247,30 @@ library Address {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.3._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.3._
+     */
+    function functionDelegateCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        require(isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
     function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
@@ -272,7 +296,7 @@ library Address {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
 contract MinimalProxyFactory {
     using Address for address;
@@ -288,7 +312,7 @@ contract MinimalProxyFactory {
     * @notice Create the contract
     * @param _implementation - contract implementation
     */
-    constructor(address _implementation) public {
+    constructor(address _implementation) {
         _setImplementation(_implementation);
     }
 
@@ -324,13 +348,15 @@ contract MinimalProxyFactory {
     */
     function getAddress(bytes32 _salt, address _address) public view returns (address) {
         return address(
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        byte(0xff),
-                        address(this),
-                        keccak256(abi.encodePacked(_salt, _address)),
-                        codeHash
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xff),
+                            address(this),
+                            keccak256(abi.encodePacked(_salt, _address)),
+                            codeHash
+                        )
                     )
                 )
             )
@@ -364,7 +390,7 @@ contract MinimalProxyFactory {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
 contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
 
@@ -376,7 +402,7 @@ contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
     * @param _owner - contract owner
     * @param _implementation - contract implementation
     */
-    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
+    constructor(address _owner, address _implementation) MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 

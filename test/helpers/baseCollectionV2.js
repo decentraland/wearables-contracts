@@ -5562,7 +5562,7 @@ export function doTest(
     })
 
     describe('MetaTransaction', function () {
-      it.only('should get the chain id', async function () {
+      it('should get the chain id', async function () {
         const expectedChainId = await web3.eth.net.getId()
         const contractChainId = await collectionContract.getChainId()
         expect(contractChainId).to.eq.BN(expectedChainId)
