@@ -3644,6 +3644,9 @@ export function doTest(
         // match token id
         let uri = await contract.tokenURI(newItemTokenId)
         let uriArr = uri.split('/')
+
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -3667,6 +3670,8 @@ export function doTest(
         // match token id
         uri = await contract.tokenURI(anotherNewItemTokenId)
         uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -3747,6 +3752,8 @@ export function doTest(
         // match token id
         let uri = await contract.tokenURI(newItemTokenId)
         let uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -3770,6 +3777,8 @@ export function doTest(
         // match token id
         uri = await contract.tokenURI(anotherNewItemTokenId)
         uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -4225,6 +4234,8 @@ export function doTest(
         // match token id
         let uri = await contract.tokenURI(encodeTokenId(itemId.toString(), 1))
         let uriArr = uri.split('/') // [...]/8/1
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(itemId.toString()).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect('1').to.be.equal(uri.split('/')[uriArr.length - 1])
       })
@@ -4967,7 +4978,7 @@ export function doTest(
         const [itemId, issuedId] = decodeTokenId(token1)
 
         expect(uri).to.be.equal(
-          `${newBaseURI}${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
+          `${newBaseURI}${chainId}/${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
         )
       })
 
@@ -5020,7 +5031,7 @@ export function doTest(
         const [itemId, issuedId] = decodeTokenId(token1)
 
         expect(uri).to.be.equal(
-          `${newBaseURI}${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
+          `${newBaseURI}${chainId}/${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
         )
       })
 

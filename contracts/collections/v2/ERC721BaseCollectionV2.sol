@@ -566,9 +566,16 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
 
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
+
         return string(
             abi.encodePacked(
                 baseURI(),
+                id.uintToString(),
+                "/"
                 "0x",
                 address(this).addressToString(),
                 "/",
@@ -609,7 +616,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @param _tokenIds - uint256 ID of the tokens to be transferred
      * @param _data bytes data to send along with a safe transfer check
      */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) public {
+    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             safeTransferFrom(_from, _to, _tokenIds[i], _data);
         }
