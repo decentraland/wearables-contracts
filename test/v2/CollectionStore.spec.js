@@ -22,7 +22,7 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 const Store = artifacts.require('DummyCollectionStore')
 const Rarities = artifacts.require('Rarities')
 
-describe.only('Collection Store', function () {
+describe('Collection Store', function () {
   const ONE_MILLION = web3.utils.toBN(1000000)
   // Store
   const FEE = web3.utils.toBN(10000)
