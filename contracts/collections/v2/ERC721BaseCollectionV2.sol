@@ -64,7 +64,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
     event AddItem(uint256 indexed _itemId, Item _item);
     event RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata);
-    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId, address _caller);
     event UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
     event SetApproved(bool _previousValue, bool _newValue);
@@ -435,7 +435,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         super._mint(_beneficiary, tokenId);
 
         // Log
-        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance);
+        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance, _sender);
     }
 
     /**

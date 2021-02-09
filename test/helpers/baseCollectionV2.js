@@ -3636,6 +3636,7 @@ export function doTest(
         expect(logs[1].args._tokenId).to.be.eq.BN(newItemTokenId)
         expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
         expect(logs[1].args._issuedId).to.eq.BN(1)
+        expect(logs[1].args._caller).to.eq.BN(creator)
 
         // match owner
         let owner = await contract.ownerOf(newItemTokenId)
@@ -3662,6 +3663,7 @@ export function doTest(
         expect(logs[3].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
         expect(logs[3].args._itemId).to.be.eq.BN(anotherNewItemId)
         expect(logs[3].args._issuedId).to.eq.BN(1)
+        expect(logs[3].args._caller).to.eq.BN(creator)
 
         // match owner
         owner = await contract.ownerOf(anotherNewItemTokenId)
@@ -3744,6 +3746,7 @@ export function doTest(
         expect(logs[2].args._tokenId).to.be.eq.BN(newItemTokenId)
         expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
         expect(logs[2].args._issuedId).to.eq.BN(1)
+        expect(logs[2].args._caller).to.eq.BN(creator)
 
         // match owner
         let owner = await contract.ownerOf(newItemTokenId)
@@ -3769,6 +3772,7 @@ export function doTest(
         expect(logs[4].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
         expect(logs[4].args._itemId).to.be.eq.BN(anotherNewItemId)
         expect(logs[4].args._issuedId).to.eq.BN(1)
+        expect(logs[4].args._caller).to.eq.BN(creator)
 
         // match owner
         owner = await contract.ownerOf(anotherNewItemTokenId)

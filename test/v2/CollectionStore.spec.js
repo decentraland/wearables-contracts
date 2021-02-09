@@ -22,7 +22,7 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 const Store = artifacts.require('DummyCollectionStore')
 const Rarities = artifacts.require('Rarities')
 
-describe('Collection Store', function () {
+describe.only('Collection Store', function () {
   const ONE_MILLION = web3.utils.toBN(1000000)
   // Store
   const FEE = web3.utils.toBN(10000)
@@ -237,6 +237,7 @@ describe('Collection Store', function () {
       expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[1].args._itemId).to.be.eq.BN(0)
       expect(logs[1].args._issuedId).to.be.eq.BN(1)
+      expect(logs[1].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[2].event).to.be.equal('Transfer')
       expect(logs[2].args._from).to.be.equal(buyer)
@@ -257,8 +258,7 @@ describe('Collection Store', function () {
       expect(itemsBalanceOfBuyer).to.be.eq.BN(1)
 
       const itemId = await collection1.tokenOfOwnerByIndex(buyer, 0)
-      console.log(itemId)
-      const uri = await collection1.tokenURI(encodeTokenId(0, 1))
+      const uri = await collection1.tokenURI(itemId)
       const uriArr = uri.split('/')
       expect(0).to.eq.BN(uriArr[uriArr.length - 2])
     })
@@ -311,6 +311,7 @@ describe('Collection Store', function () {
       expect(logs[0].args._tokenId).to.be.eq.BN(encodeTokenId(2, 1))
       expect(logs[0].args._itemId).to.be.eq.BN(2)
       expect(logs[0].args._issuedId).to.be.eq.BN(1)
+      expect(logs[0].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[1].event).to.be.equal('Bought')
       expect(logs[1].args._itemsToBuy).to.be.eql([
@@ -433,18 +434,21 @@ describe('Collection Store', function () {
       expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[3].args._itemId).to.be.eq.BN(0)
       expect(logs[3].args._issuedId).to.be.eq.BN(1)
+      expect(logs[3].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[4].event).to.be.equal('Issue')
       expect(logs[4].args._beneficiary).to.be.equal(buyer)
       expect(logs[4].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
       expect(logs[4].args._itemId).to.be.eq.BN(0)
       expect(logs[4].args._issuedId).to.be.eq.BN(2)
+      expect(logs[4].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[5].event).to.be.equal('Issue')
       expect(logs[5].args._beneficiary).to.be.equal(buyer)
       expect(logs[5].args._tokenId).to.be.eq.BN(encodeTokenId(2, 1))
       expect(logs[5].args._itemId).to.be.eq.BN(2)
       expect(logs[5].args._issuedId).to.be.eq.BN(1)
+      expect(logs[5].args._caller).to.eq.BN(storeContract.address)
 
       const price20Fee = price20.mul(FEE).div(ONE_MILLION)
       feeCharged = feeCharged.add(price20Fee)
@@ -460,6 +464,7 @@ describe('Collection Store', function () {
       expect(logs[7].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[7].args._itemId).to.be.eq.BN(0)
       expect(logs[7].args._issuedId).to.be.eq.BN(1)
+      expect(logs[7].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[8].event).to.be.equal('Transfer')
       expect(logs[8].args._from).to.be.equal(buyer)
@@ -665,18 +670,21 @@ describe('Collection Store', function () {
       expect(logs[3].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[3].args._itemId).to.be.eq.BN(0)
       expect(logs[3].args._issuedId).to.be.eq.BN(1)
+      expect(logs[3].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[4].event).to.be.equal('Issue')
       expect(logs[4].args._beneficiary).to.be.equal(buyer)
       expect(logs[4].args._tokenId).to.be.eq.BN(encodeTokenId(0, 2))
       expect(logs[4].args._itemId).to.be.eq.BN(0)
       expect(logs[4].args._issuedId).to.be.eq.BN(2)
+      expect(logs[4].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[5].event).to.be.equal('Issue')
       expect(logs[5].args._beneficiary).to.be.equal(buyer)
       expect(logs[5].args._tokenId).to.be.eq.BN(encodeTokenId(2, 1))
       expect(logs[5].args._itemId).to.be.eq.BN(2)
       expect(logs[5].args._issuedId).to.be.eq.BN(1)
+      expect(logs[5].args._caller).to.eq.BN(storeContract.address)
 
       const price20Fee = price20.mul(FEE).div(ONE_MILLION)
       feeCharged = feeCharged.add(price20Fee)
@@ -692,6 +700,7 @@ describe('Collection Store', function () {
       expect(logs[7].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[7].args._itemId).to.be.eq.BN(0)
       expect(logs[7].args._issuedId).to.be.eq.BN(1)
+      expect(logs[7].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[8].event).to.be.equal('Transfer')
       expect(logs[8].args._from).to.be.equal(buyer)
@@ -1001,6 +1010,7 @@ describe('Collection Store', function () {
       expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[1].args._itemId).to.be.eq.BN(0)
       expect(logs[1].args._issuedId).to.be.eq.BN(1)
+      expect(logs[1].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[2].event).to.be.equal('Transfer')
       expect(logs[2].args._from).to.be.equal(buyer)
@@ -1045,6 +1055,7 @@ describe('Collection Store', function () {
       expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[1].args._itemId).to.be.eq.BN(0)
       expect(logs[1].args._issuedId).to.be.eq.BN(1)
+      expect(logs[1].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[2].event).to.be.equal('Bought')
       expect(logs[2].args._itemsToBuy).to.be.eql([
@@ -1125,6 +1136,7 @@ describe('Collection Store', function () {
       expect(logs[1].args._tokenId).to.be.eq.BN(encodeTokenId(0, 1))
       expect(logs[1].args._itemId).to.be.eq.BN(0)
       expect(logs[1].args._issuedId).to.be.eq.BN(1)
+      expect(logs[1].args._caller).to.eq.BN(storeContract.address)
 
       expect(logs[2].event).to.be.equal('Transfer')
       expect(logs[2].args._from).to.be.equal(buyer)
