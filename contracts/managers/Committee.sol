@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 
 import "../interfaces/ICollectionManager.sol";
@@ -19,7 +19,7 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
     * @param _owner - owner of the contract
     * @param _members - members to be added at contract creation
     */
-    constructor(address _owner, address[] memory _members) public {
+    constructor(address _owner, address[] memory _members) {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Committee', '1');
         // Ownable init

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -16,7 +16,7 @@ contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
     * @param _owner - contract owner
     * @param _implementation - contract implementation
     */
-    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
+    constructor(address _owner, address _implementation) MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 

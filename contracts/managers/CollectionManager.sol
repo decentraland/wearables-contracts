@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -37,7 +37,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _feesCollector - fees collector
     * @param _rarities - rarities contract
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, IRarities _rarities) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, IRarities _rarities) {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Manager', '1');
         // Ownable init

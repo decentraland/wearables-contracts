@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
+
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/IRarities.sol";
 import "../../commons//OwnableInitializable.sol";
@@ -13,6 +15,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     using String for bytes32;
     using String for uint256;
     using String for address;
+    using SafeMath for uint256;
 
     bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;

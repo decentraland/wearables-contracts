@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/ICollectionManager.sol";
@@ -30,7 +30,7 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
     * @notice Create the contract
     * @param _owner - owner of the contract
     */
-    constructor(address _owner,  Rarity[] memory _rarities) public {
+    constructor(address _owner,  Rarity[] memory _rarities) {
         // EIP712 init
         _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init

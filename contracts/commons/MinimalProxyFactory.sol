@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -18,7 +18,7 @@ contract MinimalProxyFactory {
     * @notice Create the contract
     * @param _implementation - contract implementation
     */
-    constructor(address _implementation) public {
+    constructor(address _implementation) {
         _setImplementation(_implementation);
     }
 

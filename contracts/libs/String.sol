@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity >=0.6.12;
 
 library String {
 
@@ -13,9 +13,9 @@ library String {
         bytes memory bytesString = new bytes(32);
         uint charCount = 0;
         for (uint j = 0; j < 32; j++) {
-            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
-            if (char != 0) {
-                bytesString[charCount] = char;
+            bytes1 currentChar = bytes1(bytes32(uint(_x) * 2 ** (8 * j)));
+            if (currentChar != 0) {
+                bytesString[charCount] = currentChar;
                 charCount++;
             }
         }
@@ -46,7 +46,7 @@ library String {
         bytes memory bstr = new bytes(len);
         uint k = len - 1;
         while (i != 0) {
-            bstr[k--] = byte(uint8(48 + i % 10));
+            bstr[k--] = bytes1(uint8(48 + i % 10));
             i /= 10;
         }
         return string(bstr);
@@ -60,18 +60,18 @@ library String {
     function addressToString(address _x) internal pure returns (string memory) {
         bytes memory s = new bytes(40);
         for (uint i = 0; i < 20; i++) {
-            byte b = byte(uint8(uint(_x) / (2**(8*(19 - i)))));
-            byte hi = byte(uint8(b) / 16);
-            byte lo = byte(uint8(b) - 16 * uint8(hi));
+            bytes1 b = bytes1(uint8(uint160(_x) / (2**(8*(19 - i)))));
+            bytes1 hi = bytes1(uint8(b) / 16);
+            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
             s[2*i] = char(hi);
             s[2*i+1] = char(lo);
         }
         return string(s);
     }
 
-    function char(byte b) internal pure returns (byte c) {
-        if (uint8(b) < 10) return byte(uint8(b) + 0x30);
-        else return byte(uint8(b) + 0x57);
+    function char(bytes1 b) internal pure returns (bytes1 c) {
+        if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
+        else return bytes1(uint8(b) + 0x57);
     }
 
     /**

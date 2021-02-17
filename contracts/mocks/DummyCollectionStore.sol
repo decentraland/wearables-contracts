@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "../markets/v2/CollectionStore.sol";
@@ -16,5 +16,5 @@ contract DummyCollectionStore is EventsInterface, CollectionStore {
         IERC20 _acceptedToken,
         address _feeOwner,
         uint256 _fee
-    ) CollectionStore(_owner, _acceptedToken, _feeOwner, _fee) public {}
+    ) CollectionStore(_owner, _acceptedToken, _feeOwner, _fee) {}
 }

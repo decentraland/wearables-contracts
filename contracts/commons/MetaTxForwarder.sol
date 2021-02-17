@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 
 contract MetaTxForwarder {
     /**
     * @notice Create the contract
     */
-    constructor() public { }
+    constructor() { }
 
     /**
     * @notice Forward a call

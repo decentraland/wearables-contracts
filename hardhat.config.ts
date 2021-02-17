@@ -1,9 +1,13 @@
 require('babel-register')
 require('babel-polyfill')
+require('dotenv').config()
 
-require('@nomiclabs/hardhat-truffle5')
-require('hardhat-gas-reporter')
-require('decentraland-contract-plugins/dist/src/mana/tasks/load-mana')
+import '@nomiclabs/hardhat-truffle5'
+import '@nomiclabs/hardhat-ethers'
+import 'hardhat-gas-reporter'
+import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
+
+import { getDeployParams } from './scripts/deploy/utils'
 
 module.exports = {
   defaultNetwork: 'hardhat',
@@ -11,6 +15,15 @@ module.exports = {
     compilers: [
       {
         version: '0.8.0',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1,
+          },
+        },
+      },
+      {
+        version: '0.7.6',
         settings: {
           optimizer: {
             enabled: true,
@@ -57,7 +70,6 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      loggingEnabled: false,
       blockGasLimit: 10000000,
       gas: 10000000,
     },
@@ -67,6 +79,7 @@ module.exports = {
       gas: 10000000,
       network_id: '*', // eslint-disable-line camelcase
     },
+    deploy: getDeployParams()
   },
   gasReporter: {
     enabled: !!process.env.REPORT_GAS === true,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -36,7 +36,7 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
     * @param _feeOwner - address where fees will be transferred
     * @param _fee - fee to charge for each sale
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Store', '1');
         // Ownable init

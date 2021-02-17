@@ -822,8 +822,7 @@ describe('Collection Store', function () {
             ],
           ],
           fromBuyer
-        ),
-        'invalid opcode'
+        )
       )
     })
 

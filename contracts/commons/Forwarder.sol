@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -16,7 +16,7 @@ contract Forwarder is Ownable {
     * @param _owner - contract owner
     * @param _caller - target address to call
     */
-    constructor(address _owner, address _caller) public {
+    constructor(address _owner, address _caller) {
         setCaller(_caller);
         transferOwnership(_owner);
     }
