@@ -7,11 +7,7 @@ import '@nomiclabs/hardhat-ethers'
 import 'hardhat-gas-reporter'
 import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
 
-<<<<<<< HEAD:hardhat.config.ts
-import { getDeployParams } from './scripts/deploy/utils'
-=======
 import { getDeployParams } from './utils/getDeployParams'
->>>>>>> feat: hardhat, 8.0, deployment script, chainId at tokenURI, and flow spec:hardhat.config.ts
 
 module.exports = {
   defaultNetwork: 'hardhat',
