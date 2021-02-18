@@ -4,8 +4,7 @@
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 
 interface IRarities {
@@ -24,7 +23,7 @@ interface IRarities {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 
 abstract contract ContextMixin {
@@ -45,7 +44,7 @@ abstract contract ContextMixin {
                 )
             }
         } else {
-            sender = msg.sender;
+            sender = payable(msg.sender);
         }
         return sender;
     }
@@ -56,7 +55,7 @@ abstract contract ContextMixin {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -124,174 +123,11 @@ abstract contract OwnableInitializable is ContextMixin {
 }
 
 
-// File @openzeppelin/contracts/math/SafeMath.sol@v3.3.0
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity >=0.6.0 <0.8.0;
-
-/**
- * @dev Wrappers over Solidity's arithmetic operations with added overflow
- * checks.
- *
- * Arithmetic operations in Solidity wrap on overflow. This can easily result
- * in bugs, because programmers usually assume that an overflow raises an
- * error, which is the standard behavior in high level programming languages.
- * `SafeMath` restores this intuition by reverting the transaction when an
- * operation overflows.
- *
- * Using this library instead of the unchecked operations eliminates an entire
- * class of bugs, so it's recommended to use it always.
- */
-library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     *
-     * - Addition cannot overflow.
-     */
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     *
-     * - Multiplication cannot overflow.
-     */
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
-    }
-}
-
-
 // File contracts/commons/EIP712Base.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 
 contract EIP712Base {
@@ -329,7 +165,7 @@ contract EIP712Base {
         );
     }
 
-    function getChainId() public pure returns (uint256) {
+    function getChainId() public view returns (uint256) {
         uint256 id;
         assembly {
             id := chainid()
@@ -361,10 +197,9 @@ contract EIP712Base {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 contract NativeMetaTransaction is EIP712Base {
-    using SafeMath for uint256;
     bytes32 private constant META_TRANSACTION_TYPEHASH = keccak256(
         bytes(
             "MetaTransaction(uint256 nonce,address from,bytes functionSignature)"
@@ -407,7 +242,7 @@ contract NativeMetaTransaction is EIP712Base {
         );
 
         // increase nonce for user (to avoid re-use)
-        nonces[userAddress] = nonces[userAddress].add(1);
+        nonces[userAddress] = nonces[userAddress] + 1;
 
         emit MetaTransactionExecuted(
             userAddress,
@@ -464,11 +299,11 @@ contract NativeMetaTransaction is EIP712Base {
 }
 
 
-// File @openzeppelin/contracts/introspection/IERC165.sol@v3.3.0
+// File openzeppelin-solidity/contracts/introspection/IERC165.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the
@@ -492,11 +327,11 @@ interface IERC165 {
 }
 
 
-// File @openzeppelin/contracts/token/ERC721/IERC721.sol@v3.3.0
+// File openzeppelin-solidity/contracts/token/ERC721/IERC721.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Required interface of an ERC721 compliant contract.
@@ -611,8 +446,8 @@ interface IERC721 is IERC165 {
       *
       * Requirements:
       *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
+      * - `from` cannot be the zero address.
+      * - `to` cannot be the zero address.
       * - `tokenId` token must exist and be owned by `from`.
       * - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
       * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
@@ -623,11 +458,11 @@ interface IERC721 is IERC165 {
 }
 
 
-// File @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol@v3.3.0
+// File openzeppelin-solidity/contracts/token/ERC721/IERC721Metadata.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional metadata extension
@@ -652,11 +487,11 @@ interface IERC721Metadata is IERC721 {
 }
 
 
-// File @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol@v3.3.0
+// File openzeppelin-solidity/contracts/token/ERC721/IERC721Enumerable.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @title ERC-721 Non-Fungible Token Standard, optional enumeration extension
@@ -683,11 +518,11 @@ interface IERC721Enumerable is IERC721 {
 }
 
 
-// File @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol@v3.3.0
+// File openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @title ERC721 token receiver interface
@@ -708,11 +543,11 @@ interface IERC721Receiver {
 }
 
 
-// File @openzeppelin/contracts/introspection/ERC165.sol@v3.3.0
+// File openzeppelin-solidity/contracts/introspection/ERC165.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Implementation of the {IERC165} interface.
@@ -731,7 +566,7 @@ abstract contract ERC165 is IERC165 {
      */
     mapping(bytes4 => bool) private _supportedInterfaces;
 
-    constructor () internal {
+    constructor () {
         // Derived contracts need only register support for their own interfaces,
         // we register support for ERC165 itself here
         _registerInterface(_INTERFACE_ID_ERC165);
@@ -742,7 +577,7 @@ abstract contract ERC165 is IERC165 {
      *
      * Time complexity O(1), guaranteed to always use less than 30 000 gas.
      */
-    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return _supportedInterfaces[interfaceId];
     }
 
@@ -764,11 +599,216 @@ abstract contract ERC165 is IERC165 {
 }
 
 
-// File @openzeppelin/contracts/utils/Address.sol@v3.3.0
+// File openzeppelin-solidity/contracts/math/SafeMath.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.2 <0.8.0;
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, with an overflow flag.
+     */
+    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            uint256 c = a + b;
+            if (c < a) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the substraction of two unsigned integers, with an overflow flag.
+     */
+    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b > a) return (false, 0);
+            return (true, a - b);
+        }
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
+     */
+    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+            // benefit is lost if 'b' is also tested.
+            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+            if (a == 0) return (true, 0);
+            uint256 c = a * b;
+            if (c / a != b) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the division of two unsigned integers, with a division by zero flag.
+     */
+    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a / b);
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
+     */
+    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a % b);
+        }
+    }
+
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a - b;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a * b;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator.
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a / b;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a % b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {trySub}.
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        unchecked {
+            require(b <= a, errorMessage);
+            return a - b;
+        }
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a / b;
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting with custom message when dividing by zero.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {tryMod}.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a % b;
+        }
+    }
+}
+
+
+// File openzeppelin-solidity/contracts/utils/Address.sol@v3.3.0-solc-0.8
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
 
 /**
  * @dev Collection of functions related to the address type
@@ -912,6 +952,30 @@ library Address {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.3._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.3._
+     */
+    function functionDelegateCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        require(isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
     function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
@@ -933,11 +997,11 @@ library Address {
 }
 
 
-// File @openzeppelin/contracts/utils/EnumerableSet.sol@v3.3.0
+// File openzeppelin-solidity/contracts/utils/EnumerableSet.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Library for managing
@@ -1136,7 +1200,7 @@ library EnumerableSet {
      * already present.
      */
     function add(AddressSet storage set, address value) internal returns (bool) {
-        return _add(set._inner, bytes32(uint256(value)));
+        return _add(set._inner, bytes32(uint256(uint160(value))));
     }
 
     /**
@@ -1146,14 +1210,14 @@ library EnumerableSet {
      * present.
      */
     function remove(AddressSet storage set, address value) internal returns (bool) {
-        return _remove(set._inner, bytes32(uint256(value)));
+        return _remove(set._inner, bytes32(uint256(uint160(value))));
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
     function contains(AddressSet storage set, address value) internal view returns (bool) {
-        return _contains(set._inner, bytes32(uint256(value)));
+        return _contains(set._inner, bytes32(uint256(uint160(value))));
     }
 
     /**
@@ -1174,7 +1238,7 @@ library EnumerableSet {
     * - `index` must be strictly less than {length}.
     */
     function at(AddressSet storage set, uint256 index) internal view returns (address) {
-        return address(uint256(_at(set._inner, index)));
+        return address(uint160(uint256(_at(set._inner, index))));
     }
 
 
@@ -1234,11 +1298,11 @@ library EnumerableSet {
 }
 
 
-// File @openzeppelin/contracts/utils/EnumerableMap.sol@v3.3.0
+// File openzeppelin-solidity/contracts/utils/EnumerableMap.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Library for managing an enumerable variant of Solidity's
@@ -1382,6 +1446,16 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Tries to returns the value associated with `key`.  O(1).
+     * Does not revert if `key` is not in the map.
+     */
+    function _tryGet(Map storage map, bytes32 key) private view returns (bool, bytes32) {
+        uint256 keyIndex = map._indexes[key];
+        if (keyIndex == 0) return (false, 0); // Equivalent to contains(map, key)
+        return (true, map._entries[keyIndex - 1]._value); // All indexes are 1-based
+    }
+
+    /**
      * @dev Returns the value associated with `key`.  O(1).
      *
      * Requirements:
@@ -1389,11 +1463,16 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _get(Map storage map, bytes32 key) private view returns (bytes32) {
-        return _get(map, key, "EnumerableMap: nonexistent key");
+        uint256 keyIndex = map._indexes[key];
+        require(keyIndex != 0, "EnumerableMap: nonexistent key"); // Equivalent to contains(map, key)
+        return map._entries[keyIndex - 1]._value; // All indexes are 1-based
     }
 
     /**
      * @dev Same as {_get}, with a custom error message when `key` is not in the map.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {_tryGet}.
      */
     function _get(Map storage map, bytes32 key, string memory errorMessage) private view returns (bytes32) {
         uint256 keyIndex = map._indexes[key];
@@ -1415,7 +1494,7 @@ library EnumerableMap {
      * already present.
      */
     function set(UintToAddressMap storage map, uint256 key, address value) internal returns (bool) {
-        return _set(map._inner, bytes32(key), bytes32(uint256(value)));
+        return _set(map._inner, bytes32(key), bytes32(uint256(uint160(value))));
     }
 
     /**
@@ -1452,7 +1531,16 @@ library EnumerableMap {
     */
     function at(UintToAddressMap storage map, uint256 index) internal view returns (uint256, address) {
         (bytes32 key, bytes32 value) = _at(map._inner, index);
-        return (uint256(key), address(uint256(value)));
+        return (uint256(key), address(uint160(uint256(value))));
+    }
+
+    /**
+     * @dev Tries to returns the value associated with `key`.  O(1).
+     * Does not revert if `key` is not in the map.
+     */
+    function tryGet(UintToAddressMap storage map, uint256 key) internal view returns (bool, address) {
+        (bool success, bytes32 value) = _tryGet(map._inner, bytes32(key));
+        return (success, address(uint160(uint256(value))));
     }
 
     /**
@@ -1463,23 +1551,26 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function get(UintToAddressMap storage map, uint256 key) internal view returns (address) {
-        return address(uint256(_get(map._inner, bytes32(key))));
+        return address(uint160(uint256(_get(map._inner, bytes32(key)))));
     }
 
     /**
      * @dev Same as {get}, with a custom error message when `key` is not in the map.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {tryGet}.
      */
     function get(UintToAddressMap storage map, uint256 key, string memory errorMessage) internal view returns (address) {
-        return address(uint256(_get(map._inner, bytes32(key), errorMessage)));
+        return address(uint160(uint256(_get(map._inner, bytes32(key), errorMessage))));
     }
 }
 
 
-// File @openzeppelin/contracts/utils/Strings.sol@v3.3.0
+// File openzeppelin-solidity/contracts/utils/Strings.sol@v3.3.0-solc-0.8
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev String operations.
@@ -1502,10 +1593,10 @@ library Strings {
             temp /= 10;
         }
         bytes memory buffer = new bytes(digits);
-        uint256 index = digits - 1;
+        uint256 index = digits;
         temp = value;
         while (temp != 0) {
-            buffer[index--] = byte(uint8(48 + temp % 10));
+            buffer[--index] = bytes1(uint8(48 + uint256(temp % 10)));
             temp /= 10;
         }
         return string(buffer);
@@ -1517,7 +1608,7 @@ library Strings {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 
 
@@ -1533,7 +1624,7 @@ pragma solidity ^0.6.0;
  * This is the same contract at `openzeppelin/contracts 3.1.0` but `tokenURI` was changed to virtual override
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
+abstract contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -1602,14 +1693,12 @@ contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, 
      */
     bytes4 private constant _INTERFACE_ID_ERC721_ENUMERABLE = 0x780e9d63;
 
-    constructor() internal {}
-
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    function _initERC721(string memory name, string memory symbol) internal {
-        _name = name;
-        _symbol = symbol;
+    function _initERC721(string memory __name, string memory __symbol) internal {
+        _name = __name;
+        _symbol = __symbol;
 
         // register the supported interfaces to conform to ERC721 via ERC165
         _registerInterface(_INTERFACE_ID_ERC721);
@@ -1990,13 +2079,13 @@ contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, 
 }
 
 
-// File contracts/libs/String.sol
+// File contracts/libs/StringV2.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
-library String {
+library StringV2 {
 
     /**
      * @dev Convert bytes32 to string.
@@ -2007,9 +2096,9 @@ library String {
         bytes memory bytesString = new bytes(32);
         uint charCount = 0;
         for (uint j = 0; j < 32; j++) {
-            byte char = byte(bytes32(uint(_x) * 2 ** (8 * j)));
-            if (char != 0) {
-                bytesString[charCount] = char;
+            bytes1 currentChar = bytes1(bytes32(uint(_x) * 2 ** (8 * j)));
+            if (currentChar != 0) {
+                bytesString[charCount] = currentChar;
                 charCount++;
             }
         }
@@ -2026,22 +2115,23 @@ library String {
      * @return _uintAsString uint in string
      */
     function uintToString(uint _i) internal pure returns (string memory _uintAsString) {
-        uint i = _i;
-
-        if (i == 0) {
+        if (_i == 0) {
             return "0";
         }
-        uint j = i;
+        uint j = _i;
         uint len;
         while (j != 0) {
             len++;
             j /= 10;
         }
         bytes memory bstr = new bytes(len);
-        uint k = len - 1;
-        while (i != 0) {
-            bstr[k--] = byte(uint8(48 + i % 10));
-            i /= 10;
+        uint k = len;
+        while (_i != 0) {
+            k = k-1;
+            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            _i /= 10;
         }
         return string(bstr);
     }
@@ -2054,18 +2144,18 @@ library String {
     function addressToString(address _x) internal pure returns (string memory) {
         bytes memory s = new bytes(40);
         for (uint i = 0; i < 20; i++) {
-            byte b = byte(uint8(uint(_x) / (2**(8*(19 - i)))));
-            byte hi = byte(uint8(b) / 16);
-            byte lo = byte(uint8(b) - 16 * uint8(hi));
+            bytes1 b = bytes1(uint8(uint160(_x) / (2**(8*(19 - i)))));
+            bytes1 hi = bytes1(uint8(b) / 16);
+            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
             s[2*i] = char(hi);
             s[2*i+1] = char(lo);
         }
         return string(s);
     }
 
-    function char(byte b) internal pure returns (byte c) {
-        if (uint8(b) < 10) return byte(uint8(b) + 0x30);
-        else return byte(uint8(b) + 0x57);
+    function char(bytes1 b) internal pure returns (bytes1 c) {
+        if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
+        else return bytes1(uint8(b) + 0x57);
     }
 
     /**
@@ -2095,17 +2185,16 @@ library String {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 
 
 
 
 abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
-    using String for bytes32;
-    using String for uint256;
-    using String for address;
+    using StringV2 for bytes32;
+    using StringV2 for uint256;
+    using StringV2 for address;
 
     bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
@@ -2539,7 +2628,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         require(_itemId < items.length, "_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
-        uint256 currentIssuance = item.totalSupply.add(1);
+        uint256 currentIssuance = item.totalSupply + 1;
 
         // Check issuance
         require(currentIssuance <= item.maxSupply, "_issueToken: ITEM_EXHAUSTED");
@@ -2728,7 +2817,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @param _tokenIds - uint256 ID of the tokens to be transferred
      * @param _data bytes data to send along with a safe transfer check
      */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) public {
+    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             safeTransferFrom(_from, _to, _tokenIds[i], _data);
         }
@@ -2777,9 +2866,8 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 contract ERC721CollectionV2 is ERC721BaseCollectionV2 {
-    constructor() public {}
+    constructor() {}
 }

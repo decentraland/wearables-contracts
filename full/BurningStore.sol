@@ -301,7 +301,7 @@ library Math {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity >=0.6.12;
 
 
 interface IERC20 {
@@ -336,7 +336,7 @@ interface IERC721Collection {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity >=0.6.12;
 pragma experimental ABIEncoderV2;
 
 

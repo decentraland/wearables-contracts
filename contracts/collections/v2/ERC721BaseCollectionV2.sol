@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -9,13 +8,12 @@ import "../../interfaces/IRarities.sol";
 import "../../commons//OwnableInitializable.sol";
 import "../../commons//NativeMetaTransaction.sol";
 import "../../tokens/ERC721Initializable.sol";
-import "../../libs/String.sol";
+import "../../libs/StringV2.sol";
 
 abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
-    using String for bytes32;
-    using String for uint256;
-    using String for address;
-    using SafeMath for uint256;
+    using StringV2 for bytes32;
+    using StringV2 for uint256;
+    using StringV2 for address;
 
     bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
@@ -423,7 +421,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         require(_itemId < items.length, "_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
-        uint256 currentIssuance = item.totalSupply.add(1);
+        uint256 currentIssuance = item.totalSupply + 1;
 
         // Check issuance
         require(currentIssuance <= item.maxSupply, "_issueToken: ITEM_EXHAUSTED");

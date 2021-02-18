@@ -7,7 +7,7 @@ import '@nomiclabs/hardhat-ethers'
 import 'hardhat-gas-reporter'
 import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
 
-import { getDeployParams } from './scripts/deploy/utils'
+import { getDeployParams } from './utils/getDeployParams'
 
 module.exports = {
   defaultNetwork: 'hardhat',
@@ -59,14 +59,6 @@ module.exports = {
         },
       },
     ],
-    // ],
-    // solc: {
-    //   version: '0.8.0',
-    //   optimizer: {
-    //     enabled: true,
-    //     runs: 1,
-    //   },
-    // },
   },
   networks: {
     hardhat: {
@@ -82,6 +74,7 @@ module.exports = {
     deploy: getDeployParams()
   },
   gasReporter: {
+    chainId: 1,
     enabled: !!process.env.REPORT_GAS === true,
     currency: 'USD',
     gasPrice: 21,

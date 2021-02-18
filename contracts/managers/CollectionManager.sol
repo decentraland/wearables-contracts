@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/IForwarder.sol";
 import "../interfaces/IERC20.sol";
@@ -15,9 +13,6 @@ import "../commons/NativeMetaTransaction.sol";
 
 
 contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
-
-    using SafeMath for uint256;
-
     IERC20  public acceptedToken;
     IRarities public rarities;
     address public committee;
@@ -123,7 +118,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
 
             IRarities.Rarity memory rarity = rarities.getRarityByName(item.rarity);
 
-            amount = amount.add(rarity.price);
+            amount = amount + rarity.price;
         }
 
         // Transfer fees to collector
