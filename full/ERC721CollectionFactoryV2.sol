@@ -1,6 +1,6 @@
 // Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File @openzeppelin/contracts/GSN/Context.sol@v3.3.0
+// File @openzeppelin/contracts/utils/Context.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -28,7 +28,7 @@ abstract contract Context {
 }
 
 
-// File @openzeppelin/contracts/access/Ownable.sol@v3.3.0
+// File @openzeppelin/contracts/access/Ownable.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -63,7 +63,7 @@ abstract contract Ownable is Context {
     /**
      * @dev Returns the address of the current owner.
      */
-    function owner() public view returns (address) {
+    function owner() public view virtual returns (address) {
         return _owner;
     }
 
@@ -71,7 +71,7 @@ abstract contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -99,7 +99,7 @@ abstract contract Ownable is Context {
 }
 
 
-// File @openzeppelin/contracts/utils/Address.sol@v3.3.0
+// File @openzeppelin/contracts/utils/Address.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -247,6 +247,30 @@ library Address {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        require(isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return _verifyCallResult(success, returndata, errorMessage);
+    }
+
     function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;
@@ -272,7 +296,7 @@ library Address {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 contract MinimalProxyFactory {
     using Address for address;
@@ -288,7 +312,7 @@ contract MinimalProxyFactory {
     * @notice Create the contract
     * @param _implementation - contract implementation
     */
-    constructor(address _implementation) public {
+    constructor(address _implementation) {
         _setImplementation(_implementation);
     }
 
@@ -364,7 +388,7 @@ contract MinimalProxyFactory {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
 
@@ -376,7 +400,7 @@ contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
     * @param _owner - contract owner
     * @param _implementation - contract implementation
     */
-    constructor(address _owner, address _implementation) public MinimalProxyFactory(_implementation) {
+    constructor(address _owner, address _implementation) MinimalProxyFactory(_implementation) {
         transferOwnership(_owner);
     }
 

@@ -114,6 +114,7 @@ describe('Factory V2', function () {
 
     it('should get a deterministic address off-chain', async function () {
       const codeHash = await factoryContract.codeHash()
+      console.log(`Codehash: ${codeHash}`)
 
       const salt = web3.utils.randomHex(32)
 

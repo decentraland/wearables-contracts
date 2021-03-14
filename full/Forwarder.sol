@@ -1,6 +1,6 @@
 // Sources flattened with hardhat v2.0.8 https://hardhat.org
 
-// File @openzeppelin/contracts/GSN/Context.sol@v3.3.0
+// File @openzeppelin/contracts/utils/Context.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -28,7 +28,7 @@ abstract contract Context {
 }
 
 
-// File @openzeppelin/contracts/access/Ownable.sol@v3.3.0
+// File @openzeppelin/contracts/access/Ownable.sol@v3.4.0
 
 // SPDX-License-Identifier: MIT
 
@@ -63,7 +63,7 @@ abstract contract Ownable is Context {
     /**
      * @dev Returns the address of the current owner.
      */
-    function owner() public view returns (address) {
+    function owner() public view virtual returns (address) {
         return _owner;
     }
 
@@ -71,7 +71,7 @@ abstract contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -103,7 +103,7 @@ abstract contract Ownable is Context {
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 
 contract Forwarder is Ownable {
 
@@ -116,7 +116,7 @@ contract Forwarder is Ownable {
     * @param _owner - contract owner
     * @param _caller - target address to call
     */
-    constructor(address _owner, address _caller) public {
+    constructor(address _owner, address _caller) {
         setCaller(_caller);
         transferOwnership(_owner);
     }
