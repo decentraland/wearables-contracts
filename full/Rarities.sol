@@ -425,11 +425,6 @@ contract NativeMetaTransaction is EIP712Base {
     );
     mapping(address => uint256) nonces;
 
-    /*
-     * Meta transaction structure.
-     * No point of including value field here as if user is doing value transfer then he has the funds to pay for gas
-     * He should call the desired function directly in that case.
-     */
     struct MetaTransaction {
         uint256 nonce;
         address from;
@@ -442,7 +437,7 @@ contract NativeMetaTransaction is EIP712Base {
         bytes32 sigR,
         bytes32 sigS,
         uint8 sigV
-    ) public payable returns (bytes memory) {
+    ) external payable returns (bytes memory) {
         MetaTransaction memory metaTx = MetaTransaction({
             nonce: nonces[userAddress],
             from: userAddress,
@@ -464,7 +459,7 @@ contract NativeMetaTransaction is EIP712Base {
         );
 
         // Append userAddress and relayer address at the end to extract it from calling context
-        (bool success, bytes memory returnData) = address(this).call(
+        (bool success, bytes memory returnData) = address(this).call{value: msg.value}(
             abi.encodePacked(functionSignature, userAddress)
         );
         require(success, "NMT#executeMetaTransaction: CALL_FAILED");
@@ -488,7 +483,7 @@ contract NativeMetaTransaction is EIP712Base {
             );
     }
 
-    function getNonce(address user) public view returns (uint256 nonce) {
+    function getNonce(address user) external view returns (uint256 nonce) {
         nonce = nonces[user];
     }
 

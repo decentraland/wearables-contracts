@@ -346,7 +346,7 @@ contract MinimalProxyFactory {
     * @param _address - supposed sender of the transaction
     * @return address of the deterministic contract
     */
-    function getAddress(bytes32 _salt, address _address) public view returns (address) {
+    function getAddress(bytes32 _salt, address _address) external view returns (address) {
         return address(
             uint256(
                 keccak256(
@@ -410,7 +410,7 @@ contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
     * @param _data - call data used to call the contract already created if passed
     * @return addr - address of the contract created
     */
-    function createCollection(bytes32 _salt, bytes memory _data) public onlyOwner returns (address addr) {
+    function createCollection(bytes32 _salt, bytes memory _data) external onlyOwner returns (address addr) {
         // Deploy a new collection
         addr = _createProxy(_salt, _data);
 
@@ -427,7 +427,7 @@ contract ERC721CollectionFactoryV2 is Ownable, MinimalProxyFactory {
     * @notice Get the amount of collections deployed
     * @return amount of collections deployed
     */
-    function collectionsSize() public view returns (uint256) {
+    function collectionsSize() external view returns (uint256) {
         return collections.length;
     }
 }

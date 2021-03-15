@@ -220,6 +220,8 @@ library SafeMath {
 
 // File contracts/interfaces/IRarities.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
@@ -237,6 +239,8 @@ interface IRarities {
 
 
 // File contracts/commons/ContextMixin.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.7.6;
 
@@ -267,6 +271,8 @@ abstract contract ContextMixin {
 
 
 // File contracts/commons/OwnableInitializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.7.6;
 
@@ -338,6 +344,8 @@ abstract contract OwnableInitializable is ContextMixin {
 
 // File contracts/commons/EIP712Base.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.6;
 
 
@@ -406,6 +414,8 @@ contract EIP712Base {
 
 // File contracts/commons/NativeMetaTransaction.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.6;
 
 contract NativeMetaTransaction is EIP712Base {
@@ -422,11 +432,6 @@ contract NativeMetaTransaction is EIP712Base {
     );
     mapping(address => uint256) nonces;
 
-    /*
-     * Meta transaction structure.
-     * No point of including value field here as if user is doing value transfer then he has the funds to pay for gas
-     * He should call the desired function directly in that case.
-     */
     struct MetaTransaction {
         uint256 nonce;
         address from;
@@ -439,7 +444,7 @@ contract NativeMetaTransaction is EIP712Base {
         bytes32 sigR,
         bytes32 sigS,
         uint8 sigV
-    ) public payable returns (bytes memory) {
+    ) external payable returns (bytes memory) {
         MetaTransaction memory metaTx = MetaTransaction({
             nonce: nonces[userAddress],
             from: userAddress,
@@ -461,7 +466,7 @@ contract NativeMetaTransaction is EIP712Base {
         );
 
         // Append userAddress and relayer address at the end to extract it from calling context
-        (bool success, bytes memory returnData) = address(this).call(
+        (bool success, bytes memory returnData) = address(this).call{value: msg.value}(
             abi.encodePacked(functionSignature, userAddress)
         );
         require(success, "NMT#executeMetaTransaction: CALL_FAILED");
@@ -485,7 +490,7 @@ contract NativeMetaTransaction is EIP712Base {
             );
     }
 
-    function getNonce(address user) public view returns (uint256 nonce) {
+    function getNonce(address user) external view returns (uint256 nonce) {
         nonce = nonces[user];
     }
 
@@ -510,6 +515,8 @@ contract NativeMetaTransaction is EIP712Base {
 
 
 // File @openzeppelin/contracts/introspection/IERC165.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -536,6 +543,8 @@ interface IERC165 {
 
 
 // File @openzeppelin/contracts/token/ERC721/IERC721.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.2 <0.8.0;
 
@@ -666,6 +675,8 @@ interface IERC721 is IERC165 {
 
 // File @openzeppelin/contracts/token/ERC721/IERC721Metadata.sol@v3.4.0
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.6.2 <0.8.0;
 
 /**
@@ -692,6 +703,8 @@ interface IERC721Metadata is IERC721 {
 
 
 // File @openzeppelin/contracts/token/ERC721/IERC721Enumerable.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.2 <0.8.0;
 
@@ -722,6 +735,8 @@ interface IERC721Enumerable is IERC721 {
 
 // File @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol@v3.4.0
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -744,6 +759,8 @@ interface IERC721Receiver {
 
 
 // File @openzeppelin/contracts/introspection/ERC165.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -798,6 +815,8 @@ abstract contract ERC165 is IERC165 {
 
 
 // File @openzeppelin/contracts/utils/Address.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.2 <0.8.0;
 
@@ -989,6 +1008,8 @@ library Address {
 
 
 // File @openzeppelin/contracts/utils/EnumerableSet.sol@v3.4.0
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -1289,6 +1310,8 @@ library EnumerableSet {
 
 // File @openzeppelin/contracts/utils/EnumerableMap.sol@v3.4.0
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -1557,6 +1580,8 @@ library EnumerableMap {
 
 // File @openzeppelin/contracts/utils/Strings.sol@v3.4.0
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -1592,6 +1617,8 @@ library Strings {
 
 
 // File contracts/tokens/ERC721Initializable.sol
+
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.7.6;
 
@@ -2068,6 +2095,8 @@ abstract contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721M
 
 // File contracts/libs/String.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity >=0.6.12;
 
 library String {
@@ -2167,7 +2196,10 @@ library String {
 
 // File contracts/collections/v2/ERC721BaseCollectionV2.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
 
 
 
@@ -2260,7 +2292,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         bool _isApproved,
         IRarities _rarities,
         ItemParam[] memory _items
-    ) public virtual {
+    ) external virtual {
         require(!isInitialized, "initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
@@ -2447,7 +2479,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     }
 
     /**
-     * @notice Edit the price and beneficiary of multiple items
+     * @notice Edit items
      * @param _itemIds - items ids to edit
      * @param _prices - new prices
      * @param _beneficiaries - new beneficiaries
@@ -2464,6 +2496,11 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             _prices.length == _beneficiaries.length &&
             _beneficiaries.length == _metadatas.length,
             "editItemsData: LENGTH_MISMATCH"
+        );
+
+        require(
+            isEditable,
+            "editItemsData: COLLECTION_NOT_EDITABLE"
         );
 
         // Check item id
@@ -2740,7 +2777,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             abi.encodePacked(
                 baseURI(),
                 id.uintToString(),
-                "/"
+                "/",
                 "0x",
                 address(this).addressToString(),
                 "/",
@@ -2828,7 +2865,10 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
 // File contracts/collections/v2/ERC721CollectionV2.sol
 
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
 
 contract ERC721CollectionV2 is ERC721BaseCollectionV2 {
     constructor() {}
