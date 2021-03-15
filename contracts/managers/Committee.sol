@@ -62,7 +62,7 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
     * @param _collection - collection to be managed
     * @param _data - call data to be used
     */
-    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) public {
+    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) external {
        require(members[_msgSender()], "Committee#manageCollection: UNAUTHORIZED_SENDER");
 
         _collectionManager.manageCollection(_forwarder, _collection, _data);

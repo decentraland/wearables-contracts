@@ -52,7 +52,7 @@ contract MinimalProxyFactory {
     * @param _address - supposed sender of the transaction
     * @return address of the deterministic contract
     */
-    function getAddress(bytes32 _salt, address _address) public view returns (address) {
+    function getAddress(bytes32 _salt, address _address) external view returns (address) {
         return address(
             uint256(
                 keccak256(

@@ -202,7 +202,7 @@ Once the collection is _completed_, new items can't be added to the collection. 
 
 #### Approved
 
-Once the collection is _approved_, tokens can start being minted. There is no rollback once the collection is approved.
+Collections can be approved or rejected at any time. Once the collection is _approved_, tokens can be minted.
 
 #### Editable
 

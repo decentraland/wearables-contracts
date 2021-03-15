@@ -3036,6 +3036,21 @@ export function doTest(
           'editItemsData: EMPTY_METADATA'
         )
       })
+
+      it('reverts when editable is set to false', async function () {
+        await contract.setEditable(false, fromDeployer)
+
+        await assertRevert(
+          contract.editItemsData(
+            [itemId0],
+            [0],
+            [ZERO_ADDRESS],
+            [item0[3]],
+            fromCreator
+          ),
+          'editItemsData: COLLECTION_NOT_EDITABLE'
+        )
+      })
     })
 
     describe('rescueItems', function () {

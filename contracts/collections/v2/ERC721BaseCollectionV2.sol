@@ -98,7 +98,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         bool _isApproved,
         IRarities _rarities,
         ItemParam[] memory _items
-    ) public virtual {
+    ) external virtual {
         require(!isInitialized, "initialize: ALREADY_INITIALIZED");
         isInitialized = true;
 
@@ -285,7 +285,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     }
 
     /**
-     * @notice Edit the price and beneficiary of multiple items
+     * @notice Edit items
      * @param _itemIds - items ids to edit
      * @param _prices - new prices
      * @param _beneficiaries - new beneficiaries
@@ -302,6 +302,11 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             _prices.length == _beneficiaries.length &&
             _beneficiaries.length == _metadatas.length,
             "editItemsData: LENGTH_MISMATCH"
+        );
+
+        require(
+            isEditable,
+            "editItemsData: COLLECTION_NOT_EDITABLE"
         );
 
         // Check item id
@@ -578,7 +583,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             abi.encodePacked(
                 baseURI(),
                 id.uintToString(),
-                "/"
+                "/",
                 "0x",
                 address(this).addressToString(),
                 "/",

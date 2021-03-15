@@ -159,7 +159,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _collection - collection to be managed
     * @param _data - call data to be used
     */
-    function manageCollection(IForwarder _forwarder, IERC721CollectionV2 _collection, bytes calldata _data) public {
+    function manageCollection(IForwarder _forwarder, IERC721CollectionV2 _collection, bytes calldata _data) external {
         require(
             _msgSender() == committee,
             "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"
