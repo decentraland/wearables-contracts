@@ -425,7 +425,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
             require(allowance > 0, "_issueToken: CALLER_CAN_NOT_MINT");
 
-            if (allowance > 0 && allowance != type(uint256).max) {
+            if (allowance != type(uint256).max) {
                 itemMinters[_itemId][_sender]--;
             }
         }
