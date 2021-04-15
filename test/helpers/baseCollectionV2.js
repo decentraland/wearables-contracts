@@ -4011,6 +4011,42 @@ export function doTest(
         expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
       })
 
+      it('should issue multiple tokens by minter and not reduce if allowance is also a global minter', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [1, 1],
+          fromCreator
+        )
+
+        await contract.setMinters([minter], [true], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromCreator
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
       it('reverts when issue multiple tokens by minter without allowance', async function () {
         // Set items Minter
         await contract.setItemsMinters(

@@ -420,17 +420,14 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @param _sender - transaction sender
      */
     function _issueToken(address _beneficiary, uint256 _itemId, address _sender) internal virtual {
-        uint256 allowance = itemMinters[_itemId][_sender];
-        bool canMint = _isCreator() || globalMinters[_sender] || allowance > 0;
+        if (!(_isCreator() || globalMinters[_sender]))  {
+            uint256 allowance = itemMinters[_itemId][_sender];
 
-        // Check sender role
-        require(
-            canMint,
-            "_issueToken: CALLER_CAN_NOT_MINT"
-        );
+            require(allowance > 0, "_issueToken: CALLER_CAN_NOT_MINT");
 
-        if (allowance > 0 && allowance != type(uint256).max) {
-            itemMinters[_itemId][_sender] = allowance - 1;
+            if (allowance > 0 && allowance != type(uint256).max) {
+                itemMinters[_itemId][_sender]--;
+            }
         }
 
         // Check item id
