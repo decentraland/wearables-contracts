@@ -23,7 +23,7 @@ const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
 const Rarities = artifacts.require('Rarities')
 
-describe.only('Collection Manager', function () {
+describe('Collection Manager', function () {
   let manaContract
   let collectionImplementation
   let factoryContract

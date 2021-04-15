@@ -229,6 +229,17 @@ export function doTest(
         expect(isApproved_).to.be.equal(false)
       })
 
+      it('should be initialized and completed', async function () {
+        const contract = await Contract.new()
+        let isInitialized = await contract.isInitialized()
+        expect(isInitialized).to.be.equal(false)
+
+        await contract.initImplementation()
+
+        isInitialized = await contract.isInitialized()
+        expect(isInitialized).to.be.equal(true)
+      })
+
       it('reverts when trying to initialize with an invalid creator', async function () {
         const contract = await Contract.new()
         await assertRevert(
@@ -291,6 +302,11 @@ export function doTest(
             items,
             creationParams
           ),
+          'initialize: ALREADY_INITIALIZED'
+        )
+
+        await assertRevert(
+          contract.initImplementation(),
           'initialize: ALREADY_INITIALIZED'
         )
       })
@@ -3815,7 +3831,9 @@ export function doTest(
         const balance = await contract.balanceOf(beneficiary)
         expect(balance).to.eq.BN(itemsInTheSameTx)
 
-        console.log(`Gas used:: ${receipt.gasUsed}`)
+        console.log(
+          `Issue items: ${itemsInTheSameTx} => Gas used:: ${receipt.gasUsed}`
+        )
       })
 
       it('should issue multiple tokens by minter', async function () {

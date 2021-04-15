@@ -79,6 +79,14 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     */
 
     /**
+     * @notice Init the contract
+     */
+    function initImplementation() public {
+        require(!isInitialized, "initialize: ALREADY_INITIALIZED");
+        isInitialized = true;
+    }
+
+    /**
      * @notice Create the contract
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
@@ -99,8 +107,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         IRarities _rarities,
         ItemParam[] memory _items
     ) external virtual {
-        require(!isInitialized, "initialize: ALREADY_INITIALIZED");
-        isInitialized = true;
+        initImplementation();
 
         require(_creator != address(0), "initialize: INVALID_CREATOR");
         require(address(_rarities) != address(0), "initialize: INVALID_RARITIES");
