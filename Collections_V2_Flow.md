@@ -34,7 +34,7 @@ A way to moderate the content of the Decentraland collections is needed to preve
 
 **Collection_Manager**: The collections' manager contract. This contract is responsible for creating collections and also allowing the Committee to manage them. Every user will be able to deploy collections by paying X MANA. The amount of MANA to pay will be collected by the DAO bridge to be sent later to the governance fund manager entity in L1. The collection manager has some variables that can be updated by the owner: _mana contract_, _committee contract_, _fee collector_ and _rarities contract_ . In first place, the owner will be the DAO bridge. Once the collection is deployed:
 
-- The committee smart contract can approve/reject collections and rescue items.
+- The committee smart contract can approve/reject collections, set collections as editable, and rescue items.
 - The collection's creator can add items to the collection by paying X MANA if the collection is not completed. **EVERY COLLECTION IS GOING TO BE COMPLETED AUTOMATICALLY WHEN IT IS DEPLOYED. THEREFORE THIS ONLY BE ADDED IN CASE OF NEEDED**
 
 - **Forwarder**: The forwarder is a contract which forwards calls to target contracts. The forwarder is the owner of the collection factory and therefore each collection. You can see it just as a _tube_. Being the owner of the factory means that it is the only address allowed to create collections by using the factory. Forcing this way, users must use the manager to create every collection. The owner of the forwarder (DAO bridge) will be able to update the collection address factory in case we need to change it. The forwarder can send any transaction to any target and its owner can be changed.
