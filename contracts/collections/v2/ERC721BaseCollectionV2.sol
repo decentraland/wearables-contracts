@@ -278,7 +278,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @notice Add items to the collection.
      * @param _items - items to add
      */
-    function addItems(ItemParam[] memory _items) external virtual onlyCreator {
+    function addItems(ItemParam[] memory _items) external virtual onlyOwner {
         require(!isCompleted, "_addItem: COLLECTION_COMPLETED");
 
         _addItems(_items);
@@ -345,6 +345,8 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      * @param _items - items to add
      */
     function _addItems(ItemParam[] memory _items) internal {
+        require(_items.length > 0, "_addItems: EMPTY_ITEMS");
+
         IRarities.Rarity memory rarity;
         bytes32 lastRarityKey;
 

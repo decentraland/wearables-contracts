@@ -193,49 +193,6 @@ export function doTest(
         }
       })
 
-      it('should be initialized without items', async function () {
-        const contract = await Contract.new()
-        await contract.initialize(
-          contractName,
-          contractSymbol,
-          BASE_URI,
-          user,
-          false,
-          true,
-          raritiesContractAddress,
-          [],
-          creationParams
-        )
-
-        const baseURI_ = await contract.baseURI()
-        const creator_ = await contract.creator()
-        const owner_ = await contract.owner()
-        const name_ = await contract.name()
-        const symbol_ = await contract.symbol()
-        const isInitialized_ = await contract.isInitialized()
-        const isApproved_ = await contract.isApproved()
-        const isCompleted_ = await contract.isCompleted()
-        const isEditable_ = await contract.isEditable()
-        const collectionHash = await contract.COLLECTION_HASH()
-        const rarities = await contract.rarities()
-
-        expect(baseURI_).to.be.equal(BASE_URI)
-        expect(creator_).to.be.equal(user)
-        expect(owner_).to.be.equal(deployer)
-        expect(name_).to.be.equal(contractName)
-        expect(symbol_).to.be.equal(contractSymbol)
-        expect(isInitialized_).to.be.equal(true)
-        expect(isApproved_).to.be.equal(true)
-        expect(isCompleted_).to.be.equal(false)
-        expect(isEditable_).to.be.equal(true)
-        expect(collectionHash).to.be.equal(COLLECTION_HASH)
-        expect(raritiesContractAddress).to.be.equal(rarities)
-
-        const itemLength = await contract.itemsCount()
-
-        expect(0).to.be.eq.BN(itemLength)
-      })
-
       it('should be initialized and completed', async function () {
         const contract = await Contract.new()
         await contract.initialize(
@@ -246,7 +203,7 @@ export function doTest(
           true,
           true,
           raritiesContractAddress,
-          [],
+          items,
           creationParams
         )
 
@@ -264,7 +221,7 @@ export function doTest(
           false,
           false,
           raritiesContractAddress,
-          [],
+          items,
           creationParams
         )
 
@@ -283,7 +240,7 @@ export function doTest(
             true,
             true,
             ZERO_ADDRESS,
-            [],
+            items,
             creationParams
           ),
           'initialize: INVALID_RARITIES'
@@ -301,7 +258,7 @@ export function doTest(
             true,
             true,
             raritiesContractAddress,
-            [],
+            items,
             creationParams
           ),
           'initialize: INVALID_CREATOR'
@@ -318,7 +275,7 @@ export function doTest(
           true,
           true,
           raritiesContractAddress,
-          [],
+          items,
           creationParams
         )
 
@@ -331,10 +288,28 @@ export function doTest(
             true,
             true,
             raritiesContractAddress,
-            [],
+            items,
             creationParams
           ),
           'initialize: ALREADY_INITIALIZED'
+        )
+      })
+
+      it('reverts when trying to initialize without items', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            BASE_URI,
+            user,
+            false,
+            true,
+            raritiesContractAddress,
+            [],
+            creationParams
+          ),
+          '_addItems: EMPTY_ITEMS'
         )
       })
     })
@@ -1832,7 +1807,7 @@ export function doTest(
       })
     })
 
-    describe('addItem', function () {
+    describe('addItems', function () {
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
@@ -1854,7 +1829,7 @@ export function doTest(
         ]
 
         let itemLength = await contract.itemsCount()
-        const { logs } = await contract.addItems([newItem], fromCreator)
+        const { logs } = await contract.addItems([newItem], fromDeployer)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
@@ -1943,14 +1918,14 @@ export function doTest(
         const { logs } = await sendMetaTx(
           contract,
           functionSignature,
-          creator,
+          deployer,
           relayer
         )
 
         expect(logs.length).to.be.equal(2)
 
         expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
         expect(logs[0].args.relayerAddress).to.be.equal(relayer)
         expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
@@ -2006,7 +1981,7 @@ export function doTest(
         let itemLength = await contract.itemsCount()
         const { logs } = await contract.addItems(
           [newItem1, newItem2],
-          fromCreator
+          fromDeployer
         )
 
         expect(logs.length).to.be.equal(2)
@@ -2086,7 +2061,7 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
         ]
 
-        const { logs } = await contract.addItems([newItem], fromCreator)
+        const { logs } = await contract.addItems([newItem], fromDeployer)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
@@ -2123,6 +2098,13 @@ export function doTest(
         ])
       })
 
+      it('reverts when trying to add an empty item', async function () {
+        await assertRevert(
+          contract.addItems([], fromDeployer),
+          '_addItems: EMPTY_ITEMS'
+        )
+      })
+
       it('reverts when one of the item is invalid', async function () {
         const newItem1 = [
           RARITIES.common.name,
@@ -2138,7 +2120,9 @@ export function doTest(
           '1:turtle_mask:hat:female,male',
         ]
 
-        await assertRevert(contract.addItems([newItem1, newItem2], fromCreator))
+        await assertRevert(
+          contract.addItems([newItem1, newItem2], fromDeployer)
+        )
       })
 
       it('reverts when trying to add an item with invalid rarity', async function () {
@@ -2149,7 +2133,7 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
         ]
 
-        await assertRevert(contract.addItems([newItem], fromCreator))
+        await assertRevert(contract.addItems([newItem], fromDeployer))
       })
 
       it('reverts when trying to add an item with price and no beneficiary', async function () {
@@ -2160,7 +2144,7 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromDeployer),
           '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
@@ -2173,7 +2157,7 @@ export function doTest(
           '1:crocodile_mask:hat:female,male',
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromDeployer),
           '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
@@ -2186,12 +2170,12 @@ export function doTest(
           '',
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromDeployer),
           '_addItem: EMPTY_METADATA'
         )
       })
 
-      it('reverts when trying to add an item by not the creator', async function () {
+      it('reverts when trying to add an item by not the deployer', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
         await contract.setItemsMinters([0], [minter], [1], fromCreator)
@@ -2205,27 +2189,27 @@ export function doTest(
         ]
 
         await assertRevert(
-          contract.addItems([newItem], fromDeployer),
-          'onlyCreator: CALLER_IS_NOT_CREATOR'
+          contract.addItems([newItem], fromCreator),
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromMinter),
-          'onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromManager),
-          'onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromHacker),
-          'onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
       })
 
-      it('reverts when trying to add an item by not the creator :: Relayed EIP721', async function () {
+      it('reverts when trying to add an item by not the deployer :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
         await contract.setItemsMinters([0], [minter], [1], fromCreator)
@@ -2278,7 +2262,7 @@ export function doTest(
         )
 
         await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
+          sendMetaTx(contract, functionSignature, creator, relayer),
           'NMT#executeMetaTransaction: CALL_FAILED'
         )
 
@@ -2309,7 +2293,7 @@ export function doTest(
         ]
 
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromDeployer),
           '_addItem: COLLECTION_COMPLETED'
         )
       })
@@ -2344,7 +2328,7 @@ export function doTest(
           true,
           creationParams
         )
-        await contract.addItems([item0, item1], fromCreator)
+        await contract.addItems([item0, item1], fromDeployer)
 
         const itemLength = await contract.itemsCount()
         itemId0 = itemLength.sub(web3.utils.toBN(2))
@@ -3082,7 +3066,7 @@ export function doTest(
           true,
           creationParams
         )
-        await contract.addItems([item0, item1], fromCreator)
+        await contract.addItems([item0, item1], fromDeployer)
 
         const itemLength = await contract.itemsCount()
 
@@ -3610,7 +3594,7 @@ export function doTest(
           true,
           creationParams
         )
-        await contract.addItems([newItem, anotherNewItem], fromCreator)
+        await contract.addItems([newItem, anotherNewItem], fromDeployer)
 
         await contract.completeCollection(fromCreator)
 
@@ -4214,7 +4198,7 @@ export function doTest(
           true,
           creationParams
         )
-        await contract.addItems([newItem], fromCreator)
+        await contract.addItems([newItem], fromDeployer)
 
         const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
 
@@ -4242,7 +4226,7 @@ export function doTest(
           creationParams
         )
 
-        await contract.addItems([newItem], fromCreator)
+        await contract.addItems([newItem], fromDeployer)
 
         await contract.completeCollection(fromCreator)
 
@@ -5202,7 +5186,7 @@ export function doTest(
         ]
 
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
+          contract.addItems([newItem], fromDeployer),
           '_addItem: COLLECTION_COMPLETED'
         )
       })

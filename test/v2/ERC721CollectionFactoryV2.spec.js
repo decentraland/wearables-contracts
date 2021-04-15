@@ -176,7 +176,7 @@ describe('Factory V2', function () {
           creator: user,
           shouldComplete: true,
           isApproved: true,
-          items,
+          items: ITEMS,
           rarities: raritiesContract.address,
         }),
         fromFactoryOwner
