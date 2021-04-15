@@ -3,6 +3,8 @@ import {
   ITEMS,
   getInitialRarities,
   getRarityNames,
+  RESCUE_ITEMS_SELECTOR,
+  SET_APPROVE_COLLECTION_SELECTOR,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import { expect } from 'chai'
@@ -58,7 +60,9 @@ describe('Commitee', function () {
       committeeContract.address,
       committeeContract.address,
       user,
-      raritiesContract.address
+      raritiesContract.address,
+      [RESCUE_ITEMS_SELECTOR, SET_APPROVE_COLLECTION_SELECTOR],
+      [true, true]
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -484,6 +488,34 @@ describe('Commitee', function () {
           [false]
         ),
         fromUser
+      )
+    })
+
+    it('reverts when trying to manage a collection by calling an authorized method', async function () {
+      await assertRevert(
+        committeeContract.manageCollection(
+          collectionManagerContract.address,
+          forwarderContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'unauthorizedMethod',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          fromUser
+        ),
+        'CollectionManager#manageCollection: COMMITTEE_METHOD_NOT_ALLOWED'
       )
     })
 

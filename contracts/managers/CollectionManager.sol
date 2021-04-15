@@ -24,8 +24,12 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     address public feesCollector;
     uint256 public pricePerItem;
 
+    mapping(bytes4 => bool) public allowedCommitteeMethods;
+
+
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
     event CommitteeSet(address indexed _oldCommittee, address indexed _newCommittee);
+    event CommitteeMethodSet(bytes4 indexed _method, bool _isAllowed);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event RaritiesSet(IRarities indexed _oldRarities, IRarities indexed _newRarities);
 
@@ -36,15 +40,29 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _committee - committee contract
     * @param _feesCollector - fees collector
     * @param _rarities - rarities contract
+    * @param _committeeMethods - method selectors
+    * @param _committeeValues - whether the method is allowed or not
     */
-    constructor(address _owner, IERC20 _acceptedToken, address _committee, address _feesCollector, IRarities _rarities) {
+    constructor(
+        address _owner,
+        IERC20 _acceptedToken,
+        address _committee,
+        address _feesCollector,
+        IRarities _rarities,
+        bytes4[] memory _committeeMethods,
+        bool[] memory _committeeValues
+    ) {
         // EIP712 init
         _initializeEIP712('Decentraland Collection Manager', '1');
         // Ownable init
         _initOwnable();
 
         setAcceptedToken(_acceptedToken);
+
+        // Committee
         setCommittee(_committee);
+        setCommitteeMethods(_committeeMethods, _committeeValues);
+
         setFeesCollector(_feesCollector);
         setRarities(_rarities);
 
@@ -71,6 +89,25 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
 
         emit CommitteeSet(committee, _newCommittee);
         committee = _newCommittee;
+    }
+
+    /**
+    * @notice Set methods to be allowed by the committee
+    * @param _methods - method selectors
+    * @param _values - whether the method is allowed or not
+    */
+    function setCommitteeMethods(bytes4[] memory _methods, bool[] memory _values) onlyOwner public {
+        uint256 length = _methods.length;
+        require(length > 0 && length == _values.length, "CollectionManager#setCommitteeMethods: EMPTY_METHODS");
+
+        for (uint256 i = 0; i < length; i++) {
+            bytes4 method = _methods[i];
+            bool value = _values[i];
+
+            allowedCommitteeMethods[method] = value;
+
+            emit CommitteeMethodSet(method, value);
+        }
     }
 
     /**
@@ -166,6 +203,9 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
             _msgSender() == committee,
             "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"
         );
+
+        (bytes4 method) = abi.decode(_data, (bytes4));
+        require(allowedCommitteeMethods[method], "CollectionManager#manageCollection: COMMITTEE_METHOD_NOT_ALLOWED");
 
         bool success;
         bytes memory res;

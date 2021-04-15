@@ -7,6 +7,9 @@ import {
   getRarityNames,
   EMPTY_HASH,
   RARITIES,
+  RESCUE_ITEMS_SELECTOR,
+  SET_APPROVE_COLLECTION_SELECTOR,
+  SET_EDITABLE_SELECTOR,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
@@ -84,7 +87,13 @@ describe('End 2 End: Approval Flow', function () {
       manaContract.address,
       committeeContract.address,
       collector,
-      raritiesContract.address
+      raritiesContract.address,
+      [
+        RESCUE_ITEMS_SELECTOR,
+        SET_APPROVE_COLLECTION_SELECTOR,
+        SET_EDITABLE_SELECTOR,
+      ],
+      [true, true, true]
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -214,7 +223,6 @@ describe('End 2 End: Approval Flow', function () {
       it('should set not editable a collection by the committee', async function () {
         let isEditable = await collectionContract.isEditable()
         expect(isEditable).to.be.equal(true)
-
         // Set Editable false to collection
         await committeeContract.manageCollection(
           collectionManagerContract.address,

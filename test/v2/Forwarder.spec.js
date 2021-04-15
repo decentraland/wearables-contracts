@@ -124,7 +124,7 @@ describe('Forwarder', function () {
   })
 
   describe('forwardCall', async function () {
-    it('should forward a call', async function () {
+    it('should forward a call by caller', async function () {
       let isMember = await committeeContract.members(anotherUser)
       expect(isMember).to.be.equal(false)
 
@@ -159,7 +159,42 @@ describe('Forwarder', function () {
       expect(isMember).to.be.equal(true)
     })
 
-    it('reverts when trying to forward a call by not the caller', async function () {
+    it('should forward a call by owner', async function () {
+      let isMember = await committeeContract.members(anotherUser)
+      expect(isMember).to.be.equal(false)
+
+      // Set a member
+      await forwarderContract.forwardCall(
+        committeeContract.address,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_members',
+                type: 'address[]',
+              },
+              {
+                internalType: 'bool[]',
+                name: '_values',
+                type: 'bool[]',
+              },
+            ],
+            name: 'setMembers',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[anotherUser], [true]]
+        ),
+        fromOwner
+      )
+
+      isMember = await committeeContract.members(anotherUser)
+      expect(isMember).to.be.equal(true)
+    })
+
+    it('reverts when trying to forward a call by not the caller nor owner', async function () {
       await assertRevert(
         forwarderContract.forwardCall(
           committeeContract.address,
@@ -184,7 +219,7 @@ describe('Forwarder', function () {
             },
             [[anotherUser], [true]]
           ),
-          fromOwner
+          { from: anotherUser }
         ),
         'Owner#forwardCall: UNAUTHORIZED_SENDER'
       )
