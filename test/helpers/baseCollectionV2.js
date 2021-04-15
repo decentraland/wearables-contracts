@@ -3806,7 +3806,7 @@ export function doTest(
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
       })
 
-      it('should issue multiple token for the same item id :: gas estimation', async function () {
+      it('should issue multiple token for the same item id :: Gas estimation', async function () {
         const itemsInTheSameTx = 70
         const beneficiaries = []
         const ids = []

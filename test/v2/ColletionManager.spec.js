@@ -13,6 +13,7 @@ import {
   getRarityDefaulPrices,
   EMPTY_HASH,
   DEFAULT_RARITY_PRICE,
+  MAX_UINT256,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
@@ -754,7 +755,9 @@ describe('Collection Manager', function () {
         '1'
       )
 
-      console.log(`Gas Used: ${res.receipt.gasUsed}`)
+      console.log(
+        `Deploy a collection with ${ITEMS.length} items -> Gas Used: ${res.receipt.gasUsed}`
+      )
       const logs = res.logs
 
       collectionContract = await ERC721CollectionV2.at(logs[1].address)
@@ -808,6 +811,124 @@ describe('Collection Manager', function () {
 
       await creatorBalance.requireDecrease(fee)
       await feeCollectorBalance.requireIncrease(fee)
+    })
+
+    it('should create a collection by paying the fees in acceptedToken :: Relayed EIP721 :: Gas estimation', async function () {
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        getRarityDefaulPrices().map((_) => 1)
+      )
+
+      await manaContract.approve(
+        collectionManagerContract.address,
+        MAX_UINT256,
+        fromUser
+      )
+
+      const itemsInTheSameTx = 60
+      const items = []
+
+      for (let i = 0; i < itemsInTheSameTx; i++) {
+        items.push(ITEMS[i % ITEMS.length])
+      }
+
+      const salt = web3.utils.randomHex(32)
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'contract IForwarder',
+              name: '_forwarder',
+              type: 'address',
+            },
+            {
+              internalType: 'contract IERC721CollectionFactoryV2',
+              name: '_factory',
+              type: 'address',
+            },
+            {
+              internalType: 'bytes32',
+              name: '_salt',
+              type: 'bytes32',
+            },
+            {
+              internalType: 'string',
+              name: '_name',
+              type: 'string',
+            },
+            {
+              internalType: 'string',
+              name: '_symbol',
+              type: 'string',
+            },
+            {
+              internalType: 'string',
+              name: '_baseURI',
+              type: 'string',
+            },
+            {
+              internalType: 'address',
+              name: '_creator',
+              type: 'address',
+            },
+            {
+              components: [
+                {
+                  internalType: 'string',
+                  name: 'rarity',
+                  type: 'string',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'price',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'address',
+                  name: 'beneficiary',
+                  type: 'address',
+                },
+                {
+                  internalType: 'string',
+                  name: 'metadata',
+                  type: 'string',
+                },
+              ],
+              internalType: 'struct IERC721CollectionV2.ItemParam[]',
+              name: '_items',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'createCollection',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          forwarderContract.address,
+          factoryContract.address,
+          salt,
+          name,
+          symbol,
+          baseURI,
+          anotherUser,
+          items,
+        ]
+      )
+
+      const res = await sendMetaTx(
+        collectionManagerContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        'Decentraland Collection Manager',
+        '1'
+      )
+
+      console.log(
+        `Deploy a collection with ${itemsInTheSameTx.length} items -> Gas Used: ${res.receipt.gasUsed}`
+      )
     })
 
     it('reverts when creating a collection without paying the fees in acceptedToken', async function () {

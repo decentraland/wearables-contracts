@@ -769,7 +769,7 @@ describe('Collection Store', function () {
         fromBuyer
       )
 
-      console.log(`Gas used:: ${receipt.gasUsed}`)
+      console.log(`Buy ${ITEMS.length} items -> Gas used:: ${receipt.gasUsed}`)
     })
 
     it('reverts when buyer has not balance', async function () {
