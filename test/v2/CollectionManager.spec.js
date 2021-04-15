@@ -13,6 +13,10 @@ import {
   getRarityDefaulPrices,
   EMPTY_HASH,
   DEFAULT_RARITY_PRICE,
+  MAX_UINT256,
+  RESCUE_ITEMS_SELECTOR,
+  SET_APPROVE_COLLECTION_SELECTOR,
+  SET_EDITABLE_SELECTOR,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
@@ -83,7 +87,13 @@ describe('Collection Manager', function () {
       manaContract.address,
       committeeContract.address,
       collector,
-      raritiesContract.address
+      raritiesContract.address,
+      [
+        RESCUE_ITEMS_SELECTOR,
+        SET_APPROVE_COLLECTION_SELECTOR,
+        SET_EDITABLE_SELECTOR,
+      ],
+      [true, true, true]
     )
 
     collectionImplementation = await ERC721CollectionV2.new()
@@ -108,18 +118,24 @@ describe('Collection Manager', function () {
         committeeContract.address,
         collector,
         raritiesContract.address,
+        [SET_APPROVE_COLLECTION_SELECTOR],
+        [true],
         fromDeployer
       )
 
       const collectionManagerOwner = await contract.owner()
       const mana = await contract.acceptedToken()
       const committee = await contract.committee()
+      const isAllowed = await contract.allowedCommitteeMethods(
+        SET_APPROVE_COLLECTION_SELECTOR
+      )
       const feesCollector = await contract.feesCollector()
       const rarities = await contract.rarities()
 
       expect(collectionManagerOwner).to.be.equal(owner)
       expect(mana).to.be.equal(manaContract.address)
       expect(committee).to.be.equal(committeeContract.address)
+      expect(isAllowed).to.be.equal(true)
       expect(feesCollector).to.be.equal(collector)
       expect(rarities).to.be.equal(raritiesContract.address)
     })
@@ -219,6 +235,115 @@ describe('Collection Manager', function () {
     it('reverts when trying to set a committee by hacker', async function () {
       await assertRevert(
         collectionManagerContract.setCommittee(user, fromHacker),
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
+  describe('setCommitteeMethods', async function () {
+    const methodSelector1 = '0x12345678'
+    const methodSelector2 = '0x12345679'
+
+    it('should set committee methods', async function () {
+      let isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector1
+      )
+      expect(isAllowed).to.be.equal(false)
+
+      isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector2
+      )
+      expect(isAllowed).to.be.equal(false)
+
+      let res = await collectionManagerContract.setCommitteeMethods(
+        [methodSelector1, methodSelector2],
+        [true, true],
+        fromOwner
+      )
+
+      let logs = res.logs
+
+      expect(logs.length).to.be.equal(2)
+      expect(logs[0].event).to.be.equal('CommitteeMethodSet')
+      expect(logs[0].args._method).to.be.equal(
+        web3.utils.padRight(methodSelector1, 64)
+      )
+      expect(logs[0].args._isAllowed).to.be.equal(true)
+
+      expect(logs[1].event).to.be.equal('CommitteeMethodSet')
+      expect(logs[1].args._method).to.be.equal(
+        web3.utils.padRight(methodSelector2, 64)
+      )
+      expect(logs[1].args._isAllowed).to.be.equal(true)
+
+      isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector1
+      )
+      expect(isAllowed).to.be.equal(true)
+
+      isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector2
+      )
+      expect(isAllowed).to.be.equal(true)
+
+      res = await collectionManagerContract.setCommitteeMethods(
+        [methodSelector2],
+        [false],
+        fromOwner
+      )
+
+      logs = res.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('CommitteeMethodSet')
+      expect(logs[0].args._method).to.be.equal(
+        web3.utils.padRight(methodSelector2, 64)
+      )
+      expect(logs[0].args._isAllowed).to.be.equal(false)
+
+      isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector1
+      )
+      expect(isAllowed).to.be.equal(true)
+
+      isAllowed = await collectionManagerContract.allowedCommitteeMethods(
+        methodSelector2
+      )
+      expect(isAllowed).to.be.equal(false)
+    })
+
+    it('reverts when trying to set methods with invalid length', async function () {
+      await assertRevert(
+        collectionManagerContract.setCommitteeMethods(
+          [methodSelector1],
+          [true, false],
+          fromOwner
+        ),
+        'CollectionManager#setCommitteeMethods: EMPTY_METHODS'
+      )
+
+      await assertRevert(
+        collectionManagerContract.setCommitteeMethods(
+          [methodSelector1, methodSelector2],
+          [true],
+          fromOwner
+        ),
+        'CollectionManager#setCommitteeMethods: EMPTY_METHODS'
+      )
+
+      await assertRevert(
+        collectionManagerContract.setCommitteeMethods([], [], fromOwner),
+        'CollectionManager#setCommitteeMethods: EMPTY_METHODS'
+      )
+    })
+
+    it('reverts when trying to set a committee by hacker', async function () {
+      await assertRevert(
+        collectionManagerContract.setCommitteeMethods(
+          [methodSelector2],
+          [true],
+          fromHacker
+        ),
         'Ownable: caller is not the owner'
       )
     })
@@ -754,7 +879,9 @@ describe('Collection Manager', function () {
         '1'
       )
 
-      console.log(`Gas Used: ${res.receipt.gasUsed}`)
+      console.log(
+        `Deploy a collection with ${ITEMS.length} items -> Gas Used: ${res.receipt.gasUsed}`
+      )
       const logs = res.logs
 
       collectionContract = await ERC721CollectionV2.at(logs[1].address)
@@ -810,6 +937,124 @@ describe('Collection Manager', function () {
       await feeCollectorBalance.requireIncrease(fee)
     })
 
+    it('should create a collection by paying the fees in acceptedToken :: Relayed EIP721 :: Gas estimation', async function () {
+      await raritiesContract.updatePrices(
+        getRarityNames(),
+        getRarityDefaulPrices().map((_) => 1)
+      )
+
+      await manaContract.approve(
+        collectionManagerContract.address,
+        MAX_UINT256,
+        fromUser
+      )
+
+      const itemsInTheSameTx = 60
+      const items = []
+
+      for (let i = 0; i < itemsInTheSameTx; i++) {
+        items.push(ITEMS[i % ITEMS.length])
+      }
+
+      const salt = web3.utils.randomHex(32)
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'contract IForwarder',
+              name: '_forwarder',
+              type: 'address',
+            },
+            {
+              internalType: 'contract IERC721CollectionFactoryV2',
+              name: '_factory',
+              type: 'address',
+            },
+            {
+              internalType: 'bytes32',
+              name: '_salt',
+              type: 'bytes32',
+            },
+            {
+              internalType: 'string',
+              name: '_name',
+              type: 'string',
+            },
+            {
+              internalType: 'string',
+              name: '_symbol',
+              type: 'string',
+            },
+            {
+              internalType: 'string',
+              name: '_baseURI',
+              type: 'string',
+            },
+            {
+              internalType: 'address',
+              name: '_creator',
+              type: 'address',
+            },
+            {
+              components: [
+                {
+                  internalType: 'string',
+                  name: 'rarity',
+                  type: 'string',
+                },
+                {
+                  internalType: 'uint256',
+                  name: 'price',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'address',
+                  name: 'beneficiary',
+                  type: 'address',
+                },
+                {
+                  internalType: 'string',
+                  name: 'metadata',
+                  type: 'string',
+                },
+              ],
+              internalType: 'struct IERC721CollectionV2.ItemParam[]',
+              name: '_items',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'createCollection',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          forwarderContract.address,
+          factoryContract.address,
+          salt,
+          name,
+          symbol,
+          baseURI,
+          anotherUser,
+          items,
+        ]
+      )
+
+      const res = await sendMetaTx(
+        collectionManagerContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        'Decentraland Collection Manager',
+        '1'
+      )
+
+      console.log(
+        `Deploy a collection with ${itemsInTheSameTx.length} items -> Gas Used: ${res.receipt.gasUsed}`
+      )
+    })
+
     it('reverts when creating a collection without paying the fees in acceptedToken', async function () {
       await raritiesContract.updatePrices(
         getRarityNames(),
@@ -853,6 +1098,24 @@ describe('Collection Manager', function () {
           ITEMS,
           fromOwner
         )
+      )
+    })
+
+    it('reverts when forwarder is the contract', async function () {
+      const salt = web3.utils.randomHex(32)
+      await assertRevert(
+        collectionManagerContract.createCollection(
+          collectionManagerContract.address,
+          factoryContract.address,
+          salt,
+          name,
+          symbol,
+          baseURI,
+          anotherUser,
+          ITEMS,
+          fromUser
+        ),
+        'CollectionManager#createCollection: FORWARDER_CANT_BE_THIS'
       )
     })
   })
@@ -944,6 +1207,69 @@ describe('Collection Manager', function () {
 
       isApproved = await collectionContract.isApproved()
       expect(isApproved).to.be.equal(false)
+
+      // Rescue collection
+      const hash = web3.utils.randomHex(32)
+      const metadata = 'saraza'
+      await collectionManagerContract.manageCollection(
+        forwarderContract.address,
+        collectionContract.address,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+              {
+                internalType: 'bytes32[]',
+                name: '_contentHashes',
+                type: 'bytes32[]',
+              },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
+            ],
+            name: 'rescueItems',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [[0], [hash], [metadata]]
+        ),
+        fromUser
+      )
+
+      const item = await collectionContract.items(0)
+      expect([item.metadata, item.contentHash]).to.be.eql([metadata, hash])
+
+      await collectionManagerContract.manageCollection(
+        forwarderContract.address,
+        collectionContract.address,
+        web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'bool',
+                name: '_value',
+                type: 'bool',
+              },
+            ],
+            name: 'setEditable',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [false]
+        ),
+        fromUser
+      )
+
+      const isEditable = await collectionContract.isEditable()
+      expect(isEditable).to.be.equal(false)
     })
 
     it('should manage a collection :: Relayed EIP721', async function () {
@@ -1147,6 +1473,60 @@ describe('Collection Manager', function () {
           fromOwner
         ),
         'CollectionManager#manageCollection: UNAUTHORIZED_SENDER'
+      )
+    })
+
+    it('reverts when forwarder is the contract', async function () {
+      await assertRevert(
+        collectionManagerContract.manageCollection(
+          collectionManagerContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          fromUser
+        ),
+        'CollectionManager#manageCollection: FORWARDER_CANT_BE_THIS'
+      )
+    })
+
+    it('reverts when forwarder is the contract', async function () {
+      await assertRevert(
+        collectionManagerContract.manageCollection(
+          forwarderContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'transferOwnership',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          fromUser
+        ),
+        'CollectionManager#manageCollection: COMMITTEE_METHOD_NOT_ALLOWED'
       )
     })
   })

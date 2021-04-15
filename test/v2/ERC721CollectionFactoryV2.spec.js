@@ -91,19 +91,21 @@ describe('Factory V2', function () {
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
       const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        rarities: raritiesContract.address,
+      })
       const expectedAddress = await factoryContract.getAddress(
         salt,
-        factoryOwner
+        factoryOwner,
+        data
       )
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          creator: user,
-          shouldComplete: true,
-          isApproved: true,
-          rarities: raritiesContract.address,
-        }),
+        data,
         fromFactoryOwner
       )
 
@@ -117,25 +119,29 @@ describe('Factory V2', function () {
       console.log(`Codehash: ${codeHash}`)
 
       const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        rarities: raritiesContract.address,
+      })
 
       const expectedAddress = `0x${keccak256(
         ['bytes1', 'address', 'bytes32', 'bytes32'],
         [
           '0xff',
           factoryContract.address,
-          keccak256(['bytes32', 'address'], [salt, factoryOwner]),
+          keccak256(
+            ['bytes32', 'address', 'bytes'],
+            [salt, factoryOwner, data]
+          ),
           codeHash,
         ]
       ).slice(-40)}`.toLowerCase()
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          creator: user,
-          shouldComplete: true,
-          isApproved: true,
-          rarities: raritiesContract.address,
-        }),
+        data,
         fromFactoryOwner
       )
 
@@ -154,9 +160,20 @@ describe('Factory V2', function () {
 
     it('should create a collection', async function () {
       const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
       const expectedAddress = await factoryContract.getAddress(
         salt,
-        factoryOwner
+        factoryOwner,
+        data
       )
 
       let collectionsSize = await factoryContract.collectionsSize()
@@ -169,16 +186,7 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          name,
-          symbol,
-          baseURI,
-          creator: user,
-          shouldComplete: true,
-          isApproved: true,
-          items,
-          rarities: raritiesContract.address,
-        }),
+        data,
         fromFactoryOwner
       )
 
@@ -210,9 +218,20 @@ describe('Factory V2', function () {
 
     it('should create a collection with items', async function () {
       const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
       const expectedAddress = await factoryContract.getAddress(
         salt,
-        factoryOwner
+        factoryOwner,
+        data
       )
 
       let collectionsSize = await factoryContract.collectionsSize()
@@ -225,16 +244,7 @@ describe('Factory V2', function () {
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          name,
-          symbol,
-          baseURI,
-          creator: user,
-          shouldComplete: true,
-          isApproved: true,
-          items: ITEMS,
-          rarities: raritiesContract.address,
-        }),
+        data,
         fromFactoryOwner
       )
 

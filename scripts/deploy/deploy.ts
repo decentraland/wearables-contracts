@@ -2,7 +2,11 @@ import { ethers } from "hardhat"
 import * as MarketplaceConfig from 'marketplace-contracts/artifacts/contracts/marketplace/Marketplace.sol/Marketplace.json'
 import * as ManaConfig from 'decentraland-mana/build/contracts/MANAToken.json'
 
-import { MANA_BYTECODE } from './utils'
+import {
+  MANA_BYTECODE, RESCUE_ITEMS_SELECTOR,
+  SET_APPROVE_COLLECTION_SELECTOR,
+  SET_EDITABLE_SELECTOR
+} from './utils'
 
 
 const RARITIES = [
@@ -50,7 +54,7 @@ async function main() {
 
   const network = NETWORKS[(process.env['NETWORK'] || 'LOCALHOST') as NETWORKS]
   if (!network) {
-    throw ('Invalid error')
+    throw ('Invalid network')
   }
 
   // Deploy the collection implementation
@@ -71,7 +75,8 @@ async function main() {
 
   // Deploy the collection manager
   const CollectionManager = await ethers.getContractFactory("CollectionManager")
-  const collectionManager = await CollectionManager.deploy(owner, MANA[network], committee.address, collectionDeploymentsFeesCollector, rarities.address)
+  const collectionManager = await CollectionManager.deploy(owner, MANA[network], committee.address, collectionDeploymentsFeesCollector, rarities.address, [RESCUE_ITEMS_SELECTOR,
+    SET_APPROVE_COLLECTION_SELECTOR, SET_EDITABLE_SELECTOR], [true, true, true])
 
   // Deploy the forwarder
   const Forwarder = await ethers.getContractFactory("Forwarder")

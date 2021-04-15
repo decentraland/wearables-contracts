@@ -82,6 +82,10 @@ export const ITEMS = [
   ],
 ]
 
+export const RESCUE_ITEMS_SELECTOR = '0xf2e9d984'
+export const SET_APPROVE_COLLECTION_SELECTOR = '0x46d5a568'
+export const SET_EDITABLE_SELECTOR = '0x2cb0d48a'
+
 export function getInitialRarities() {
   return Object.keys(RARITIES).map((key) => [
     key,

@@ -40,7 +40,7 @@ contract Forwarder is Ownable {
     */
     function forwardCall(address _target, bytes calldata _data) external payable returns (bool, bytes memory) {
         require(
-            msg.sender == caller,
+            msg.sender == caller || msg.sender == owner(),
             "Owner#forwardCall: UNAUTHORIZED_SENDER"
         );
 
