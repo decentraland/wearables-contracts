@@ -324,7 +324,7 @@ contract MinimalProxyFactory {
     */
     function _createProxy(bytes32 _salt, bytes memory _data) internal virtual returns (address addr) {
         bytes memory slotcode = code;
-        bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender));
+        bytes32 salt = keccak256(abi.encodePacked(_salt, msg.sender, _data));
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {
@@ -346,14 +346,14 @@ contract MinimalProxyFactory {
     * @param _address - supposed sender of the transaction
     * @return address of the deterministic contract
     */
-    function getAddress(bytes32 _salt, address _address) external view returns (address) {
+    function getAddress(bytes32 _salt, address _address, bytes calldata _data) external view returns (address) {
         return address(
             uint256(
                 keccak256(
                     abi.encodePacked(
                         byte(0xff),
                         address(this),
-                        keccak256(abi.encodePacked(_salt, _address)),
+                        keccak256(abi.encodePacked(_salt, _address, _data)),
                         codeHash
                     )
                 )

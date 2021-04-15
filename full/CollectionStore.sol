@@ -619,12 +619,12 @@ contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
 
                 if (itemPrice > 0) {
                     // Calculate sale share
-                    uint256 saleShareAmount = (itemPrice * fee) / BASE_FEE;
-                    totalFee = totalFee + saleShareAmount;
+                    uint256 saleShareAmount = itemPrice.mul(fee).div(BASE_FEE);
+                    totalFee = totalFee.add(saleShareAmount);
 
                     // Transfer sale amount to the item beneficiary
                     require(
-                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice - saleShareAmount),
+                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
                         "CollectionStore#buy: TRANSFER_PRICE_FAILED"
                     );
                 }
