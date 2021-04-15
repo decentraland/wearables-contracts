@@ -116,6 +116,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
         address _creator,
         IERC721CollectionV2.ItemParam[] memory _items
      ) external {
+        require(address(_forwarder) != address(this), "CollectionManager#createCollection: FORWARDER_CANT_BE_THIS");
         uint256 amount = 0;
 
         for (uint256 i = 0; i < _items.length; i++) {
@@ -160,6 +161,7 @@ contract CollectionManager is OwnableInitializable, NativeMetaTransaction {
     * @param _data - call data to be used
     */
     function manageCollection(IForwarder _forwarder, IERC721CollectionV2 _collection, bytes calldata _data) external {
+        require(address(_forwarder) != address(this), "CollectionManager#manageCollection: FORWARDER_CANT_BE_THIS");
         require(
             _msgSender() == committee,
             "CollectionManager#manageCollection: UNAUTHORIZED_SENDER"

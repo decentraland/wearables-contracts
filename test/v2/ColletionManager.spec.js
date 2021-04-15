@@ -23,7 +23,7 @@ const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
 const Rarities = artifacts.require('Rarities')
 
-describe('Collection Manager', function () {
+describe.only('Collection Manager', function () {
   let manaContract
   let collectionImplementation
   let factoryContract
@@ -855,6 +855,24 @@ describe('Collection Manager', function () {
         )
       )
     })
+
+    it('reverts when forwarder is the contract', async function () {
+      const salt = web3.utils.randomHex(32)
+      await assertRevert(
+        collectionManagerContract.createCollection(
+          collectionManagerContract.address,
+          factoryContract.address,
+          salt,
+          name,
+          symbol,
+          baseURI,
+          anotherUser,
+          ITEMS,
+          fromUser
+        ),
+        'CollectionManager#createCollection: FORWARDER_CANT_BE_THIS'
+      )
+    })
   })
 
   describe('manageCollection', async function () {
@@ -1147,6 +1165,33 @@ describe('Collection Manager', function () {
           fromOwner
         ),
         'CollectionManager#manageCollection: UNAUTHORIZED_SENDER'
+      )
+    })
+
+    it('reverts when forwarder is the contract', async function () {
+      await assertRevert(
+        collectionManagerContract.manageCollection(
+          collectionManagerContract.address,
+          collectionContract.address,
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          fromUser
+        ),
+        'CollectionManager#manageCollection: FORWARDER_CANT_BE_THIS'
       )
     })
   })
