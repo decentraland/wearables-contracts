@@ -9,6 +9,9 @@ import {
   BASE_URI as URI,
 } from '../helpers/collection'
 
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
+
 const ERC721DeterministicCollection = artifacts.require(
   'DummyERC721DeterministicCollection'
 )

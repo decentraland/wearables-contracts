@@ -1,9 +1,12 @@
+import hr from 'hardhat'
 import { Mana, ADDRESS_INDEXES } from 'decentraland-contract-plugins'
 
 import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import { createDummyCollection, WEARABLES } from '../helpers/collection'
-import { expect } from 'chai'
+
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const Store = artifacts.require('DummyBurningStore')
 
@@ -67,7 +70,7 @@ describe('BurningStore', function () {
     }
 
     // Set up MANA Contract
-    const mana = new Mana({ accounts, artifacts: global })
+    const mana = new Mana({ accounts, artifacts: hr.artifacts })
     await mana.deploy({ txParams: creationParams })
     manaContract = mana.getContract()
 

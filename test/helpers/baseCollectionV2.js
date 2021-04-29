@@ -1,15 +1,21 @@
 import assertRevert from './assertRevert'
-import { increaseTime } from './increase'
 import {
   EMPTY_HASH,
   ZERO_ADDRESS,
   BASE_URI,
+  MAX_UINT256,
   RARITIES,
-  GRACE_PERIOD,
+  COLLECTION_HASH,
   decodeTokenId,
   encodeTokenId,
 } from './collectionV2'
-import { sendMetaTx, getDomainSeparator, getSignature } from './metaTx'
+import {
+  sendMetaTx,
+  getDomainSeparator,
+  getSignature,
+  DEFAULT_DOMAIN,
+  DEFAULT_VERSION,
+} from './metaTx'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -56,12 +62,14 @@ export function doTest(
     let fromCreator
     let fromManager
     let fromMinter
-    let fromRelayer
-    let fromOperator
     let fromApprovedForAll
 
     // Contracts
     let collectionContract
+    let raritiesContractAddress
+
+    // contract variable
+    let chainId
 
     beforeEach(async function () {
       // Create Listing environment
@@ -85,8 +93,6 @@ export function doTest(
       fromCreator = { from: creator }
       fromManager = { from: manager }
       fromMinter = { from: minter }
-      fromRelayer = { from: relayer }
-      fromOperator = { from: operator }
       fromApprovedForAll = { from: approvedForAll }
 
       fromDeployer = { from: deployer }
@@ -99,15 +105,20 @@ export function doTest(
       // Create collection and set up wearables
       collectionContract = await createContract(
         creator,
-        true,
+        true, // shouldComplete
+        true, // isApproved
         true,
         creationParams
       )
+
+      raritiesContractAddress = await collectionContract.rarities()
 
       // Issue some tokens
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, holder, 0, fromCreator)
       await issueItem(collectionContract, anotherHolder, 1, fromCreator)
+
+      chainId = await web3.eth.net.getId()
     })
 
     this.afterEach(async () => {
@@ -122,9 +133,11 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           false,
-          BASE_URI,
+          true,
+          raritiesContractAddress,
           items,
           creationParams
         )
@@ -138,6 +151,8 @@ export function doTest(
         const isApproved_ = await contract.isApproved()
         const isCompleted_ = await contract.isCompleted()
         const isEditable_ = await contract.isEditable()
+        const collectionHash = await contract.COLLECTION_HASH()
+        const rarities = await contract.rarities()
 
         expect(baseURI_).to.be.equal(BASE_URI)
         expect(creator_).to.be.equal(user)
@@ -148,6 +163,8 @@ export function doTest(
         expect(isApproved_).to.be.equal(true)
         expect(isCompleted_).to.be.equal(false)
         expect(isEditable_).to.be.equal(true)
+        expect(collectionHash).to.be.equal(COLLECTION_HASH)
+        expect(raritiesContractAddress).to.be.equal(rarities)
 
         const itemLength = await contract.itemsCount()
 
@@ -156,6 +173,7 @@ export function doTest(
         for (let i = 0; i < items.length; i++) {
           const {
             rarity,
+            maxSupply,
             totalSupply,
             price,
             beneficiary,
@@ -164,51 +182,15 @@ export function doTest(
           } = await contract.items(i)
 
           expect(rarity).to.be.eq.BN(items[i][0])
-          expect(totalSupply).to.be.eq.BN(items[i][1])
-          expect(price).to.be.eq.BN(items[i][2])
+          expect(maxSupply).to.be.eq.BN(RARITIES[rarity].value)
+          expect(totalSupply).to.be.eq.BN(0)
+          expect(price).to.be.eq.BN(items[i][1])
           expect(beneficiary.toLowerCase()).to.be.equal(
-            items[i][3].toLowerCase()
+            items[i][2].toLowerCase()
           )
-          expect(metadata).to.be.equal(items[i][4])
-          expect(contentHash).to.be.equal(items[i][5])
+          expect(metadata).to.be.equal(items[i][3])
+          expect(contentHash).to.be.equal(EMPTY_HASH)
         }
-      })
-
-      it('should be initialized without items', async function () {
-        const contract = await Contract.new()
-        await contract.initialize(
-          contractName,
-          contractSymbol,
-          user,
-          false,
-          BASE_URI,
-          [],
-          creationParams
-        )
-
-        const baseURI_ = await contract.baseURI()
-        const creator_ = await contract.creator()
-        const owner_ = await contract.owner()
-        const name_ = await contract.name()
-        const symbol_ = await contract.symbol()
-        const isInitialized_ = await contract.isInitialized()
-        const isApproved_ = await contract.isApproved()
-        const isCompleted_ = await contract.isCompleted()
-        const isEditable_ = await contract.isEditable()
-
-        expect(baseURI_).to.be.equal(BASE_URI)
-        expect(creator_).to.be.equal(user)
-        expect(owner_).to.be.equal(deployer)
-        expect(name_).to.be.equal(contractName)
-        expect(symbol_).to.be.equal(contractSymbol)
-        expect(isInitialized_).to.be.equal(true)
-        expect(isApproved_).to.be.equal(true)
-        expect(isCompleted_).to.be.equal(false)
-        expect(isEditable_).to.be.equal(true)
-
-        const itemLength = await contract.itemsCount()
-
-        expect(0).to.be.eq.BN(itemLength)
       })
 
       it('should be initialized and completed', async function () {
@@ -216,10 +198,12 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
-          [],
+          true,
+          raritiesContractAddress,
+          items,
           creationParams
         )
 
@@ -227,15 +211,82 @@ export function doTest(
         expect(isCompleted_).to.be.equal(true)
       })
 
+      it('should be initialized and not approved', async function () {
+        const contract = await Contract.new()
+        await contract.initialize(
+          contractName,
+          contractSymbol,
+          BASE_URI,
+          user,
+          false,
+          false,
+          raritiesContractAddress,
+          items,
+          creationParams
+        )
+
+        const isApproved_ = await contract.isApproved()
+        expect(isApproved_).to.be.equal(false)
+      })
+
+      it('should be initialized and completed', async function () {
+        const contract = await Contract.new()
+        let isInitialized = await contract.isInitialized()
+        expect(isInitialized).to.be.equal(false)
+
+        await contract.initImplementation()
+
+        isInitialized = await contract.isInitialized()
+        expect(isInitialized).to.be.equal(true)
+      })
+
+      it('reverts when trying to initialize with an invalid creator', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            BASE_URI,
+            user,
+            true,
+            true,
+            ZERO_ADDRESS,
+            items,
+            creationParams
+          ),
+          'initialize: INVALID_RARITIES'
+        )
+      })
+
+      it('reverts when trying to initialize with an invalid creator', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
+            BASE_URI,
+            ZERO_ADDRESS,
+            true,
+            true,
+            raritiesContractAddress,
+            items,
+            creationParams
+          ),
+          'initialize: INVALID_CREATOR'
+        )
+      })
+
       it('reverts when trying to initialize more than once', async function () {
         const contract = await Contract.new()
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           user,
           true,
-          BASE_URI,
-          [],
+          true,
+          raritiesContractAddress,
+          items,
           creationParams
         )
 
@@ -243,13 +294,38 @@ export function doTest(
           contract.initialize(
             contractName,
             contractSymbol,
+            BASE_URI,
             user,
             true,
+            true,
+            raritiesContractAddress,
+            items,
+            creationParams
+          ),
+          'initialize: ALREADY_INITIALIZED'
+        )
+
+        await assertRevert(
+          contract.initImplementation(),
+          'initialize: ALREADY_INITIALIZED'
+        )
+      })
+
+      it('reverts when trying to initialize without items', async function () {
+        const contract = await Contract.new()
+        await assertRevert(
+          contract.initialize(
+            contractName,
+            contractSymbol,
             BASE_URI,
+            user,
+            false,
+            true,
+            raritiesContractAddress,
             [],
             creationParams
           ),
-          'BCV2#initialize: ALREADY_INITIALIZED'
+          '_addItems: EMPTY_ITEMS'
         )
       })
     })
@@ -261,9 +337,11 @@ export function doTest(
         await contract.initialize(
           contractName,
           contractSymbol,
+          BASE_URI,
           creator,
           true,
-          BASE_URI,
+          true,
+          raritiesContractAddress,
           items,
           creationParams
         )
@@ -356,7 +434,7 @@ export function doTest(
       it('reverts when trying to approve a collection by not the owner', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -400,7 +478,7 @@ export function doTest(
 
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -427,7 +505,7 @@ export function doTest(
       it('reverts when trying to approve with the same value', async function () {
         await assertRevert(
           contract.setApproved(true, fromDeployer),
-          'BCV2#setApproved: VALUE_IS_THE_SAME'
+          'setApproved: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -509,45 +587,45 @@ export function doTest(
       })
 
       it('should add items minters', async function () {
-        let isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         const { logs } = await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(0)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(true)
+        expect(logs[0].args._value).to.be.eq.BN(1)
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
 
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [false],
+          [0],
           fromCreator
         )
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
       })
 
       it('should add items minters in batch', async function () {
-        let isMinter = await collectionContract.itemMinters(1, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(1, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, user)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, user)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         let res = await collectionContract.setItemsMinters(
           [1, 1],
           [minter, user],
-          [true, true],
+          [1, 1],
           fromCreator
         )
         let logs = res.logs
@@ -556,17 +634,17 @@ export function doTest(
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(1)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(true)
+        expect(logs[0].args._value).to.be.eq.BN(1)
 
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(1)
         expect(logs[1].args._minter).to.be.equal(user)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(1)
 
         res = await collectionContract.setItemsMinters(
           [1, 1, 1],
           [minter, anotherUser, user],
-          [false, true, false],
+          [0, 10, 0],
           fromCreator
         )
         logs = res.logs
@@ -575,26 +653,26 @@ export function doTest(
         expect(logs[0].event).to.be.equal('SetItemMinter')
         expect(logs[0].args._itemId).to.be.eq.BN(1)
         expect(logs[0].args._minter).to.be.equal(minter)
-        expect(logs[0].args._value).to.be.equal(false)
+        expect(logs[0].args._value).to.be.eq.BN(0)
 
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(1)
         expect(logs[1].args._minter).to.be.equal(anotherUser)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(10)
 
         expect(logs[2].event).to.be.equal('SetItemMinter')
         expect(logs[2].args._itemId).to.be.eq.BN(1)
         expect(logs[2].args._minter).to.be.equal(user)
-        expect(logs[2].args._value).to.be.equal(false)
+        expect(logs[2].args._value).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, user)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(1, user)
+        expect(minterAllowance).to.be.eq.BN(0)
 
-        isMinter = await collectionContract.itemMinters(1, anotherUser)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(1, anotherUser)
+        expect(minterAllowance).to.be.eq.BN(10)
       })
 
       it('should add global minters :: Relayed EIP721', async function () {
@@ -677,8 +755,8 @@ export function doTest(
       })
 
       it('should add items minters :: Relayed EIP721', async function () {
-        let isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        let minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
 
         let functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -694,9 +772,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -704,7 +782,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [true]]
+          [[0], [minter], [1]]
         )
 
         const { logs } = await sendMetaTx(
@@ -724,10 +802,10 @@ export function doTest(
         expect(logs[1].event).to.be.equal('SetItemMinter')
         expect(logs[1].args._itemId).to.be.eq.BN(0)
         expect(logs[1].args._minter).to.be.equal(minter)
-        expect(logs[1].args._value).to.be.equal(true)
+        expect(logs[1].args._value).to.be.eq.BN(1)
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(true)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
 
         functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -743,9 +821,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -753,7 +831,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [false]]
+          [[0], [minter], [0]]
         )
 
         await sendMetaTx(
@@ -763,49 +841,49 @@ export function doTest(
           relayer
         )
 
-        isMinter = await collectionContract.itemMinters(0, minter)
-        expect(isMinter).to.be.equal(false)
+        minterAllowance = await collectionContract.itemMinters(0, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
       })
 
       it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setMinters([minter], [true, false], fromCreator),
-          'BCV2#setMinters: LENGTH_MISMATCH'
+          'setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setMinters([minter, user], [true], fromCreator),
-          'BCV2#setMinters: LENGTH_MISMATCH'
+          'setMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters(
             [0, 0],
             [minter],
-            [true],
+            [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters(
             [0],
             [minter, user],
-            [true],
+            [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters(
             [0],
             [minter],
-            [true, false],
+            [1, 1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: LENGTH_MISMATCH'
+          'setItemsMinters: LENGTH_MISMATCH'
         )
       })
 
@@ -815,59 +893,54 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
           [0],
           [manager],
-          [true],
+          [1],
           fromCreator
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setMinters([user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters(
-            [1],
-            [user],
-            [false],
-            fromDeployer
-          ),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          collectionContract.setItemsMinters([1], [user], [1], fromDeployer),
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          collectionContract.setItemsMinters([1], [user], [1], fromMinter),
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          collectionContract.setItemsMinters([1], [user], [1], fromManager),
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters([1], [user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          collectionContract.setItemsMinters([1], [user], [1], fromHacker),
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -908,9 +981,9 @@ export function doTest(
                 type: 'address[]',
               },
               {
-                internalType: 'bool[]',
+                internalType: 'uint256[]',
                 name: '_values',
-                type: 'bool[]',
+                type: 'uint256[]',
               },
             ],
             name: 'setItemsMinters',
@@ -918,7 +991,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[0], [minter], [false]]
+          [[0], [minter], [1]]
         )
 
         await collectionContract.setMinters([minter], [true], fromCreator)
@@ -926,13 +999,13 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
           [0],
           [manager],
-          [true],
+          [1],
           fromCreator
         )
 
@@ -1017,20 +1090,20 @@ export function doTest(
         )
       })
 
-      it('reverts when the using an invalid address', async function () {
+      it('reverts when using an invalid address', async function () {
         await assertRevert(
           collectionContract.setMinters([ZERO_ADDRESS], [true], fromCreator),
-          'BCV2#setMinters: INVALID_MINTER_ADDRESS'
+          'setMinters: INVALID_MINTER_ADDRESS'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters(
             [0],
             [ZERO_ADDRESS],
-            [true],
+            [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: INVALID_MINTER_ADDRESS'
+          'setItemsMinters: INVALID_MINTER_ADDRESS'
         )
       })
 
@@ -1039,10 +1112,10 @@ export function doTest(
           collectionContract.setItemsMinters(
             [items.length],
             [minter],
-            [true],
+            [1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST'
+          'setItemsMinters: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -1051,13 +1124,13 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
 
         await assertRevert(
           collectionContract.setMinters([minter], [true], fromCreator),
-          'BCV2#setMinters: VALUE_IS_THE_SAME'
+          'setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1066,27 +1139,22 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'BCV2#setMinters: VALUE_IS_THE_SAME'
+          'setMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
-          collectionContract.setItemsMinters(
-            [0],
-            [minter],
-            [true],
-            fromCreator
-          ),
-          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
+          collectionContract.setItemsMinters([0], [minter], [1], fromCreator),
+          'setItemsMinters: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
           collectionContract.setItemsMinters(
             [0, 1, 0],
             [user, minter, minter],
-            [true, true, true],
+            [1, 1, 1],
             fromCreator
           ),
-          'BCV2#setItemsMinters: VALUE_IS_THE_SAME'
+          'setItemsMinters: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -1429,12 +1497,12 @@ export function doTest(
       it("reverts when params' length mismatch", async function () {
         await assertRevert(
           collectionContract.setManagers([manager], [true, false], fromCreator),
-          'BCV2#setManagers: LENGTH_MISMATCH'
+          'setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
           collectionContract.setManagers([manager, user], [true], fromCreator),
-          'BCV2#setManagers: LENGTH_MISMATCH'
+          'setManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1444,7 +1512,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1454,7 +1522,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -1464,7 +1532,7 @@ export function doTest(
             [true, false],
             fromCreator
           ),
-          'BCV2#setItemsManagers: LENGTH_MISMATCH'
+          'setItemsManagers: LENGTH_MISMATCH'
         )
       })
 
@@ -1474,7 +1542,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -1486,22 +1554,22 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setManagers([user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -1511,12 +1579,12 @@ export function doTest(
             [false],
             fromDeployer
           ),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
@@ -1526,12 +1594,12 @@ export function doTest(
             [false],
             fromManager
           ),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           collectionContract.setItemsManagers([1], [user], [false], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
@@ -1590,7 +1658,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -1684,7 +1752,7 @@ export function doTest(
       it('reverts when the using an invalid address', async function () {
         await assertRevert(
           collectionContract.setManagers([ZERO_ADDRESS], [true], fromCreator),
-          'BCV2#setManagers: INVALID_MANAGER_ADDRESS'
+          'setManagers: INVALID_MANAGER_ADDRESS'
         )
 
         await assertRevert(
@@ -1694,7 +1762,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS'
+          'setItemsManagers: INVALID_MANAGER_ADDRESS'
         )
       })
 
@@ -1706,7 +1774,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST'
+          'setItemsManagers: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -1721,7 +1789,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.setManagers([manager], [true], fromCreator),
-          'BCV2#setManagers: VALUE_IS_THE_SAME'
+          'setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1730,7 +1798,7 @@ export function doTest(
             [true, true],
             fromCreator
           ),
-          'BCV2#setManagers: VALUE_IS_THE_SAME'
+          'setManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1740,7 +1808,7 @@ export function doTest(
             [true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'setItemsManagers: VALUE_IS_THE_SAME'
         )
 
         await assertRevert(
@@ -1750,57 +1818,78 @@ export function doTest(
             [true, true, true],
             fromCreator
           ),
-          'BCV2#setItemsManagers: VALUE_IS_THE_SAME'
+          'setItemsManagers: VALUE_IS_THE_SAME'
         )
       })
     })
 
-    describe('addItem', function () {
+    describe('addItems', function () {
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should add an item', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         let itemLength = await contract.itemsCount()
-        const { logs } = await contract.addItems([newItem], fromCreator)
+        const { logs } = await contract.addItems([newItem], fromDeployer)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem)
+        expect(logs[0].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
-          item.rarity.toString(),
+          item.rarity,
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1],
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add an item :: Relayed EIP721', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         let itemLength = await contract.itemsCount()
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -1809,14 +1898,9 @@ export function doTest(
               {
                 components: [
                   {
-                    internalType: 'enum BaseCollectionV2.RARITY',
+                    internalType: 'string',
                     name: 'rarity',
-                    type: 'uint8',
-                  },
-                  {
-                    internalType: 'uint256',
-                    name: 'totalSupply',
-                    type: 'uint256',
+                    type: 'string',
                   },
                   {
                     internalType: 'uint256',
@@ -1833,13 +1917,8 @@ export function doTest(
                     name: 'metadata',
                     type: 'string',
                   },
-                  {
-                    internalType: 'bytes32',
-                    name: 'contentHash',
-                    type: 'bytes32',
-                  },
                 ],
-                internalType: 'struct BaseCollectionV2.Item[]',
+                internalType: 'struct BaseCollectionV2.ItemParam[]',
                 name: '_items',
                 type: 'tuple[]',
               },
@@ -1855,283 +1934,308 @@ export function doTest(
         const { logs } = await sendMetaTx(
           contract,
           functionSignature,
-          creator,
+          deployer,
           relayer
         )
 
         expect(logs.length).to.be.equal(2)
 
         expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
+        expect(logs[0].args.userAddress).to.be.equal(deployer)
         expect(logs[0].args.relayerAddress).to.be.equal(relayer)
         expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
         expect(logs[1].event).to.be.equal('AddItem')
         expect(logs[1].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[1].args._item).to.be.eql(newItem)
+        expect(logs[1].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add items', async function () {
         const newItem1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const newItem2 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.mythic.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         let itemLength = await contract.itemsCount()
         const { logs } = await contract.addItems(
           [newItem1, newItem2],
-          fromCreator
+          fromDeployer
         )
 
         expect(logs.length).to.be.equal(2)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem1)
+        expect(logs[0].args._item).to.be.eql([
+          newItem1[0],
+          RARITIES[newItem1[0]].value.toString(),
+          '0',
+          newItem1[1].toString(),
+          newItem1[2],
+          newItem1[3],
+          EMPTY_HASH,
+        ])
 
         expect(logs[1].event).to.be.equal('AddItem')
         expect(logs[1].args._itemId).to.be.eq.BN(
           itemLength.add(web3.utils.toBN(1))
         )
-        expect(logs[1].args._item).to.be.eql(newItem2)
+        expect(logs[1].args._item).to.be.eql([
+          newItem2[0],
+          RARITIES[newItem2[0]].value.toString(),
+          '0',
+          newItem2[1].toString(),
+          newItem2[2],
+          newItem2[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         let item = await contract.items(itemLength.sub(web3.utils.toBN(2)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem1)
+        ]).to.be.eql([
+          newItem1[0],
+          RARITIES[newItem1[0]].value.toString(),
+          '0',
+          newItem1[1].toString(),
+          newItem1[2],
+          newItem1[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem2)
+        ]).to.be.eql([
+          newItem2[0],
+          RARITIES[newItem2[0]].value.toString(),
+          '0',
+          newItem2[1].toString(),
+          newItem2[2],
+          newItem2[3],
+          EMPTY_HASH,
+        ])
       })
 
       it('should add an item with price 0 and no beneficiary', async function () {
         let itemLength = await contract.itemsCount()
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           '0',
           ZERO_ADDRESS,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
-        const { logs } = await contract.addItems([newItem], fromCreator)
+        const { logs } = await contract.addItems([newItem], fromDeployer)
 
         expect(logs.length).to.be.equal(1)
         expect(logs[0].event).to.be.equal('AddItem')
         expect(logs[0].args._itemId).to.be.eq.BN(itemLength)
-        expect(logs[0].args._item).to.be.eql(newItem)
+        expect(logs[0].args._item).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
 
         itemLength = await contract.itemsCount()
 
         const item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(newItem)
+        ]).to.be.eql([
+          newItem[0],
+          RARITIES[newItem[0]].value.toString(),
+          '0',
+          newItem[1].toString(),
+          newItem[2],
+          newItem[3],
+          EMPTY_HASH,
+        ])
+      })
+
+      it('reverts when trying to add an empty item', async function () {
+        await assertRevert(
+          contract.addItems([], fromDeployer),
+          '_addItems: EMPTY_ITEMS'
+        )
       })
 
       it('reverts when one of the item is invalid', async function () {
         const newItem1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const newItem2 = [
-          Object.values(RARITIES).length, // invalid rarity
-          '0',
+          'invalid', // invalid rarity
           web3.utils.toWei('10'),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
-        await assertRevert(contract.addItems([newItem1, newItem2], fromCreator))
-      })
-
-      it('reverts when trying to add an item with current supply > 0', async function () {
-        const newItem = [
-          RARITIES.common.index.toString(),
-          '1',
-          web3.utils.toWei('10'),
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_TOTAL_SUPPLY'
+          contract.addItems([newItem1, newItem2], fromDeployer)
         )
       })
 
       it('reverts when trying to add an item with invalid rarity', async function () {
         let newItem = [
-          Object.values(RARITIES).length, // Invalid rarity
-          '0',
+          'invalid', // Invalid rarity
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
-        await assertRevert(contract.addItems([newItem], fromCreator))
+        await assertRevert(contract.addItems([newItem], fromDeployer))
       })
 
       it('reverts when trying to add an item with price and no beneficiary', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           ZERO_ADDRESS,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          contract.addItems([newItem], fromDeployer),
+          '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
       it('reverts when trying to add an item without price but beneficiary', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('0'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY'
+          contract.addItems([newItem], fromDeployer),
+          '_addItem: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
       it('reverts when trying to add an item without metadata', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '',
-          EMPTY_HASH,
         ]
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: EMPTY_METADATA'
+          contract.addItems([newItem], fromDeployer),
+          '_addItem: EMPTY_METADATA'
         )
       })
 
-      it('reverts when trying to add an item with content hash', async function () {
-        const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
-          web3.utils.toWei('10'),
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          '0x01',
-        ]
-        await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY'
-        )
-      })
-
-      it('reverts when trying to add an item by not the creator', async function () {
+      it('reverts when trying to add an item by not the deployer', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(
-          contract.addItems([newItem], fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          contract.addItems([newItem], fromCreator),
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
 
         await assertRevert(
           contract.addItems([newItem], fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'Ownable: caller is not the owner'
         )
       })
 
-      it('reverts when trying to add an item by not the creator :: Relayed EIP721', async function () {
+      it('reverts when trying to add an item by not the deployer :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -2140,14 +2244,9 @@ export function doTest(
               {
                 components: [
                   {
-                    internalType: 'enum BaseCollectionV2.RARITY',
+                    internalType: 'string',
                     name: 'rarity',
-                    type: 'uint8',
-                  },
-                  {
-                    internalType: 'uint256',
-                    name: 'totalSupply',
-                    type: 'uint256',
+                    type: 'string',
                   },
                   {
                     internalType: 'uint256',
@@ -2164,13 +2263,8 @@ export function doTest(
                     name: 'metadata',
                     type: 'string',
                   },
-                  {
-                    internalType: 'bytes32',
-                    name: 'contentHash',
-                    type: 'bytes32',
-                  },
                 ],
-                internalType: 'struct BaseCollectionV2.Item[]',
+                internalType: 'struct BaseCollectionV2.ItemParam[]',
                 name: '_items',
                 type: 'tuple[]',
               },
@@ -2184,7 +2278,7 @@ export function doTest(
         )
 
         await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
+          sendMetaTx(contract, functionSignature, creator, relayer),
           'NMT#executeMetaTransaction: CALL_FAILED'
         )
 
@@ -2208,24 +2302,24 @@ export function doTest(
         await contract.completeCollection(fromCreator)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: COLLECTION_COMPLETED'
+          contract.addItems([newItem], fromDeployer),
+          '_addItem: COLLECTION_COMPLETED'
         )
       })
     })
 
-    describe('editItemsSalesData', function () {
+    describe('editItemsData', function () {
       const itemPrice0 = web3.utils.toWei('10')
       const itemPrice1 = web3.utils.toWei('100')
+      const metadata0 = 'metadata:0'
+      const metadata1 = 'metadata:1'
 
       let contract
       let itemId0
@@ -2239,61 +2333,29 @@ export function doTest(
         itemBeneficiary0 = beneficiary
         itemBeneficiary1 = beneficiary
 
-        item0 = [
-          RARITIES.common.index.toString(),
-          '0',
-          itemPrice0,
-          itemBeneficiary0,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
+        item0 = [RARITIES.common.name, itemPrice0, itemBeneficiary0, metadata0]
 
-        item1 = [
-          RARITIES.common.index.toString(),
-          '0',
-          itemPrice1,
-          itemBeneficiary1,
-          '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
+        item1 = [RARITIES.common.name, itemPrice1, itemBeneficiary1, metadata1]
 
-        contract = await createContract(creator, false, true, creationParams)
-        await contract.addItems([item0, item1], fromCreator)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
+        await contract.addItems([item0, item1], fromDeployer)
 
         const itemLength = await contract.itemsCount()
         itemId0 = itemLength.sub(web3.utils.toBN(2))
         itemId1 = itemLength.sub(web3.utils.toBN(1))
       })
 
-      it('should edit an item sales data', async function () {
+      it('should edit an item data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        const newItemPrice0 = web3.utils.toWei('1000')
-        const newItemBeneficiary0 = holder
-        const { logs } = await contract.editItemsSalesData(
-          [itemId0],
-          [newItemPrice0],
-          [newItemBeneficiary0],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
-        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2301,27 +2363,75 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
-          newItemPrice0.toString(),
-          newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
         ])
-      })
 
-      it('should edit an item sales data :: Relayed EIP721', async function () {
-        let item = await contract.items(itemId0)
+        const newItemPrice0 = web3.utils.toWei('1000')
+        const newItemBeneficiary0 = holder
+        const newMetadata0 = 'new:metadata:0'
+        const { logs } = await contract.editItemsData(
+          [itemId0],
+          [newItemPrice0],
+          [newItemBeneficiary0],
+          [newMetadata0],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('UpdateItemData')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
+        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.equal(newMetadata0)
+
+        item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          newItemPrice0.toString(),
+          newItemBeneficiary0,
+          newMetadata0,
+          EMPTY_HASH,
+        ])
+      })
+
+      it('should edit an item data :: Relayed EIP721', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
         const newItemBeneficiary0 = holder
+        const newMetadata0 = 'new:metadata:0'
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -2341,13 +2451,23 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [newItemPrice0], [newItemBeneficiary0]]
+          [
+            [itemId0.toString()],
+            [newItemPrice0],
+            [newItemBeneficiary0],
+            [newMetadata0],
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -2364,14 +2484,16 @@ export function doTest(
         expect(logs[0].args.relayerAddress).to.be.equal(relayer)
         expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
+        expect(logs[1].event).to.be.equal('UpdateItemData')
         expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
         expect(logs[1].args._price).to.be.eq.BN(newItemPrice0)
         expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[1].args._metadata).to.be.equal(newMetadata0)
 
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2379,61 +2501,20 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
           newItemPrice0.toString(),
           newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          newMetadata0,
+          EMPTY_HASH,
         ])
       })
 
-      it('should edit items sales data', async function () {
+      it('should edit items data', async function () {
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        item = await contract.items(itemId1)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item1)
-
-        const newItemPrice0 = web3.utils.toWei('1000')
-        const newItemBeneficiary0 = holder
-        const newItemPrice1 = web3.utils.toWei('1')
-        const newItemBeneficiary1 = anotherHolder
-
-        const { logs } = await contract.editItemsSalesData(
-          [itemId0, itemId1],
-          [newItemPrice0, newItemPrice1],
-          [newItemBeneficiary0, newItemBeneficiary1],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
-        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
-
-        expect(logs[1].event).to.be.equal('UpdateItemSalesData')
-        expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
-        expect(logs[1].args._price).to.be.eq.BN(newItemPrice1)
-        expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary1)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2441,16 +2522,18 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
-          newItemPrice0.toString(),
-          newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
         ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2458,41 +2541,46 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item1[0],
-          item1[1],
-          newItemPrice1.toString(),
-          newItemBeneficiary1,
-          item1[4],
-          item1[5],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
+          item1[2],
+          item1[3],
+          EMPTY_HASH,
         ])
-      })
 
-      it('should edit an item with price and beneficiary', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
+        const newItemPrice0 = web3.utils.toWei('1000')
+        const newItemBeneficiary0 = holder
+        const newItemPrice1 = web3.utils.toWei('1')
+        const newItemBeneficiary1 = anotherHolder
+        const newMetadata0 = 'new:metadata:0'
+        const newMetadata1 = 'new:metadata:1'
 
-        const { logs } = await contract.editItemsSalesData(
-          [itemId0],
-          [0],
-          [ZERO_ADDRESS],
+        const { logs } = await contract.editItemsData(
+          [itemId0, itemId1],
+          [newItemPrice0, newItemPrice1],
+          [newItemBeneficiary0, newItemBeneficiary1],
+          [newMetadata0, newMetadata1],
           fromCreator
         )
 
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
+        expect(logs.length).to.be.equal(2)
+        expect(logs[0].event).to.be.equal('UpdateItemData')
         expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
-        expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
+        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
+        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
+
+        expect(logs[1].event).to.be.equal('UpdateItemData')
+        expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
+        expect(logs[1].args._price).to.be.eq.BN(newItemPrice1)
+        expect(logs[1].args._beneficiary).to.be.equal(newItemBeneficiary1)
+        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata1)
 
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2500,11 +2588,31 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
           '0',
-          ZERO_ADDRESS,
-          item0[4],
-          item0[5],
+          newItemPrice0.toString(),
+          newItemBeneficiary0,
+          newMetadata0,
+          EMPTY_HASH,
+        ])
+
+        item = await contract.items(itemId1)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item1[0],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          newItemPrice1.toString(),
+          newItemBeneficiary1,
+          newMetadata1,
+          EMPTY_HASH,
         ])
       })
 
@@ -2512,31 +2620,7 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        const newItemPrice0 = web3.utils.toWei('1')
-        const newItemBeneficiary0 = anotherHolder
-        const { logs } = await contract.editItemsSalesData(
-          [itemId0],
-          [newItemPrice0],
-          [newItemBeneficiary0],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemSalesData')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
-        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -2544,43 +2628,138 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
-          newItemPrice0,
-          newItemBeneficiary0,
-          item0[4],
-          item0[5],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
+
+        const { logs } = await contract.editItemsData(
+          [itemId0],
+          [0],
+          [ZERO_ADDRESS],
+          [item0[3]],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('UpdateItemData')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._price).to.be.eq.BN(web3.utils.toBN(0))
+        expect(logs[0].args._beneficiary).to.be.equal(ZERO_ADDRESS)
+        expect(logs[0].args._metadata).to.be.equal(item0[3])
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          '0',
+          ZERO_ADDRESS,
+          item0[3],
+          EMPTY_HASH,
         ])
       })
 
-      it('should allow managers to edit items sales data', async function () {
+      it('should edit an item with price and beneficiary', async function () {
+        let item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
+
+        const newItemPrice0 = web3.utils.toWei('1')
+        const newItemBeneficiary0 = anotherHolder
+        const { logs } = await contract.editItemsData(
+          [itemId0],
+          [newItemPrice0],
+          [newItemBeneficiary0],
+          [item0[3]],
+          fromCreator
+        )
+
+        expect(logs.length).to.be.equal(1)
+        expect(logs[0].event).to.be.equal('UpdateItemData')
+        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
+        expect(logs[0].args._price).to.be.eq.BN(newItemPrice0)
+        expect(logs[0].args._beneficiary).to.be.equal(newItemBeneficiary0)
+        expect(logs[0].args._metadata).to.be.equal(item0[3])
+
+        item = await contract.items(itemId0)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary,
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          newItemPrice0.toString(),
+          newItemBeneficiary0,
+          item0[3],
+          EMPTY_HASH,
+        ])
+      })
+
+      it('should allow managers to edit items data', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromManager
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set global Manager
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.editItemsSalesData(
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromManager
         )
 
         await contract.setManagers([manager], [false], fromCreator)
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromManager
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         // Set item Manager
@@ -2591,15 +2770,16 @@ export function doTest(
           fromCreator
         )
 
-        await contract.editItemsSalesData(
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromManager
         )
       })
 
-      it('should allow managers to edit items sales data :: Relayed EIP721', async function () {
+      it('should allow managers to edit items data :: Relayed EIP721', async function () {
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
             inputs: [
@@ -2618,13 +2798,18 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0], [metadata0]]
         )
 
         await assertRevert(
@@ -2653,83 +2838,101 @@ export function doTest(
         await sendMetaTx(contract, functionSignature, manager, relayer)
       })
 
-      it('should allow the creator to edit items sales data', async function () {
-        await contract.editItemsSalesData(
+      it('should allow the creator to edit items data', async function () {
+        await contract.editItemsData(
           [itemId0],
           [itemPrice0],
           [itemBeneficiary0],
+          [metadata0],
           fromCreator
         )
       })
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0, itemId1],
             [itemPrice1],
             [itemBeneficiary0, itemBeneficiary1],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0, itemId1],
             [itemPrice0, itemPrice1],
             [itemBeneficiary0],
+            [metadata0, metadata1],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: LENGTH_MISMATCH'
+          'editItemsData: LENGTH_MISMATCH'
+        )
+
+        await assertRevert(
+          contract.editItemsData(
+            [itemId0, itemId1],
+            [itemPrice0, itemPrice1],
+            [itemBeneficiary0, itemBeneficiary1],
+            [metadata0],
+            fromCreator
+          ),
+          'editItemsData: LENGTH_MISMATCH'
         )
       })
 
-      it('reverts when trying to edit sales data by not the creator or manager', async function () {
+      it('reverts when trying to edit data by not the creator or manager', async function () {
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromDeployer
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromMinter
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
 
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromHacker
           ),
-          'BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          'editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER'
         )
       })
 
-      it('reverts when trying to edit sales data by not the creator or manager :: Relayed EIP721', async function () {
+      it('reverts when trying to edit data by not the creator or manager :: Relayed EIP721', async function () {
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
             inputs: [
@@ -2748,17 +2951,22 @@ export function doTest(
                 name: '_beneficiaries',
                 type: 'address[]',
               },
+              {
+                internalType: 'string[]',
+                name: '_metadatas',
+                type: 'string[]',
+              },
             ],
-            name: 'editItemsSalesData',
+            name: 'editItemsData',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0]]
+          [[itemId0.toString()], [itemPrice0], [itemBeneficiary0], [metadata0]]
         )
 
         await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
 
         await assertRevert(
           sendMetaTx(contract, functionSignature, deployer, relayer),
@@ -2776,450 +2984,71 @@ export function doTest(
         )
       })
 
-      it('reverts when trying to edit an invalid item sales data', async function () {
+      it('reverts when trying to edit an invalid item data', async function () {
         const itemLength = await contract.itemsCount()
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemLength],
             [itemPrice0],
             [itemBeneficiary0],
+            [metadata0],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST'
+          'editItemsData: ITEM_DOES_NOT_EXIST'
         )
       })
 
-      it('reverts when trying to edit an item with price 0 and without beneficiary', async function () {
+      it('reverts when trying to edit an item with price and without beneficiary', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [itemPrice0],
             [ZERO_ADDRESS],
+            [metadata0],
             fromCreator
           ),
-          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
+          'editItemsData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
       it('reverts when trying to edit an item without price but beneficiary', async function () {
         await assertRevert(
-          contract.editItemsSalesData(
+          contract.editItemsData(
             [itemId0],
             [0],
             [itemBeneficiary0],
-            fromCreator
-          ),
-          'BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY'
-        )
-      })
-    })
-
-    describe('editItemsMetadata', function () {
-      const metadata0 = 'metadata:0'
-      const metadata1 = 'metadata:1'
-
-      let contract
-      let itemId0
-      let item0
-      let itemId1
-      let item1
-
-      this.beforeEach(async () => {
-        item0 = [
-          RARITIES.common.index.toString(),
-          '0',
-          web3.utils.toBN(10).toString(),
-          beneficiary,
-          metadata0,
-          EMPTY_HASH,
-        ]
-
-        item1 = [
-          RARITIES.common.index.toString(),
-          '0',
-          web3.utils.toBN(10).toString(),
-          beneficiary,
-          metadata1,
-          EMPTY_HASH,
-        ]
-
-        contract = await createContract(creator, false, true, creationParams)
-        await contract.addItems([item0, item1], fromCreator)
-
-        const itemLength = await contract.itemsCount()
-        itemId0 = itemLength.sub(web3.utils.toBN(2))
-        itemId1 = itemLength.sub(web3.utils.toBN(1))
-      })
-
-      it('should edit an item metadata', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        const newMetadata0 = 'new:metadata:0'
-        const { logs } = await contract.editItemsMetadata(
-          [itemId0],
-          [newMetadata0],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(1)
-        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          item0[1],
-          item0[2],
-          item0[3],
-          newMetadata0,
-          item0[5],
-        ])
-      })
-
-      it('should edit items metadata', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        item = await contract.items(itemId1)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item1)
-
-        const newMetadata0 = 'new:metadata:0'
-        const newMetadata1 = 'new:metadata:1'
-
-        const { logs } = await contract.editItemsMetadata(
-          [itemId0, itemId1],
-          [newMetadata0, newMetadata1],
-          fromCreator
-        )
-
-        expect(logs.length).to.be.equal(2)
-        expect(logs[0].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[0].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[0].args._metadata).to.be.eq.BN(newMetadata0)
-
-        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[1].args._itemId).to.be.eq.BN(itemId1)
-        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata1)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          item0[1],
-          item0[2],
-          item0[3],
-          newMetadata0,
-          item0[5],
-        ])
-
-        item = await contract.items(itemId1)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item1[0],
-          item1[1],
-          item1[2],
-          item1[3],
-          newMetadata1,
-          item1[5],
-        ])
-      })
-
-      it('should edit an item metadata :: Relayed EIP721', async function () {
-        let item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql(item0)
-
-        const newMetadata0 = 'new:metadata:0'
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [newMetadata0]]
-        )
-
-        const { logs } = await sendMetaTx(
-          contract,
-          functionSignature,
-          creator,
-          relayer
-        )
-
-        expect(logs.length).to.be.equal(2)
-
-        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
-        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
-
-        expect(logs[1].event).to.be.equal('UpdateItemMetadata')
-        expect(logs[1].args._itemId).to.be.eq.BN(itemId0)
-        expect(logs[1].args._metadata).to.be.eq.BN(newMetadata0)
-
-        item = await contract.items(itemId0)
-        expect([
-          item.rarity.toString(),
-          item.totalSupply.toString(),
-          item.price.toString(),
-          item.beneficiary,
-          item.metadata,
-          item.contentHash,
-        ]).to.be.eql([
-          item0[0],
-          item0[1],
-          item0[2],
-          item0[3],
-          newMetadata0,
-          item0[5],
-        ])
-      })
-
-      it('should allow managers to edit items metadata', async function () {
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        // Set global Manager
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
-
-        await contract.setManagers([manager], [false], fromCreator)
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromManager),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        // Set item Manager
-        await contract.setItemsManagers(
-          [itemId0],
-          [manager],
-          [true],
-          fromCreator
-        )
-
-        await contract.editItemsMetadata([itemId0], [metadata0], fromManager)
-      })
-
-      it('should allow managers to edit items metadata :: Relayed EIP721', async function () {
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [metadata0]]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set global Manager
-        await contract.setManagers([manager], [true], fromCreator)
-        await sendMetaTx(contract, functionSignature, manager, relayer)
-
-        await contract.setManagers([manager], [false], fromCreator)
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set item Manager
-        await contract.setItemsManagers(
-          [itemId0],
-          [manager],
-          [true],
-          fromCreator
-        )
-
-        await sendMetaTx(contract, functionSignature, manager, relayer)
-      })
-
-      it('should allow the creator to edit items', async function () {
-        await contract.editItemsMetadata([itemId0], [metadata0], fromCreator)
-      })
-
-      it('reverts when passing different length parameters', async function () {
-        await assertRevert(
-          contract.editItemsMetadata(
-            [itemId0],
-            [metadata0, metadata1],
-            fromCreator
-          ),
-          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata(
-            [itemId0, itemId1],
             [metadata0],
             fromCreator
           ),
-          'BCV2#editItemsMetadata: LENGTH_MISMATCH'
+          'editItemsData: INVALID_PRICE_AND_BENEFICIARY'
         )
       })
 
-      it('reverts when trying to edit metadata by not the creator or manager', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
-
+      it('reverts when trying to edit an item without metadata', async function () {
         await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromDeployer),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromMinter),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
-        )
-
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromHacker),
-          'BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER'
+          contract.editItemsData(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            [''],
+            fromCreator
+          ),
+          'editItemsData: EMPTY_METADATA'
         )
       })
 
-      it('reverts when trying to edit metadata by not the creator or manager :: Relayed EIP721', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'uint256[]',
-                name: '_itemIds',
-                type: 'uint256[]',
-              },
-              {
-                internalType: 'string[]',
-                name: '_metadatas',
-                type: 'string[]',
-              },
-            ],
-            name: 'editItemsMetadata',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [[itemId0.toString()], [metadata0]]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, hacker, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-      })
-
-      it('reverts when trying to edit an invalid item metadata', async function () {
-        const itemLength = await contract.itemsCount()
-        await assertRevert(
-          contract.editItemsMetadata([itemLength], [metadata0], fromCreator),
-          'BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST'
-        )
-      })
-
-      it('reverts when trying to edit an item with empty metadata', async function () {
-        await assertRevert(
-          contract.editItemsMetadata([itemId0], [''], fromCreator),
-          'BCV2#editItemsMetadata: EMPTY_METADATA'
-        )
-      })
-
-      it('reverts when trying to edit when the collection is not editable', async function () {
+      it('reverts when editable is set to false', async function () {
         await contract.setEditable(false, fromDeployer)
 
         await assertRevert(
-          contract.editItemsMetadata([itemId0], [metadata0], fromCreator),
-          'BCV2#editItemsMetadata: NOT_EDITABLE'
+          contract.editItemsData(
+            [itemId0],
+            [0],
+            [ZERO_ADDRESS],
+            [item0[3]],
+            fromCreator
+          ),
+          'editItemsData: COLLECTION_NOT_EDITABLE'
         )
       })
     })
@@ -3233,25 +3062,27 @@ export function doTest(
 
       this.beforeEach(async () => {
         item0 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         item1 = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toBN(10).toString(),
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
-        await contract.addItems([item0, item1], fromCreator)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
+        await contract.addItems([item0, item1], fromDeployer)
 
         const itemLength = await contract.itemsCount()
 
@@ -3266,12 +3097,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const { logs } = await contract.rescueItems(
           [itemId0],
@@ -3289,6 +3129,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3296,9 +3137,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata,
           newContentHash,
         ])
@@ -3308,22 +3150,40 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item1)
+        ]).to.be.eql([
+          item1[0],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
+          item1[2],
+          item1[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         const newMetadata0 = '1:crocodile_mask:earrings:female'
@@ -3351,6 +3211,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3358,9 +3219,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata0,
           newContentHash0,
         ])
@@ -3368,6 +3230,7 @@ export function doTest(
         item = await contract.items(itemId1)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3375,9 +3238,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item1[0],
-          item1[1],
+          RARITIES[item1[0]].value.toString(),
+          '0',
+          item1[1].toString(),
           item1[2],
-          item1[3],
           newMetadata1,
           newContentHash1,
         ])
@@ -3390,12 +3254,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
           {
@@ -3446,6 +3319,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3453,9 +3327,10 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
-          item0[3],
           newMetadata,
           newContentHash,
         ])
@@ -3465,12 +3340,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         const { logs } = await contract.rescueItems(
@@ -3489,6 +3373,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3496,10 +3381,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           newContentHash0,
         ])
       })
@@ -3508,12 +3394,21 @@ export function doTest(
         let item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
           item.metadata,
           item.contentHash,
-        ]).to.be.eql(item0)
+        ]).to.be.eql([
+          item0[0],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
+          item0[2],
+          item0[3],
+          EMPTY_HASH,
+        ])
 
         const newContentHash0 = web3.utils.randomHex(32)
         await contract.rescueItems(
@@ -3526,6 +3421,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3533,10 +3429,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           newContentHash0,
         ])
 
@@ -3545,6 +3442,7 @@ export function doTest(
         item = await contract.items(itemId0)
         expect([
           item.rarity.toString(),
+          item.maxSupply.toString(),
           item.totalSupply.toString(),
           item.price.toString(),
           item.beneficiary,
@@ -3552,10 +3450,11 @@ export function doTest(
           item.contentHash,
         ]).to.be.eql([
           item0[0],
-          item0[1],
+          RARITIES[item0[0]].value.toString(),
+          '0',
+          item0[1].toString(),
           item0[2],
           item0[3],
-          item0[4],
           EMPTY_HASH,
         ])
       })
@@ -3568,7 +3467,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -3578,7 +3477,7 @@ export function doTest(
             ['', ''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -3588,14 +3487,14 @@ export function doTest(
             [''],
             fromDeployer
           ),
-          'BCV2#rescueItems: LENGTH_MISMATCH'
+          'rescueItems: LENGTH_MISMATCH'
         )
       })
 
       it('reverts when trying to rescue by not the owner', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -3622,7 +3521,7 @@ export function doTest(
       it('reverts when trying to rescue by not the owner :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -3677,413 +3576,7 @@ export function doTest(
         const itemLength = await contract.itemsCount()
         await assertRevert(
           contract.rescueItems([itemLength], [EMPTY_HASH], [''], fromDeployer),
-          'BCV2#rescueItems: ITEM_DOES_NOT_EXIST'
-        )
-      })
-    })
-
-    describe('issueToken', function () {
-      let contract
-      let newItem
-      let newItemId
-
-      beforeEach(async () => {
-        newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        contract = await createContract(creator, false, true, creationParams)
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
-      })
-
-      it('should issue a token', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        const { logs } = await contract.issueToken(
-          anotherHolder,
-          newItemId,
-          fromCreator
-        )
-
-        const tokenId = encodeTokenId(newItemId, 1)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(1)
-
-        expect(logs.length).to.be.equal(2)
-        expect(logs[1].event).to.be.equal('Issue')
-        expect(logs[1].args._beneficiary).to.be.equal(anotherHolder)
-        expect(logs[1].args._tokenId).to.be.eq.BN(tokenId)
-        expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
-        expect(logs[1].args._issuedId).to.eq.BN(1)
-
-        // match total supply
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
-
-        // match owner
-        const owner = await contract.ownerOf(tokenId)
-        expect(owner).to.be.equal(anotherHolder)
-
-        // match URI
-        const uri = await contract.tokenURI(tokenId)
-        const uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-      })
-
-      it('should issue a token and increase item total supply', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        await contract.issueToken(anotherHolder, newItemId, fromCreator)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(1)
-
-        // match URI
-        let tokenId = encodeTokenId(newItemId, 1)
-        let uri = await contract.tokenURI(tokenId)
-        let uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-
-        await Promise.all([
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-        ])
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(4)
-
-        // match URI
-        tokenId = encodeTokenId(newItemId, 3)
-        uri = await contract.tokenURI(tokenId)
-        uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(3).to.eq.BN(uri.split('/')[uriArr.length - 1])
-
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(4)))
-      })
-
-      it('should issue a token :: Relayed EIP721', async function () {
-        let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(0)
-
-        const currentTotalSupply = await contract.totalSupply()
-
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiary',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemId',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        const { logs } = await sendMetaTx(
-          contract,
-          functionSignature,
-          creator,
-          relayer
-        )
-
-        expect(logs.length).to.be.equal(3)
-
-        expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-        expect(logs[0].args.userAddress).to.be.equal(creator)
-        expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-        expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
-
-        const tokenId = encodeTokenId(newItemId, 1)
-
-        // match issuance
-        item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
-        expect(item.totalSupply).to.eq.BN(1)
-
-        expect(logs[2].event).to.be.equal('Issue')
-        expect(logs[2].args._beneficiary).to.be.equal(anotherHolder)
-        expect(logs[2].args._tokenId).to.be.eq.BN(tokenId)
-        expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
-        expect(logs[2].args._issuedId).to.eq.BN(1)
-
-        // match total supply
-        const totalSupply = await contract.totalSupply()
-        expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(1)))
-
-        // match owner
-        const owner = await contract.ownerOf(tokenId)
-        expect(owner).to.be.equal(anotherHolder)
-
-        // match URI
-        const uri = await contract.tokenURI(tokenId)
-        const uriArr = uri.split('/')
-        expect(newItemId).to.eq.BN(uri.split('/')[uriArr.length - 2])
-        expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
-      })
-
-      it('should issue a token by minter', async function () {
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        // Set global Minter
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-
-        await contract.setMinters([minter], [false], fromCreator)
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
-
-        await contract.issueToken(anotherHolder, newItemId, fromMinter)
-      })
-
-      it('should issue a token by minter :: Relayed EIP721', async function () {
-        const functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiary',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemId',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set global Minter
-        await contract.setMinters([minter], [true], fromCreator)
-        await sendMetaTx(contract, functionSignature, minter, relayer)
-
-        await contract.setMinters([minter], [false], fromCreator)
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, minter, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
-
-        await sendMetaTx(contract, functionSignature, minter, relayer)
-      })
-
-      it('reverts when issuing a token by not the creator or minter', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
-        await contract.setItemsManagers([0], [manager], [true], fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromDeployer),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromManager),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromHacker),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
-        )
-      })
-
-      it('reverts when issuing a token by not the creator or minter :: Relayed EIP721', async function () {
-        await contract.setMinters([minter], [true], fromCreator)
-        await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
-        await contract.setItemsManagers([0], [manager], [true], fromCreator)
-
-        let functionSignature = web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'address',
-                name: '_beneficiaries',
-                type: 'address',
-              },
-              {
-                internalType: 'uint256',
-                name: '_itemIds',
-                type: 'uint256',
-              },
-            ],
-            name: 'issueToken',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [anotherHolder, newItemId.toString()]
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, deployer, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, manager, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-
-        await assertRevert(
-          sendMetaTx(contract, functionSignature, hacker, relayer),
-          'NMT#executeMetaTransaction: CALL_FAILED'
-        )
-      })
-
-      it('reverts when issuing a token to an invalid address', async function () {
-        await assertRevert(
-          contract.issueToken(ZERO_ADDRESS, newItemId, fromCreator),
-          'ERC721: mint to the zero address'
-        )
-      })
-
-      it('reverts when trying to issue an invalid item option id', async function () {
-        const length = await contract.itemsCount()
-        await assertRevert(
-          contract.issueToken(holder, length, fromCreator),
-          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
-        )
-      })
-
-      it('reverts when trying to issue an exhausted item', async function () {
-        for (let i = 0; i < RARITIES.mythic.value; i++) {
-          await contract.issueToken(anotherHolder, newItemId, fromCreator)
-        }
-        await assertRevert(
-          contract.issueToken(holder, newItemId, fromCreator),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the the collection is not approved', async function () {
-        await contract.setApproved(false, fromDeployer)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the the collection is not completed', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          true,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: NOT_COMPLETED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        await assertRevert(
-          contract.issueToken(anotherHolder, newItemId, fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
+          'rescueItems: ITEM_DOES_NOT_EXIST'
         )
       })
     })
@@ -4097,36 +3590,38 @@ export function doTest(
 
       beforeEach(async () => {
         newItem = [
-          RARITIES.mythic.index.toString(),
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         anotherNewItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           '1',
           beneficiary,
           '1:turtle_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
-        contract = await createContract(creator, false, true, creationParams)
-        await contract.addItems([newItem, anotherNewItem], fromCreator)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
+        await contract.addItems([newItem, anotherNewItem], fromDeployer)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(2))
         anotherNewItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
       })
 
-      it('should issue multiple token', async function () {
+      it('should issue multiple tokens', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4144,7 +3639,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         expect(logs.length).to.be.equal(4)
@@ -4155,6 +3651,7 @@ export function doTest(
         expect(logs[1].args._tokenId).to.be.eq.BN(newItemTokenId)
         expect(logs[1].args._itemId).to.be.eq.BN(newItemId)
         expect(logs[1].args._issuedId).to.eq.BN(1)
+        expect(logs[1].args._caller).to.eq.BN(creator)
 
         // match owner
         let owner = await contract.ownerOf(newItemTokenId)
@@ -4163,6 +3660,9 @@ export function doTest(
         // match token id
         let uri = await contract.tokenURI(newItemTokenId)
         let uriArr = uri.split('/')
+
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -4178,6 +3678,7 @@ export function doTest(
         expect(logs[3].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
         expect(logs[3].args._itemId).to.be.eq.BN(anotherNewItemId)
         expect(logs[3].args._issuedId).to.eq.BN(1)
+        expect(logs[3].args._caller).to.eq.BN(creator)
 
         // match owner
         owner = await contract.ownerOf(anotherNewItemTokenId)
@@ -4186,6 +3687,8 @@ export function doTest(
         // match token id
         uri = await contract.tokenURI(anotherNewItemTokenId)
         uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -4196,7 +3699,8 @@ export function doTest(
 
       it('should issue multiple token :: Relayed EIP721', async function () {
         let item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(0)
 
         item = await contract.items(anotherNewItemId)
@@ -4247,7 +3751,8 @@ export function doTest(
         // New Item
         // match issueance
         item = await contract.items(newItemId)
-        expect(item.rarity).to.eq.BN(newItem[0])
+        expect(item.rarity).to.be.equal(newItem[0])
+
         expect(item.totalSupply).to.eq.BN(1)
 
         const newItemTokenId = encodeTokenId(newItemId, 1)
@@ -4256,6 +3761,7 @@ export function doTest(
         expect(logs[2].args._tokenId).to.be.eq.BN(newItemTokenId)
         expect(logs[2].args._itemId).to.be.eq.BN(newItemId)
         expect(logs[2].args._issuedId).to.eq.BN(1)
+        expect(logs[2].args._caller).to.eq.BN(creator)
 
         // match owner
         let owner = await contract.ownerOf(newItemTokenId)
@@ -4264,6 +3770,8 @@ export function doTest(
         // match token id
         let uri = await contract.tokenURI(newItemTokenId)
         let uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(newItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -4279,6 +3787,7 @@ export function doTest(
         expect(logs[4].args._tokenId).to.be.eq.BN(anotherNewItemTokenId)
         expect(logs[4].args._itemId).to.be.eq.BN(anotherNewItemId)
         expect(logs[4].args._issuedId).to.eq.BN(1)
+        expect(logs[4].args._caller).to.eq.BN(creator)
 
         // match owner
         owner = await contract.ownerOf(anotherNewItemTokenId)
@@ -4287,6 +3796,8 @@ export function doTest(
         // match token id
         uri = await contract.tokenURI(anotherNewItemTokenId)
         uriArr = uri.split('/')
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(anotherNewItemId).to.be.eq.BN(uri.split('/')[uriArr.length - 2])
         expect(1).to.eq.BN(uri.split('/')[uriArr.length - 1])
 
@@ -4295,7 +3806,7 @@ export function doTest(
         expect(totalSupply).to.eq.BN(currentTotalSupply.add(web3.utils.toBN(2)))
       })
 
-      it('should issue multiple token for the same item id :: gas estimation', async function () {
+      it('should issue multiple token for the same item id :: Gas estimation', async function () {
         const itemsInTheSameTx = 70
         const beneficiaries = []
         const ids = []
@@ -4305,7 +3816,11 @@ export function doTest(
           beneficiaries.push(beneficiary)
         }
 
-        await contract.issueTokens(beneficiaries, ids, fromCreator)
+        const { receipt } = await contract.issueTokens(
+          beneficiaries,
+          ids,
+          fromCreator
+        )
 
         // match issueance
         const item = await contract.items(anotherNewItemId)
@@ -4315,12 +3830,16 @@ export function doTest(
         // User
         const balance = await contract.balanceOf(beneficiary)
         expect(balance).to.eq.BN(itemsInTheSameTx)
+
+        console.log(
+          `Issue items: ${itemsInTheSameTx} => Gas used:: ${receipt.gasUsed}`
+        )
       })
 
       it('should issue multiple tokens by minter', async function () {
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set global Minter
@@ -4330,16 +3849,11 @@ export function doTest(
         await contract.setMinters([minter], [false], fromCreator)
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromMinter),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         // Set item Minter
-        await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
-          fromCreator
-        )
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
 
         await contract.issueTokens([anotherHolder], [newItemId], fromMinter)
       })
@@ -4383,20 +3897,185 @@ export function doTest(
         )
 
         // Set item Minter
+        await contract.setItemsMinters([newItemId], [minter], [1], fromCreator)
+
+        await sendMetaTx(contract, functionSignature, minter, relayer)
+      })
+
+      it('should issue multiple tokens by minter and reduce the allowance', async function () {
+        // Set items Minter
         await contract.setItemsMinters(
-          [newItemId],
-          [minter],
-          [true],
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
           fromCreator
         )
 
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
+      it('should issue multiple tokens by minter and reduce the allowance :: Relayed EIP721', async function () {
+        const functionSignature = web3.eth.abi.encodeFunctionCall(
+          {
+            inputs: [
+              {
+                internalType: 'address[]',
+                name: '_beneficiaries',
+                type: 'address[]',
+              },
+              {
+                internalType: 'uint256[]',
+                name: '_itemIds',
+                type: 'uint256[]',
+              },
+            ],
+            name: 'issueTokens',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+          [
+            [anotherHolder, anotherHolder, anotherHolder],
+            [
+              newItemId.toString(),
+              anotherNewItemId.toString(),
+              newItemId.toString(),
+            ],
+          ]
+        )
+
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
         await sendMetaTx(contract, functionSignature, minter, relayer)
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(0)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
+      it('should issue multiple tokens by minter and not reduce if allowance is infinity', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [MAX_UINT256, MAX_UINT256],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(MAX_UINT256)
+      })
+
+      it('should issue multiple tokens by minter and not reduce if allowance is also a global minter', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [1, 1],
+          fromCreator
+        )
+
+        await contract.setMinters([minter], [true], fromCreator)
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromMinter
+        )
+
+        await contract.issueTokens(
+          [anotherHolder, anotherHolder, anotherHolder],
+          [newItemId, anotherNewItemId, newItemId],
+          fromCreator
+        )
+
+        minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(1)
+      })
+
+      it('reverts when issue multiple tokens by minter without allowance', async function () {
+        // Set items Minter
+        await contract.setItemsMinters(
+          [newItemId, anotherNewItemId],
+          [minter, minter],
+          [2, 2],
+          fromCreator
+        )
+
+        let minterAllowance = await contract.itemMinters(newItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        minterAllowance = await contract.itemMinters(anotherNewItemId, minter)
+        expect(minterAllowance).to.be.eq.BN(2)
+
+        await assertRevert(
+          contract.issueTokens(
+            [anotherHolder, anotherHolder, anotherHolder, anotherHolder],
+            [newItemId, newItemId, anotherNewItemId, newItemId],
+            fromMinter
+          ),
+          '_issueToken: CALLER_CAN_NOT_MINT'
+        )
       })
 
       it('reverts when issuing a token by not allowed user', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
@@ -4405,7 +4084,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromDeployer
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -4414,7 +4093,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromManager
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
 
         await assertRevert(
@@ -4423,14 +4102,14 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromHacker
           ),
-          'BCV2#_issueToken: CALLER_CAN_NOT_MINT'
+          '_issueToken: CALLER_CAN_NOT_MINT'
         )
       })
 
       it('reverts when issuing a token by not the creator or minter :: Relayed EIP721 ', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         let functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -4477,7 +4156,7 @@ export function doTest(
       it('reverts if trying to issue tokens with invalid argument length', async function () {
         await assertRevert(
           contract.issueTokens([user], [newItemId, anotherNewItemId], fromUser),
-          'BCV2#issueTokens: LENGTH_MISMATCH'
+          'issueTokens: LENGTH_MISMATCH'
         )
 
         await assertRevert(
@@ -4486,7 +4165,7 @@ export function doTest(
             [anotherNewItemId],
             fromUser
           ),
-          'BCV2#issueTokens: LENGTH_MISMATCH'
+          'issueTokens: LENGTH_MISMATCH'
         )
       })
 
@@ -4509,7 +4188,7 @@ export function doTest(
             [length, newItemId],
             fromCreator
           ),
-          'BCV2#_issueToken: ITEM_DOES_NOT_EXIST'
+          '_issueToken: ITEM_DOES_NOT_EXIST'
         )
       })
 
@@ -4526,7 +4205,7 @@ export function doTest(
 
         await assertRevert(
           contract.issueTokens(beneficiaries, ids, fromCreator),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
+          '_issueToken: ITEM_EXHAUSTED'
         )
 
         await contract.issueTokens(
@@ -4541,7 +4220,7 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'BCV2#_issueToken: ITEM_EXHAUSTED'
+          '_issueToken: ITEM_EXHAUSTED'
         )
       })
 
@@ -4554,61 +4233,32 @@ export function doTest(
             [newItemId, anotherNewItemId],
             fromCreator
           ),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
+          'issueTokens: MINT_NOT_ALLOWED'
         )
       })
 
       it('reverts when trying to issue a token when the the collection is not completed', async function () {
         const newItem = [
-          RARITIES.mythic.index,
-          '0',
+          RARITIES.mythic.name,
           '1',
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const contract = await createContract(
           creator,
           false,
           true,
+          true,
           creationParams
         )
-        await contract.addItems([newItem], fromCreator)
+        await contract.addItems([newItem], fromDeployer)
 
         const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
 
         await assertRevert(
           contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'BCV2#isMintingAllowed: NOT_COMPLETED'
-        )
-      })
-
-      it('reverts when trying to issue a token when the grace period has not ended', async function () {
-        const newItem = [
-          RARITIES.mythic.index,
-          '0',
-          '1',
-          beneficiary,
-          '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
-        ]
-
-        const contract = await createContract(
-          creator,
-          false,
-          false,
-          creationParams
-        )
-        await contract.addItems([newItem], fromCreator)
-
-        await contract.completeCollection(fromCreator)
-
-        const newItemId = (await contract.itemsCount()).sub(web3.utils.toBN(1))
-
-        await assertRevert(
-          contract.issueTokens([anotherHolder], [newItemId], fromCreator),
-          'BCV2#isMintingAllowed: IN_GRACE_PERIOD'
+          'issueTokens: MINT_NOT_ALLOWED'
         )
       })
     })
@@ -4616,33 +4266,33 @@ export function doTest(
     describe('tokenURI', function () {
       it('should return the correct token URI', async function () {
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
 
         const contract = await createContract(
           creator,
           false,
           true,
+          true,
           creationParams
         )
 
-        await contract.addItems([newItem], fromCreator)
+        await contract.addItems([newItem], fromDeployer)
 
         await contract.completeCollection(fromCreator)
-        await increaseTime(GRACE_PERIOD)
 
         const itemsLength = await contract.itemsCount()
         const itemId = itemsLength.sub(web3.utils.toBN(1))
-        await contract.issueToken(holder, itemId, fromCreator)
+        await contract.issueTokens([holder], [itemId], fromCreator)
 
         // match token id
         let uri = await contract.tokenURI(encodeTokenId(itemId.toString(), 1))
         let uriArr = uri.split('/') // [...]/8/1
+        expect(chainId).to.be.eq.BN(uri.split('/')[uriArr.length - 4])
+        expect(contract.address).to.be.eq.BN(uri.split('/')[uriArr.length - 3])
         expect(itemId.toString()).to.eq.BN(uri.split('/')[uriArr.length - 2])
         expect('1').to.be.equal(uri.split('/')[uriArr.length - 1])
       })
@@ -4650,12 +4300,12 @@ export function doTest(
       it('reverts if the token does not exist', async function () {
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(0, 100)),
-          'BCV2#tokenURI: INVALID_TOKEN_ID'
+          'tokenURI: INVALID_TOKEN_ID'
         )
 
         await assertRevert(
           collectionContract.tokenURI(encodeTokenId(100, 1)),
-          'BCV2#tokenURI: INVALID_TOKEN_ID'
+          'tokenURI: INVALID_TOKEN_ID'
         )
       })
     })
@@ -4716,13 +4366,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -4766,6 +4426,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHolder
         )
 
@@ -4800,6 +4461,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHacker
         )
 
@@ -4848,13 +4510,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: 'data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -4904,6 +4576,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromApprovedForAll
         )
 
@@ -4955,13 +4628,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         const { logs } = await sendMetaTx(
@@ -4999,8 +4682,8 @@ export function doTest(
         await collectionContract.setApproved(false, fromDeployer)
 
         await assertRevert(
-          collectionContract.issueToken(anotherHolder, 0, fromCreator),
-          'BCV2#isMintingAllowed: NOT_APPROVED'
+          collectionContract.issueTokens([anotherHolder], [0], fromCreator),
+          'issueTokens: MINT_NOT_ALLOWED'
         )
 
         let ownerToken1 = await collectionContract.ownerOf(token1)
@@ -5014,6 +4697,7 @@ export function doTest(
           holder,
           anotherHolder,
           [token1, token2],
+          EMPTY_HASH,
           fromHacker
         )
 
@@ -5086,13 +4770,23 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [holder, anotherHolder, [token1.toString(), token2.toString()]]
+          [
+            holder,
+            anotherHolder,
+            [token1.toString(), token2.toString()],
+            EMPTY_HASH,
+          ]
         )
 
         await assertRevert(
@@ -5118,6 +4812,11 @@ export function doTest(
                 name: '_tokenIds',
                 type: 'uint256[]',
               },
+              {
+                internalType: 'bytes',
+                name: '_data',
+                type: 'bytes',
+              },
             ],
             name: 'safeBatchTransferFrom',
             outputs: [],
@@ -5128,6 +4827,7 @@ export function doTest(
             holder,
             anotherHolder,
             [token1.toString(), token2.toString(), token3.toString()],
+            '0x',
           ]
         )
 
@@ -5217,7 +4917,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5266,12 +4966,12 @@ export function doTest(
           [false]
         )
 
-        await collectionContract.setMinters([minter], [true], fromCreator)
+        await collectionContract.setMinters([minter], [1], fromCreator)
         await collectionContract.setManagers([manager], [true], fromCreator)
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5305,7 +5005,7 @@ export function doTest(
       it('reverts when trying to set the same value as before', async function () {
         await assertRevert(
           collectionContract.setEditable(true, fromDeployer),
-          'BCV2#setEditable: VALUE_IS_THE_SAME'
+          'setEditable: VALUE_IS_THE_SAME'
         )
       })
     })
@@ -5335,7 +5035,7 @@ export function doTest(
         const [itemId, issuedId] = decodeTokenId(token1)
 
         expect(uri).to.be.equal(
-          `${newBaseURI}${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
+          `${newBaseURI}${chainId}/${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
         )
       })
 
@@ -5388,7 +5088,7 @@ export function doTest(
         const [itemId, issuedId] = decodeTokenId(token1)
 
         expect(uri).to.be.equal(
-          `${newBaseURI}${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
+          `${newBaseURI}${chainId}/${collectionContract.address.toLowerCase()}/${itemId.toString()}/${issuedId.toString()}`
         )
       })
 
@@ -5405,7 +5105,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5458,7 +5158,13 @@ export function doTest(
       let contract
       beforeEach(async () => {
         // Create collection and set up wearables
-        contract = await createContract(creator, false, true, creationParams)
+        contract = await createContract(
+          creator,
+          false,
+          true,
+          true,
+          creationParams
+        )
       })
 
       it('should complete collection', async function () {
@@ -5527,16 +5233,15 @@ export function doTest(
         expect(isCompleted).to.be.equal(true)
 
         const newItem = [
-          RARITIES.common.index.toString(),
-          '0',
+          RARITIES.common.name,
           web3.utils.toWei('10'),
           beneficiary,
           '1:crocodile_mask:hat:female,male',
-          EMPTY_HASH,
         ]
+
         await assertRevert(
-          contract.addItems([newItem], fromCreator),
-          'BCV2#_addItem: COLLECTION_COMPLETED'
+          contract.addItems([newItem], fromDeployer),
+          '_addItem: COLLECTION_COMPLETED'
         )
       })
 
@@ -5545,36 +5250,36 @@ export function doTest(
 
         await assertRevert(
           contract.completeCollection(fromCreator),
-          'BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED'
+          'completeCollection: COLLECTION_ALREADY_COMPLETED'
         )
       })
 
       it('reverts when completing collection by other than the creator', async function () {
         await assertRevert(
           contract.completeCollection(fromDeployer),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromManager),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromMinter),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
 
         await assertRevert(
           contract.completeCollection(fromHacker),
-          'BCV2#onlyCreator: CALLER_IS_NOT_CREATOR'
+          'onlyCreator: CALLER_IS_NOT_CREATOR'
         )
       })
 
       it('reverts when completing collection by other than the creator :: Relayed EIP721', async function () {
         await contract.setMinters([minter], [true], fromCreator)
         await contract.setManagers([manager], [true], fromCreator)
-        await contract.setItemsMinters([0], [minter], [true], fromCreator)
+        await contract.setItemsMinters([0], [minter], [1], fromCreator)
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -5738,7 +5443,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5750,17 +5455,17 @@ export function doTest(
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromMinter),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromManager),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
 
         await assertRevert(
           collectionContract.transferCreatorship(user, fromHacker),
-          'BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
+          'transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR'
         )
       })
 
@@ -5770,7 +5475,7 @@ export function doTest(
         await collectionContract.setItemsMinters(
           [0],
           [minter],
-          [true],
+          [1],
           fromCreator
         )
         await collectionContract.setItemsManagers(
@@ -5816,7 +5521,7 @@ export function doTest(
       it('reverts when trying to transfer creator role to an invalid address', async function () {
         await assertRevert(
           collectionContract.transferCreatorship(ZERO_ADDRESS, fromDeployer),
-          'BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS'
+          'transferCreatorship: INVALID_CREATOR_ADDRESS'
         )
       })
     })
@@ -5863,7 +5568,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(max.add(one), 0),
-          'BCV2#encodeTokenId: INVALID_ITEM_ID'
+          'encodeTokenId: INVALID_ITEM_ID'
         )
       })
 
@@ -5876,7 +5581,7 @@ export function doTest(
 
         await assertRevert(
           collectionContract.encodeTokenId(0, max.add(one)),
-          'BCV2#encodeTokenId: INVALID_ISSUED_ID'
+          'encodeTokenId: INVALID_ISSUED_ID'
         )
       })
     })
@@ -5906,37 +5611,6 @@ export function doTest(
         )
         expect(expectedValues[0]).to.eq.BN(4569428193)
         expect(expectedValues[1]).to.eq.BN(90893249234)
-      })
-    })
-
-    describe('rarity', function () {
-      it('should get rarity values', async function () {
-        const values = Object.values(RARITIES)
-
-        for (let rarity of values) {
-          let expectedValue = await collectionContract.getRarityValue(
-            rarity.index
-          )
-          expect(expectedValue).to.eq.BN(rarity.value)
-        }
-      })
-
-      it('should get rarity names', async function () {
-        const values = Object.values(RARITIES)
-
-        for (let rarity of values) {
-          let expectedValue = await collectionContract.getRarityName(
-            rarity.index
-          )
-          expect(expectedValue).to.eq.BN(rarity.name)
-        }
-      })
-
-      it('reverts when rarity is invalid', async function () {
-        const values = Object.values(RARITIES)
-        await assertRevert(collectionContract.getRarityValue(values.length))
-
-        await assertRevert(collectionContract.getRarityName(values.length))
       })
     })
 
@@ -6075,7 +5749,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          deployer
+          deployer,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)
@@ -6129,7 +5806,10 @@ export function doTest(
         const signature = await getSignature(
           collectionContract,
           functionSignature,
-          hacker
+          hacker,
+          null,
+          DEFAULT_DOMAIN,
+          DEFAULT_VERSION
         )
 
         const r = '0x' + signature.substring(0, 64)

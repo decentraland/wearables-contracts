@@ -1,15 +1,22 @@
+export const DEFAULT_DOMAIN = 'Decentraland Collection'
+export const DEFAULT_VERSION = '2'
+
 export async function sendMetaTx(
   contract,
   functionSignature,
   signer,
   relayer,
-  badSigner = null
+  badSigner = null,
+  domain = DEFAULT_DOMAIN,
+  version = DEFAULT_VERSION
 ) {
   const signature = await getSignature(
     contract,
     functionSignature,
     signer,
-    badSigner
+    badSigner,
+    domain,
+    version
   )
   const r = '0x' + signature.substring(0, 64)
   const s = '0x' + signature.substring(64, 128)
@@ -24,7 +31,9 @@ export async function getSignature(
   contract,
   functionSignature,
   signer,
-  badSigner
+  badSigner,
+  domain,
+  version
 ) {
   const chainId = await contract.getChainId()
 
@@ -36,10 +45,10 @@ export async function getSignature(
   ]
 
   const domainData = {
-    name: 'Decentraland Collection',
-    version: '2',
+    name: domain,
     verifyingContract: contract.address,
     salt: web3.utils.padLeft(web3.utils.toHex(chainId), 64),
+    version,
   }
 
   const metaTransactionType = [

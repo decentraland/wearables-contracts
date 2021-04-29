@@ -22,3 +22,14 @@ npm run test
 ```bash
 npm run test:gas-report
 ```
+
+### Deploy
+
+```bash
+npx hardhat run --network <network> scripts/deploy/deploy.ts
+```
+
+Available networks:
+
+- `localhost`. You need to run a local node with `npx hardhat node`
+- `deploy`. You must need to export NETWORK with the desired one. E.g: `NETWORK=MUMBAI npx hardhat run --network deploy scripts/deploy.ts`

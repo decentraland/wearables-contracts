@@ -1,28 +1,32 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/IERC721CollectionV2.sol";
+import "../../commons/OwnableInitializable.sol";
+import "../../commons/NativeMetaTransaction.sol";
 
-contract CollectionStore is Ownable {
+contract CollectionStore is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
+
 
     struct ItemToBuy {
         IERC721CollectionV2 collection;
         uint256[] ids;
         uint256[] prices;
+        address[] beneficiaries;
     }
 
+    uint256 constant public BASE_FEE = 1000000;
     IERC20 public acceptedToken;
     uint256 public fee;
     address public feeOwner;
 
-    event Bought(ItemToBuy[] _itemsToBuy, address _beneficiary);
+    event Bought(ItemToBuy[] _itemsToBuy);
     event SetFee(uint256 _oldFee, uint256 _newFee);
     event SetFeeOwner(address indexed _oldFeeOwner, address indexed _newFeeOwner);
 
@@ -32,20 +36,28 @@ contract CollectionStore is Ownable {
     * @param _feeOwner - address where fees will be transferred
     * @param _fee - fee to charge for each sale
     */
-    constructor(IERC20 _acceptedToken, address _feeOwner, uint256 _fee) public {
+    constructor(address _owner, IERC20 _acceptedToken, address _feeOwner, uint256 _fee) {
+        // EIP712 init
+        _initializeEIP712('Decentraland Collection Store', '1');
+        // Ownable init
+        _initOwnable();
+
         acceptedToken = _acceptedToken;
         feeOwner = _feeOwner;
         setFee(_fee);
+
+        transferOwnership(_owner);
     }
 
     /**
     * @notice Buy collection's items.
     * @dev There is a maximum amount of NFTs that can be issued per call by the block's limit.
     * @param _itemsToBuy - items to buy
-    * @param _beneficiary - beneficiary address
     */
-    function buy(ItemToBuy[] memory _itemsToBuy, address _beneficiary) external {
+    function buy(ItemToBuy[] memory _itemsToBuy) external {
         uint256 totalFee = 0;
+        address sender = _msgSender();
+
         for (uint256 i = 0; i < _itemsToBuy.length; i++) {
             ItemToBuy memory itemToBuy = _itemsToBuy[i];
             IERC721CollectionV2 collection = itemToBuy.collection;
@@ -62,29 +74,29 @@ contract CollectionStore is Ownable {
 
                 if (itemPrice > 0) {
                     // Calculate sale share
-                    uint256 saleShareAmount = itemPrice.mul(fee).div(1000000);
+                    uint256 saleShareAmount = itemPrice.mul(fee).div(BASE_FEE);
                     totalFee = totalFee.add(saleShareAmount);
 
                     // Transfer sale amount to the item beneficiary
                     require(
-                        acceptedToken.transferFrom(msg.sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
+                        acceptedToken.transferFrom(sender, itemBeneficiary, itemPrice.sub(saleShareAmount)),
                         "CollectionStore#buy: TRANSFER_PRICE_FAILED"
                     );
                 }
-
-                // Mint Token
-                collection.issueToken(_beneficiary, itemId);
             }
+
+            // Mint Token
+            collection.issueTokens(itemToBuy.beneficiaries, itemToBuy.ids);
         }
 
         if (totalFee > 0) {
             // Transfer share amount for fees owner
             require(
-                acceptedToken.transferFrom(msg.sender, feeOwner, totalFee),
+                acceptedToken.transferFrom(sender, feeOwner, totalFee),
                 "CollectionStore#buy: TRANSFER_FEES_FAILED"
             );
         }
-        emit Bought(_itemsToBuy, _beneficiary);
+        emit Bought(_itemsToBuy);
     }
 
     /**
@@ -95,7 +107,7 @@ contract CollectionStore is Ownable {
      * @return address of the item's beneficiary
      */
     function getItemBuyData(IERC721CollectionV2 _collection, uint256 _itemId) public view returns (uint256, address) {
-      (,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
+      (,,,uint256 price, address beneficiary,,) = _collection.items(_itemId);
        return (price, beneficiary);
     }
 
@@ -106,7 +118,7 @@ contract CollectionStore is Ownable {
      * @param _newFee - Fee from 0 to 999,999
      */
     function setFee(uint256 _newFee) public onlyOwner {
-        require(_newFee < 1000000, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_1000000");
+        require(_newFee < BASE_FEE, "CollectionStore#setFee: FEE_SHOULD_BE_LOWER_THAN_BASE_FEE");
         require(_newFee != fee, "CollectionStore#setFee: SAME_FEE");
 
         emit SetFee(fee, _newFee);

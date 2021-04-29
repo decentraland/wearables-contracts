@@ -45,7 +45,7 @@
 
 ## Introduction
 
-Every item as wearable, emotes, 3d object, etc in Decentraland's world is represented by a non-fungible token ERC #721 that is indivisible and unique. Those items together defines a collection which works as a registry powered by a smart contract where it is defined all the information. A collection can be built by anyone but approved by a governance system.
+Every item as wearable, emotes, 3d object, etc in Decentraland's world is represented by a non-fungible token ERC #721 that is indivisible and unique. Those items together defines a collection which works as a registry powered by a smart contract where it is defined all the information. A collection can be built by anyone but approved by a governance system (committee).
 
 ## Abstract
 
@@ -81,21 +81,24 @@ Its implementation could be find [here](https://github.com/decentraland/wearable
 
 ### Collection
 
-A collection contract is ready to use with the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Once the contract is deployed the `initialized` method should be called to simulate the constructor.
+A collection is a group of items. The contract implementation is followed by version and deployed by using the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Once a collection contract proxy is deployed, the `initialized` method should be called to simulate the constructor.
+
+A collection can be created by anyone. The creators must pay an amount of MANA, which is the sum of reach item plus its rarity price, to deploy a collection. The collection will be valid only if it was deployed by the collection factory; This factory keeps a record of each deployed collection.
 
 ### Items
 
 A collection has items reflecting different assets. Each item is represented by a unique identifier (ID) stored on-chain. E.g: If the collection has `red_hat`; `awesome_pants`; `dracula_t_shirt`; `decentraland_shoes` it means that it has 4 items. Also, each item will have a URI stored on-chain. That URI will point to the content of that item, in short, how the item looks and its metadata. This URI can be queried on-chain. It will be useful for Decentraland and other third parties to know how a token looks like.
 
-The collection owner can add items along with its rarity, price, beneficiary and metadata until he explicitly completes the collection. This action will be done on-chain and once the collection is complete, no more items can be added but edited ONLY in terms of its price by the collection [_creator_](#creator) and content off-chain by [_managers_](#manager) or the [_creator_](#creator). This means that its id and rarity (maximum total supply available) never change.
+The collection owner can add items along with its rarity, price, beneficiary and metadata until he explicitly completes the collection. This action will be done on-chain and once the collection is complete, no more items can be added but edited ONLY in terms of its price and beneficiary on-chain and content off-chain by [_managers_](#manager) or the [_creator_](#creator).The id and rarity never change.
 
-The emission order of each item is a key important concept called _issued id_. It means that if a collection has an item with rarity Legendary (max supply 100) every emission will be auto-incremented following: 1/100; 2/100; 3/100;...; 100/100.
+The emission number of each item is a key important concept called _issued id_. It means that if a collection has an item with rarity Legendary (max supply 100) every emission will be auto-incremented following: 1/100; 2/100; 3/100;...; 100/100.
 
 The item in the collection is an `Struct` with the following properties:
 
 ```solidity
 struct Item {
-    RARITY rarity;
+    string rarity;
+    uint256 maxSupply; // rarity max supply
     uint256 totalSupply; // current supply
     uint256 price;
     address beneficiary;
@@ -104,9 +107,11 @@ struct Item {
 }
 ```
 
-#### Rarity
+#### Rarities
 
-Each item has a rarity. The rarity represents the maximum supply available of minting for an item. The rarities available are:
+Each item has a rarity. The rarity represents the maximum supply available. The rarities smart contract has all the rarities information: name, maximum supply, and its price. The price is the amount of MANA the creator needs to pay in order to add an item with that rarity to his collection.
+
+The contract will be depoyed with the following started rarities:
 
 - **common**: Max supply 100000
 - **uncommon**: Max supply 10000
@@ -116,19 +121,9 @@ Each item has a rarity. The rarity represents the maximum supply available of mi
 - **mythic**: Max supply 10
 - **unique**: Max supply 1
 
-The rarity in the collection contract is an `Enum` with values from 0 to 6.
+The smart contract will be owned by a DAO, which means that new rarities can be added in the future by community votes. Rarities can't be removed once they are added and the only thing available to be changed is its price. Name and max supply are immutable.
 
-```solidity
-enum RARITY {
-    common,
-    uncommon,
-    rare,
-    epic,
-    legendary,
-    mythic,
-    unique
-}
-```
+If a creator tries to use a collection that is not added in the rarities smart contract, the transaction must fail.
 
 #### Content
 
@@ -148,14 +143,15 @@ Also, the owner can set the collection as `not editable` and therefore creators 
 
 #### Metadata
 
-Each item will have metadata on-chain describing important aspects. The metadata will follow a protocol: `version:type:name:data`. Where data could be useful information about the type. In the case of Decentraland wearables an example can be:
+Each item will have metadata on-chain describing important aspects. The metadata will follow a protocol: `version:type:name:description:data`. Where data could be useful information about the type. In the case of Decentraland wearables an example can be:
 
 - version: 1
 - type: w (wearable)
 - name: red_hat
-- data: category,bodyShape = (hat:female,male)
+- description: the red hat description
+- data: category:bodyShape (hat:female,male)
 
-In the contract will looks like: `1:w:red_hat:hat:female,male`.
+In the contract will looks like: `1:w:red_hat:the red hat description:hat:female,male`.
 
 This metadata will be primarly used by the indexers work as filters. Also, this metadata will be backed up by the content stored in the Decentraland content-server
 
@@ -206,7 +202,7 @@ Once the collection is _completed_, new items can't be added to the collection. 
 
 #### Approved
 
-Once the collection is _approved_, tokens can start being minted. There is no rollback once the collection is approved.
+Collections can be approved or rejected at any time. Once the collection is _approved_, tokens can be minted.
 
 #### Editable
 
@@ -218,7 +214,7 @@ The status _editable_ is used off-chain to allow the creator and/or managers to 
 <img width="766" alt="Screen Shot 2020-08-27 at 21 54 48" src="https://user-images.githubusercontent.com/7549152/91509192-ef4dde00-e8af-11ea-967a-57029c2efdf2.png">
 </p>
 
-In order to reduce costs deploying the same contract multiple times, we have decided to implement the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Every time a collection is created, it is being created as minimal contract which use the collection implementation storage slot. Even the collections are using a proxy patter, they can not be upgraded. There is not way to modify the code of the already deployed collection, but new collections can be deployed with a new implementation by deploying another one on-chain, and set that implementation in the factory contract.
+In order to reduce costs deploying the same contract multiple times, we have decided to implement the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Every time a collection is created, it is being created as minimal contract which use the collection implementation storage slot. Even the collections are using a proxy pattern, they can not be upgraded. There is not way to modify the code of the already deployed collection, but new collections can be deployed with a new implementation by deploying another one on-chain, and set that implementation in the factory contract.
 
 The factory is using [`CREATE2`](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1014.md) to deploy every collection, so everyone can know in advance the address of the collection without the need of deploying it.
 
@@ -295,20 +291,12 @@ Issue(
 );
 ```
 
-**UpdateItemSalesData**
+**UpdateItemData**
 
-Emitted when the price and beneficiary of an item is updated.
-
-```solidity
-UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
-```
-
-**UpdateItemMetadata**
-
-Emitted when the metadata an item is updated.
+Emitted when the price, beneficiary and metadata of an item is updated.
 
 ```solidity
-UpdateItemMetadata(uint256 indexed _itemId, string calldata _metadatas);
+UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
 ```
 
 **CreatorshipTransferred**
@@ -337,7 +325,7 @@ SetEditable(bool _previousValue, bool _newValue);
 
 **Complete**
 
-Emitted when the base URI metadata changed.
+Emitted when the collection is completed.
 
 ```solidity
 Complete()
@@ -355,13 +343,15 @@ Initialize the collection
 
 ```solidity
 function initialize(
-  string memory _name,
-  string memory _symbol,
-  address _creator,
-  bool _shouldComplete,
-  string memory _baseURI,
-  Item[] memory _items
-)
+    string memory _name,
+    string memory _symbol,
+    string memory _baseURI,
+    address _creator,
+    bool _shouldComplete,
+    bool _isApproved,
+    address _rarities,
+    ItemParam[] memory _items
+) external;
 ```
 
 ### Roles
@@ -421,15 +411,7 @@ _**addItems**_
 Add items to the collections.
 
 ```solidity
-addItems(Item[] memory _items) external
-```
-
-_**issueToken**_
-
-Mint a token of an specific item id.
-
-```solidity
-function issueToken(address _beneficiary,  uint256 _itemId) external
+addItems(ItemParam[] memory _items) external
 ```
 
 _**issueTokens**_
@@ -440,25 +422,15 @@ Mints token of multiple item ids.
  function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external
 ```
 
-_**editItemsSalesData**_
+_**editItemsData**_
 
-Edit the price and beneficiary of multiple items.
+Edit the price, beneficiary and metadata of multiple items.
 
 ```solidity
 function editItemsSalesData(
   uint256[] calldata _itemIds,
   uint256[] calldata _prices,
-  address[] calldata _beneficiaries
-) external
-```
-
-_**editItemsMetadata**_
-
-Edit the metadata of multiple items.
-
-```solidity
-function editItemsMetadata(
-  uint256[] calldata _itemIds,
+  address[] calldata _beneficiaries,
   string[] calldata _metadatas
 ) external
 ```
@@ -481,22 +453,6 @@ Get the amount of items in the collection.
 
 ```solidity
 function itemsCount() external view returns (uint256)
-```
-
-_**getRarityValue**_
-
-Get the rarity max supply value.
-
-```solidity
-function getRarityValue(RARITY _rarity) public pure returns (uint256)
-```
-
-_**getRarityName**_
-
-Get the rarity name.
-
-```solidity
-function getRarityName(RARITY _rarity) public pure returns (string memory)
 ```
 
 ### Status
@@ -525,6 +481,14 @@ Set the collection as editable or not.
 function setEditable() external
 ```
 
+-**isMintingAllowed**
+
+Check whether a collection can be minted or not
+
+```solidity
+function isMintingAllowed() external view returns (bool)
+```
+
 ### URI
 
 _**setBaseURI**_
@@ -551,14 +515,6 @@ Transfer a batch of tokens to another address. Discourage method, please use `sa
 
 ```solidity
 function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external
-```
-
-_**safeTransferFrom**_
-
-Safe transfer a batch of tokens to another address.
-
-```solidity
-function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds) public
 ```
 
 _**safeTransferFrom**_

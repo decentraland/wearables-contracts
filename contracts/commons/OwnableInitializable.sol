@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "./ContextMixin.sol";
 
@@ -16,12 +16,11 @@ import "./ContextMixin.sol";
  * `onlyOwner`, which can be applied to your functions to restrict their use to
  * the owner.
  */
-contract OwnableInitializable is ContextMixin {
+abstract contract OwnableInitializable is ContextMixin {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor() internal {}
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.

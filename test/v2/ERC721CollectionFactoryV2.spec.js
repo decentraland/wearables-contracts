@@ -1,100 +1,27 @@
 import { keccak256 } from '@ethersproject/solidity'
-import { randomBytes } from '@ethersproject/random'
 import { hexlify } from '@ethersproject/bytes'
 
 import assertRevert from '../helpers/assertRevert'
-import { getInitData, ZERO_ADDRESS, ITEMS } from '../helpers/collectionV2'
-import { expect } from 'chai'
+import {
+  getInitData,
+  ZERO_ADDRESS,
+  RARITIES,
+  ITEMS,
+  EMPTY_HASH,
+  getInitialRarities,
+} from '../helpers/collectionV2'
+
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
-
-function encodeERC721Initialize(
-  name,
-  symbol,
-  creator,
-  shouldComplete,
-  baseURI,
-  items
-) {
-  return web3.eth.abi.encodeFunctionCall(
-    {
-      inputs: [
-        {
-          internalType: 'string',
-          name: '_name',
-          type: 'string',
-        },
-        {
-          internalType: 'string',
-          name: '_symbol',
-          type: 'string',
-        },
-        {
-          internalType: 'address',
-          name: '_creator',
-          type: 'address',
-        },
-        {
-          internalType: 'bool',
-          name: '_shouldComplete',
-          type: 'bool',
-        },
-        {
-          internalType: 'string',
-          name: '_baseURI',
-          type: 'string',
-        },
-        {
-          components: [
-            {
-              internalType: 'enum ERC721BaseCollectionV2.RARITY',
-              name: 'rarity',
-              type: 'uint8',
-            },
-            {
-              internalType: 'uint256',
-              name: 'totalSupply',
-              type: 'uint256',
-            },
-            {
-              internalType: 'uint256',
-              name: 'price',
-              type: 'uint256',
-            },
-            {
-              internalType: 'address',
-              name: 'beneficiary',
-              type: 'address',
-            },
-            {
-              internalType: 'string',
-              name: 'metadata',
-              type: 'string',
-            },
-            {
-              internalType: 'bytes32',
-              name: 'contentHash',
-              type: 'bytes32',
-            },
-          ],
-          internalType: 'struct ERC721BaseCollectionV2.Item[]',
-          name: '_items',
-          type: 'tuple[]',
-        },
-      ],
-      name: 'initialize',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    [name, symbol, creator, shouldComplete, baseURI, items]
-  )
-}
+const Rarities = artifacts.require('Rarities')
 
 describe('Factory V2', function () {
   let collectionImplementation
   let factoryContract
+  let raritiesContract
 
   // Accounts
   let accounts
@@ -129,17 +56,19 @@ describe('Factory V2', function () {
     collectionImplementation = await ERC721CollectionV2.new()
 
     factoryContract = await ERC721CollectionFactoryV2.new(
-      collectionImplementation.address,
-      factoryOwner
+      factoryOwner,
+      collectionImplementation.address
     )
+
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
   })
 
   describe('create factory', async function () {
     it('deploy with correct values', async function () {
       const collectionImpl = await ERC721CollectionV2.new(creationParams)
       const contract = await ERC721CollectionFactoryV2.new(
-        collectionImpl.address,
-        factoryOwner
+        factoryOwner,
+        collectionImpl.address
       )
 
       const impl = await contract.implementation()
@@ -159,71 +88,25 @@ describe('Factory V2', function () {
     })
   })
 
-  describe('createCollection', function () {
-    it('should set an implementation', async function () {
-      let impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(collectionImplementation.address)
-
-      const newImpl = await ERC721CollectionV2.new()
-
-      const { logs } = await factoryContract.setImplementation(
-        newImpl.address,
-        fromFactoryOwner
-      )
-
-      const expectedCode = `0x3d602d80600a3d3981f3363d3d373d3d3d363d73${newImpl.address.replace(
-        '0x',
-        ''
-      )}5af43d82803e903d91602b57fd5bf3`
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('ImplementationChanged')
-      expect(logs[0].args._implementation).to.be.equal(newImpl.address)
-      expect(logs[0].args._code.toLowerCase()).to.be.equal(
-        expectedCode.toLowerCase()
-      )
-      expect(logs[0].args._codeHash).to.be.equal(
-        keccak256(['bytes'], [expectedCode])
-      )
-
-      impl = await factoryContract.implementation()
-      expect(impl).to.be.equal(newImpl.address)
-    })
-
-    it('reverts when trying to change the implementation by hacker', async function () {
-      const newImpl = await ERC721CollectionV2.new()
-      await assertRevert(
-        factoryContract.setImplementation(newImpl.address, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-
-    it('reverts when trying to change with an invalid implementation', async function () {
-      await assertRevert(
-        factoryContract.setImplementation(user, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-
-      await assertRevert(
-        factoryContract.setImplementation(ZERO_ADDRESS, fromFactoryOwner),
-        'MinimalProxyFactoryV2#_setImplementation: INVALID_IMPLEMENTATION'
-      )
-    })
-  })
-
   describe('getAddress', function () {
     it('should get a deterministic address on-chain', async function () {
-      const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        rarities: raritiesContract.address,
+      })
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner,
+        data
+      )
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          creator: user,
-          shouldComplete: true,
-          creationParams,
-        }),
-        fromUser
+        data,
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -233,27 +116,33 @@ describe('Factory V2', function () {
 
     it('should get a deterministic address off-chain', async function () {
       const codeHash = await factoryContract.codeHash()
+      console.log(`Codehash: ${codeHash}`)
 
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        rarities: raritiesContract.address,
+      })
 
       const expectedAddress = `0x${keccak256(
         ['bytes1', 'address', 'bytes32', 'bytes32'],
         [
           '0xff',
           factoryContract.address,
-          keccak256(['bytes32', 'address'], [salt, user]),
+          keccak256(
+            ['bytes32', 'address', 'bytes'],
+            [salt, factoryOwner, data]
+          ),
           codeHash,
         ]
       ).slice(-40)}`.toLowerCase()
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        getInitData({
-          creator: user,
-          shouldComplete: true,
-          creationParams,
-        }),
-        fromUser
+        data,
+        fromFactoryOwner
       )
 
       expect(logs[0].args._address.toLowerCase()).to.be.equal(
@@ -270,20 +159,35 @@ describe('Factory V2', function () {
     const items = []
 
     it('should create a collection', async function () {
-      const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner,
+        data
+      )
+
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(false)
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
-          name,
-          symbol,
-          user,
-          shouldComplete,
-          baseURI,
-          items
-        ),
-        fromUser
+        data,
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -302,23 +206,46 @@ describe('Factory V2', function () {
       expect(log.event).to.be.equal('OwnershipTransferred')
       expect(log.args.previousOwner).to.be.equal(factoryContract.address)
       expect(log.args.newOwner).to.be.equal(factoryOwner)
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(1)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('should create a collection with items', async function () {
-      const salt = randomBytes(32)
-      const expectedAddress = await factoryContract.getAddress(salt, user)
+      const salt = web3.utils.randomHex(32)
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
+      const expectedAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner,
+        data
+      )
+
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(false)
 
       const { logs } = await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
-          name,
-          symbol,
-          user,
-          shouldComplete,
-          baseURI,
-          ITEMS
-        ),
-        fromUser
+        data,
+        fromFactoryOwner
       )
 
       expect(logs.length).to.be.equal(3)
@@ -349,6 +276,7 @@ describe('Factory V2', function () {
       const isApproved_ = await collection.isApproved()
       const isCompleted_ = await collection.isCompleted()
       const isEditable_ = await collection.isEditable()
+      const rarities_ = await collection.rarities()
 
       expect(baseURI_).to.be.equal(baseURI)
       expect(creator_).to.be.equal(user)
@@ -356,9 +284,10 @@ describe('Factory V2', function () {
       expect(name_).to.be.equal(name)
       expect(symbol_).to.be.equal(symbol)
       expect(isInitialized_).to.be.equal(true)
-      expect(isApproved_).to.be.equal(true)
+      expect(isApproved_).to.be.equal(false)
       expect(isCompleted_).to.be.equal(shouldComplete)
       expect(isEditable_).to.be.equal(true)
+      expect(rarities_).to.be.equal(raritiesContract.address)
 
       const itemLength = await collection.itemsCount()
 
@@ -366,6 +295,7 @@ describe('Factory V2', function () {
 
       for (let i = 0; i < ITEMS.length; i++) {
         const {
+          rarity,
           maxSupply,
           totalSupply,
           price,
@@ -374,98 +304,154 @@ describe('Factory V2', function () {
           contentHash,
         } = await collection.items(i)
 
-        expect(maxSupply).to.be.eq.BN(ITEMS[i][0])
-        expect(totalSupply).to.be.eq.BN(ITEMS[i][1])
-        expect(price).to.be.eq.BN(ITEMS[i][2])
-        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][3].toLowerCase())
-        expect(metadata).to.be.equal(ITEMS[i][4])
-        expect(contentHash).to.be.equal(ITEMS[i][5])
+        expect(rarity).to.be.eq.BN(ITEMS[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
+        expect(metadata).to.be.equal(ITEMS[i][3])
+        expect(contentHash).to.be.equal(EMPTY_HASH)
       }
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(1)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        expectedAddress
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('should create different addresses from different salts', async function () {
-      const salt1 = randomBytes(32)
-      const salt2 = randomBytes(32)
+      const salt1 = web3.utils.randomHex(32)
+      const salt2 = web3.utils.randomHex(32)
+
+      let collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(0)
 
       const res1 = await factoryContract.createCollection(
         salt1,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+          rarities: raritiesContract.address,
+        }),
+        fromFactoryOwner
       )
       const address1 = res1.logs[0].args._address
 
       const res2 = await factoryContract.createCollection(
         salt2,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+          rarities: raritiesContract.address,
+        }),
+        fromFactoryOwner
       )
       const address2 = res2.logs[0].args._address
 
       expect(address2).to.not.be.equal(address1)
+
+      collectionsSize = await factoryContract.collectionsSize()
+      expect(collectionsSize).to.be.eq.BN(2)
+
+      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        address1
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
+
+      isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
+        address2
+      )
+      expect(isCollectionFromFactory).to.be.eq.BN(true)
     })
 
     it('reverts if initialize call failed', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeERC721Initialize(
+          getInitData({
             name,
             symbol,
-            ZERO_ADDRESS,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
-          fromUser
+            creator: ZERO_ADDRESS,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+            rarities: raritiesContract.address,
+          }),
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CALL_FAILED'
       )
     })
 
     it('reverts if trying to re-deploy the same collection', async function () {
-      const salt = randomBytes(32)
+      const salt = web3.utils.randomHex(32)
       await factoryContract.createCollection(
         salt,
-        encodeERC721Initialize(
+        getInitData({
           name,
           symbol,
-          user,
-          shouldComplete,
           baseURI,
-          ITEMS
-        ),
-        fromUser
+          creator: user,
+          shouldComplete: true,
+          isApproved: true,
+          items: ITEMS,
+          rarities: raritiesContract.address,
+        }),
+        fromFactoryOwner
       )
 
       await assertRevert(
         factoryContract.createCollection(
           salt,
-          encodeERC721Initialize(
+          getInitData({
             name,
             symbol,
-            user,
-            shouldComplete,
             baseURI,
-            ITEMS
-          ),
-          fromUser
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+            rarities: raritiesContract.address,
+          }),
+          fromFactoryOwner
         ),
         'MinimalProxyFactory#createProxy: CREATION_FAILED'
+      )
+    })
+
+    it('reverts if trying to create a collection by not the owner', async function () {
+      const salt = web3.utils.randomHex(32)
+      await assertRevert(
+        factoryContract.createCollection(
+          salt,
+          getInitData({
+            name,
+            symbol,
+            baseURI,
+            creator: user,
+            shouldComplete: true,
+            isApproved: true,
+            items: ITEMS,
+            rarities: raritiesContract.address,
+          }),
+          fromUser
+        ),
+        'Ownable: caller is not the owner'
       )
     })
   })

@@ -1,40 +1,39 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
+import "../../interfaces/IRarities.sol";
 import "../../commons//OwnableInitializable.sol";
 import "../../commons//NativeMetaTransaction.sol";
 import "../../tokens/ERC721Initializable.sol";
 import "../../libs/String.sol";
 
-contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
+abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, NativeMetaTransaction {
     using String for bytes32;
     using String for uint256;
     using String for address;
+    using SafeMath for uint256;
 
-    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
+    bytes32 constant public COLLECTION_HASH = keccak256("Decentraland Collection");
     uint8 constant public ITEM_ID_BITS = 40;
     uint8 constant public ISSUED_ID_BITS = 216;
+    uint40 constant public MAX_ITEM_ID = type(uint40).max;
+    uint216 constant public MAX_ISSUED_ID = type(uint216).max;
+    bytes32 constant internal EMPTY_CONTENT = bytes32(0);
 
-    uint40 constant public MAX_ITEM_ID = uint40(-1);
-    uint216 constant public MAX_ISSUED_ID = uint216(-1);
-
-    /// @dev time for the collection to be auto approved
-    uint256 constant public GRACE_PERIOD = 60 * 60 * 24 * 7; // 7 days
-
-    enum RARITY {
-        common,
-        uncommon,
-        rare,
-        epic,
-        legendary,
-        mythic,
-        unique
+    struct ItemParam {
+        string rarity;
+        uint256 price;
+        address beneficiary;
+        string metadata;
     }
 
     struct Item {
-        RARITY rarity;
+        string rarity;
+        uint256 maxSupply; // max supply
         uint256 totalSupply; // current supply
         uint256 price;
         address beneficiary;
@@ -42,11 +41,13 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         bytes32 contentHash; // used for safe purposes
     }
 
+    IRarities public rarities;
+
     // Roles
     address public creator;
     mapping(address => bool) public globalMinters;
     mapping(address => bool) public globalManagers;
-    mapping(uint256 => mapping (address => bool)) public itemMinters;
+    mapping(uint256 => mapping (address => uint256)) public itemMinters;
     mapping(uint256 => mapping (address => bool)) public itemManagers;
 
     Item[] public items;
@@ -59,17 +60,15 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     bool public isApproved;
 
     event BaseURI(string _oldBaseURI, string _newBaseURI);
-
     event SetGlobalMinter(address indexed _minter, bool _value);
     event SetGlobalManager(address indexed _manager, bool _value);
-    event SetItemMinter(uint256 indexed _itemId, address indexed _minter, bool _value);
+    event SetItemMinter(uint256 indexed _itemId, address indexed _minter, uint256 _value);
     event SetItemManager(uint256 indexed _itemId, address indexed _manager, bool _value);
 
     event AddItem(uint256 indexed _itemId, Item _item);
     event RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata);
-    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId);
-    event UpdateItemSalesData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
-    event UpdateItemMetadata(uint256 indexed _itemId, string _metadata);
+    event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId, address _caller);
+    event UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
     event SetApproved(bool _previousValue, bool _newValue);
     event SetEditable(bool _previousValue, bool _newValue);
@@ -79,29 +78,40 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     * Init functions
     */
 
-    constructor() internal {}
+    /**
+     * @notice Init the contract
+     */
+    function initImplementation() public {
+        require(!isInitialized, "initialize: ALREADY_INITIALIZED");
+        isInitialized = true;
+    }
 
     /**
      * @notice Create the contract
      * @param _name - name of the contract
      * @param _symbol - symbol of the contract
-     * @param _creator - creator address
-     * @param _shouldComplete - Whether the collection should be completed by the end of this call.
      * @param _baseURI - base URI for token URIs
+     * @param _creator - creator address
+     * @param _shouldComplete - Whether the collection should be completed by the end of this call
+     * @param _isApproved - Whether the collection should be approved by the end of this call
+     * @param _rarities - rarities address
      * @param _items - items to be added
      */
     function initialize(
         string memory _name,
         string memory _symbol,
+        string memory _baseURI,
         address _creator,
         bool _shouldComplete,
-        string memory _baseURI,
-        Item[] memory _items
-    ) public virtual {
-        require(!isInitialized, "BCV2#initialize: ALREADY_INITIALIZED");
-        isInitialized = true;
+        bool _isApproved,
+        IRarities _rarities,
+        ItemParam[] memory _items
+    ) external virtual {
+        initImplementation();
 
-        require(_creator != address(0), "BCV2#initialize: INVALID_CREATOR");
+        require(_creator != address(0), "initialize: INVALID_CREATOR");
+        require(address(_rarities) != address(0), "initialize: INVALID_RARITIES");
+
         // Ownable init
         _initOwnable();
         // EIP712 init
@@ -112,16 +122,19 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         setBaseURI(_baseURI);
         // Creator init
         creator = _creator;
+        // Rarities init
+        rarities = _rarities;
         // Items init
-        _initializeItems(_items);
+        _addItems(_items);
 
         if (_shouldComplete) {
             _completeCollection();
         }
 
+        isApproved = _isApproved;
+
         isEditable = true;
-        isApproved = true;
-        createdAt = now;
+        createdAt = block.timestamp;
     }
 
     /*
@@ -132,11 +145,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         return creator == _msgSender();
     }
 
-    function _isMinter(uint256 _itemId) internal view returns (bool) {
-        address sender = _msgSender();
-        return globalMinters[sender] || itemMinters[_itemId][sender];
-    }
-
     function _isManager(uint256 _itemId) internal view returns (bool) {
         address sender = _msgSender();
         return globalManagers[sender] || itemManagers[_itemId][sender];
@@ -145,7 +153,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     modifier onlyCreator() {
         require(
             _isCreator(),
-            "BCV2#onlyCreator: CALLER_IS_NOT_CREATOR"
+            "onlyCreator: CALLER_IS_NOT_CREATOR"
         );
         _;
     }
@@ -162,14 +170,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setMinters(address[] calldata _minters, bool[] calldata _values) external onlyCreator {
         require(
             _minters.length == _values.length,
-            "BCV2#setMinters: LENGTH_MISMATCH"
+            "setMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             bool value = _values[i];
-            require(minter != address(0), "BCV2#setMinters: INVALID_MINTER_ADDRESS");
-            require(globalMinters[minter] != value, "BCV2#setMinters: VALUE_IS_THE_SAME");
+            require(minter != address(0), "setMinters: INVALID_MINTER_ADDRESS");
+            require(globalMinters[minter] != value, "setMinters: VALUE_IS_THE_SAME");
 
             globalMinters[minter] = value;
             emit SetGlobalMinter(minter, value);
@@ -177,7 +185,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     }
 
     /**
-     * @notice Set allowed account to manage items.
+     * @notice Set allowed account to mint items.
      * @param _itemIds - item ids
      * @param _minters - minter addresses
      * @param _values - values array
@@ -185,20 +193,20 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setItemsMinters(
         uint256[] calldata _itemIds,
         address[] calldata _minters,
-        bool[] calldata _values
+        uint256[] calldata _values
     ) external onlyCreator {
         require(
             _itemIds.length == _minters.length  && _minters.length == _values.length,
-            "BCV2#setItemsMinters: LENGTH_MISMATCH"
+            "setItemsMinters: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _minters.length; i++) {
             address minter = _minters[i];
             uint256 itemId = _itemIds[i];
-            bool value = _values[i];
-            require(minter != address(0), "BCV2#setItemsMinters: INVALID_MINTER_ADDRESS");
-            require(itemId < items.length, "BCV2#setItemsMinters: ITEM_DOES_NOT_EXIST");
-            require(itemMinters[itemId][minter] != value, "BCV2#setItemsMinters: VALUE_IS_THE_SAME");
+            uint256 value = _values[i];
+            require(minter != address(0), "setItemsMinters: INVALID_MINTER_ADDRESS");
+            require(itemId < items.length, "setItemsMinters: ITEM_DOES_NOT_EXIST");
+            require(itemMinters[itemId][minter] != value, "setItemsMinters: VALUE_IS_THE_SAME");
 
             itemMinters[itemId][minter] = value;
             emit SetItemMinter(itemId, minter, value);
@@ -213,14 +221,14 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     function setManagers(address[] calldata _managers, bool[] calldata _values) external onlyCreator {
         require(
             _managers.length == _values.length,
-            "BCV2#setManagers: LENGTH_MISMATCH"
+            "setManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             bool value = _values[i];
-            require(manager != address(0), "BCV2#setManagers: INVALID_MANAGER_ADDRESS");
-            require(globalManagers[manager] != value, "BCV2#setManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "setManagers: INVALID_MANAGER_ADDRESS");
+            require(globalManagers[manager] != value, "setManagers: VALUE_IS_THE_SAME");
 
             globalManagers[manager] = value;
             emit SetGlobalManager(manager, value);
@@ -240,16 +248,16 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
     ) external onlyCreator {
         require(
             _itemIds.length == _managers.length && _managers.length == _values.length,
-            "BCV2#setItemsManagers: LENGTH_MISMATCH"
+            "setItemsManagers: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _managers.length; i++) {
             address manager = _managers[i];
             uint256 itemId = _itemIds[i];
             bool value = _values[i];
-            require(manager != address(0), "BCV2#setItemsManagers: INVALID_MANAGER_ADDRESS");
-            require(itemId < items.length, "BCV2#setItemsManagers: ITEM_DOES_NOT_EXIST");
-            require(itemManagers[itemId][manager] != value, "BCV2#setItemsManagers: VALUE_IS_THE_SAME");
+            require(manager != address(0), "setItemsManagers: INVALID_MANAGER_ADDRESS");
+            require(itemId < items.length, "setItemsManagers: ITEM_DOES_NOT_EXIST");
+            require(itemManagers[itemId][manager] != value, "setItemsManagers: VALUE_IS_THE_SAME");
 
             itemManagers[itemId][manager] = value;
             emit SetItemManager(itemId, manager, value);
@@ -260,10 +268,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Transfers ownership of the contract to a new account (`newOwner`).
      * @dev Forced owner to check against msg.sender always
      */
-    function transferCreatorship(address _newCreator) public virtual {
+    function transferCreatorship(address _newCreator) external virtual {
         address sender = _msgSender();
-        require(sender == owner() || sender == creator, "BCV2#transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
-        require(_newCreator != address(0), "BCV2#transferCreatorship: INVALID_CREATOR_ADDRESS");
+        require(sender == owner() || sender == creator, "transferCreatorship: CALLER_IS_NOT_OWNER_OR_CREATOR");
+        require(_newCreator != address(0), "transferCreatorship: INVALID_CREATOR_ADDRESS");
 
         emit CreatorshipTransferred(creator, _newCreator);
         creator = _newCreator;
@@ -277,29 +285,35 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Add items to the collection.
      * @param _items - items to add
      */
-    function addItems(Item[] memory _items) external virtual onlyCreator {
-        require(!isCompleted, "BCV2#_addItem: COLLECTION_COMPLETED");
+    function addItems(ItemParam[] memory _items) external virtual onlyOwner {
+        require(!isCompleted, "_addItem: COLLECTION_COMPLETED");
 
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
-        }
+        _addItems(_items);
     }
 
     /**
-     * @notice Edit the price and beneficiary of multiple items
+     * @notice Edit items
      * @param _itemIds - items ids to edit
      * @param _prices - new prices
      * @param _beneficiaries - new beneficiaries
      */
-    function editItemsSalesData(
+    function editItemsData(
         uint256[] calldata _itemIds,
         uint256[] calldata _prices,
-        address[] calldata _beneficiaries
+        address[] calldata _beneficiaries,
+        string[] calldata _metadatas
     ) external virtual {
         // Check lengths
         require(
-            _itemIds.length == _prices.length && _prices.length == _beneficiaries.length,
-            "BCV2#editItemsSalesData: LENGTH_MISMATCH"
+            _itemIds.length == _prices.length &&
+            _prices.length == _beneficiaries.length &&
+            _beneficiaries.length == _metadatas.length,
+            "editItemsData: LENGTH_MISMATCH"
+        );
+
+        require(
+            isEditable,
+            "editItemsData: COLLECTION_NOT_EDITABLE"
         );
 
         // Check item id
@@ -307,66 +321,27 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
             uint256 itemId = _itemIds[i];
             uint256 price = _prices[i];
             address beneficiary = _beneficiaries[i];
+            string memory metadata = _metadatas[i];
 
-            require(_isCreator() || _isManager(itemId), "BCV2#editItemsSalesData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "BCV2#editItemsSalesData: ITEM_DOES_NOT_EXIST");
+            require(_isCreator() || _isManager(itemId), "editItemsData: CALLER_IS_NOT_CREATOR_OR_MANAGER");
+            require(itemId < items.length, "editItemsData: ITEM_DOES_NOT_EXIST");
             require(
                 price > 0 && beneficiary != address(0) || price == 0 && beneficiary == address(0),
-                "BCV2#editItemsSalesData: INVALID_PRICE_AND_BENEFICIARY"
+                "editItemsData: INVALID_PRICE_AND_BENEFICIARY"
             );
+            require(bytes(metadata).length > 0, "editItemsData: EMPTY_METADATA");
 
             Item storage item = items[itemId];
             item.price = price;
             item.beneficiary = beneficiary;
-
-            emit UpdateItemSalesData(itemId, price, beneficiary);
-        }
-    }
-
-    /**
-     * @notice Edit the metadata of multiple items
-     * @param _itemIds - items ids to edit
-     * @param _metadatas - new metadatas
-     */
-    function editItemsMetadata(
-        uint256[] calldata _itemIds,
-        string[] calldata _metadatas
-    ) external virtual {
-        require(isEditable, "BCV2#editItemsMetadata: NOT_EDITABLE");
-        require(
-            _itemIds.length == _metadatas.length,
-            "BCV2#editItemsMetadata: LENGTH_MISMATCH"
-        );
-
-        // Check item id
-        for (uint256 i = 0; i < _itemIds.length; i++) {
-            uint256 itemId = _itemIds[i];
-            string memory metadata = _metadatas[i];
-
-            require(_isCreator() || _isManager(itemId), "BCV2#editItemsMetadata: CALLER_IS_NOT_CREATOR_OR_MANAGER");
-            require(itemId < items.length, "BCV2#editItemsMetadata: ITEM_DOES_NOT_EXIST");
-            require(bytes(metadata).length > 0, "BCV2#editItemsMetadata: EMPTY_METADATA");
-
-            Item storage item = items[itemId];
             item.metadata = metadata;
 
-            emit UpdateItemMetadata(itemId, metadata);
-        }
-    }
-
-     /**
-     * @notice Add items to the collection
-     * @dev Used only at initialize
-     * @param _items - items to add
-     */
-    function _initializeItems(Item[] memory _items) internal {
-        for (uint256 i = 0; i < _items.length; i++) {
-            _addItem(_items[i]);
+            emit UpdateItemData(itemId, price, beneficiary, metadata);
         }
     }
 
     /**
-     * @notice Add a new item to the collection.
+     * @notice Add new items to the collection.
      * @dev The item should follow:
      * rarity: Should be one of the RARITY enum
      * totalSupply: Should starts in 0
@@ -374,44 +349,51 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * price & beneficiary: Is the price is > 0, a beneficiary should be passed. If not, price and
      *   beneficiary should be empty.
      * contentHash: Should be the an empty hash
-     * @param _item - item to add
+     * @param _items - items to add
      */
-    function _addItem(Item memory _item) internal {
-        uint256 rarity = getRarityValue(_item.rarity);
-        require(
-           rarity > 0 && rarity <= MAX_ISSUED_ID,
-            "BCV2#_addItem: INVALID_RARITY"
-        );
-        require(
-            _item.totalSupply == 0,
-            "BCV2#_addItem: INVALID_TOTAL_SUPPLY"
-        );
-        require(bytes(_item.metadata).length > 0, "BCV2#_addItem: EMPTY_METADATA");
-        require(
-            _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
-            "BCV2#_addItem: INVALID_PRICE_AND_BENEFICIARY"
-        );
-        require(_item.contentHash == EMPTY_CONTENT, "BCV2#_addItem: CONTENT_HASH_SHOULD_BE_EMPTY");
+    function _addItems(ItemParam[] memory _items) internal {
+        require(_items.length > 0, "_addItems: EMPTY_ITEMS");
 
-        uint256 newItemId = items.length;
-        require(newItemId < MAX_ITEM_ID, "BCV2#_addItem: MAX_ITEM_ID_REACHED");
+        IRarities.Rarity memory rarity;
+        bytes32 lastRarityKey;
 
-        items.push(_item);
+        for (uint256 i = 0; i < _items.length; i++) {
+            ItemParam memory _item = _items[i];
+            bytes32 rarityKey = keccak256(bytes(_item.rarity));
 
-        emit AddItem(newItemId, _item);
-    }
+            if (lastRarityKey != rarityKey) {
+                rarity = rarities.getRarityByName(_item.rarity);
+                lastRarityKey = rarityKey;
 
+                require(
+                    rarity.maxSupply > 0 && rarity.maxSupply <= MAX_ISSUED_ID,
+                    "_addItem: INVALID_RARITY"
+                );
+            }
 
-    /**
-     * @notice Issue a new token of the specified item.
-     * @dev that will throw if the item has reached its maximum or is invalid
-     * @param _beneficiary - owner of the token
-     * @param _itemId - item id
-     */
-    function issueToken(address _beneficiary,  uint256 _itemId) external virtual {
-        require(isMintingAllowed(), "BCV2#issueToken: MINT_NOT_ALLOWED");
+            require(bytes(_item.metadata).length > 0, "_addItem: EMPTY_METADATA");
+            require(
+                _item.price > 0 && _item.beneficiary != address(0) || _item.price == 0 && _item.beneficiary == address(0),
+                "_addItem: INVALID_PRICE_AND_BENEFICIARY"
+            );
 
-        _issueToken(_beneficiary, _itemId);
+            uint256 newItemId = items.length;
+            require(newItemId < MAX_ITEM_ID, "_addItem: MAX_ITEM_ID_REACHED");
+
+            Item memory item = Item({
+                rarity: rarity.name,
+                maxSupply: rarity.maxSupply,
+                totalSupply: 0,
+                price: _item.price,
+                beneficiary: _item.beneficiary,
+                metadata: _item.metadata,
+                contentHash: EMPTY_CONTENT
+            });
+
+            items.push(item);
+
+            emit AddItem(newItemId, item);
+        }
     }
 
     /**
@@ -421,11 +403,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _itemIds - item ids
      */
     function issueTokens(address[] calldata _beneficiaries, uint256[] calldata _itemIds) external virtual {
-        require(isMintingAllowed(), "BCV2#issueTokens: MINT_NOT_ALLOWED");
-        require(_beneficiaries.length == _itemIds.length, "BCV2#issueTokens: LENGTH_MISMATCH");
+        require(isMintingAllowed(), "issueTokens: MINT_NOT_ALLOWED");
+        require(_beneficiaries.length == _itemIds.length, "issueTokens: LENGTH_MISMATCH");
 
+        address sender = _msgSender();
         for (uint256 i = 0; i < _itemIds.length; i++) {
-            _issueToken(_beneficiaries[i], _itemIds[i]);
+            _issueToken(_beneficiaries[i], _itemIds[i], sender);
         }
     }
 
@@ -434,21 +417,27 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @dev Will throw if the item has reached its maximum or is invalid
      * @param _beneficiary - owner of the token
      * @param _itemId - item id
+     * @param _sender - transaction sender
      */
-    function _issueToken(address _beneficiary, uint256 _itemId) internal virtual {
-        // Check ownership
-        require(
-            _isCreator() || _isMinter(_itemId),
-            "BCV2#_issueToken: CALLER_CAN_NOT_MINT"
-        );
+    function _issueToken(address _beneficiary, uint256 _itemId, address _sender) internal virtual {
+        if (!(_isCreator() || globalMinters[_sender]))  {
+            uint256 allowance = itemMinters[_itemId][_sender];
+
+            require(allowance > 0, "_issueToken: CALLER_CAN_NOT_MINT");
+
+            if (allowance != type(uint256).max) {
+                itemMinters[_itemId][_sender]--;
+            }
+        }
+
         // Check item id
-        require(_itemId < items.length, "BCV2#_issueToken: ITEM_DOES_NOT_EXIST");
+        require(_itemId < items.length, "_issueToken: ITEM_DOES_NOT_EXIST");
 
         Item storage item = items[_itemId];
         uint256 currentIssuance = item.totalSupply.add(1);
 
         // Check issuance
-        require(currentIssuance <= getRarityValue(item.rarity), "BCV2#_issueToken: ITEM_EXHAUSTED");
+        require(currentIssuance <= item.maxSupply, "_issueToken: ITEM_EXHAUSTED");
 
         // Encode token id
         uint256 tokenId = encodeTokenId(_itemId, currentIssuance);
@@ -460,7 +449,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         super._mint(_beneficiary, tokenId);
 
         // Log
-        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance);
+        emit Issue(_beneficiary, tokenId, _itemId, currentIssuance, _sender);
     }
 
     /**
@@ -479,12 +468,12 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         // Check lengths
         require(
             _itemIds.length == _contentHashes.length && _contentHashes.length == _metadatas.length,
-            "BCV2#rescueItems: LENGTH_MISMATCH"
+            "rescueItems: LENGTH_MISMATCH"
         );
 
         for (uint256 i = 0; i < _itemIds.length; i++) {
             uint256 itemId = _itemIds[i];
-            require(itemId < items.length, "BCV2#rescueItems: ITEM_DOES_NOT_EXIST");
+            require(itemId < items.length, "rescueItems: ITEM_DOES_NOT_EXIST");
 
             Item storage item = items[itemId];
 
@@ -509,56 +498,6 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
         return items.length;
     }
 
-    /**
-     * @notice Returns a rarity's maximum supply
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Max supply of the rarity given
-     */
-    function getRarityValue(RARITY _rarity) public pure returns (uint256) {
-        if (_rarity == RARITY.common) {
-            return 100000;
-        } else  if (_rarity == RARITY.uncommon) {
-            return 10000;
-        } else  if (_rarity == RARITY.rare) {
-            return 5000;
-        } else  if (_rarity == RARITY.epic) {
-            return 1000;
-        } else  if (_rarity == RARITY.legendary) {
-            return 100;
-        } else  if (_rarity == RARITY.mythic) {
-            return 10;
-        } else  if (_rarity == RARITY.unique) {
-            return 1;
-        }
-
-        revert("#BCV2#getRarityValue: INVALID_RARITY");
-    }
-
-    /**
-     * @notice Returns a rarity's name
-     * @dev will revert if the rarity is out of the RARITY enum bounds
-     * @return Name of the rarity given
-     */
-    function getRarityName(RARITY _rarity) public pure returns (string memory) {
-        if (_rarity == RARITY.common) {
-            return "common";
-        } else  if (_rarity == RARITY.uncommon) {
-            return "uncommon";
-        } else  if (_rarity == RARITY.rare) {
-            return "rare";
-        } else  if (_rarity == RARITY.epic) {
-            return "epic";
-        } else  if (_rarity == RARITY.legendary) {
-            return "legendary";
-        } else  if (_rarity == RARITY.mythic) {
-            return "mythic";
-        } else  if (_rarity == RARITY.unique) {
-            return "unique";
-        }
-
-        revert("#BCV2#getRarityName: INVALID_RARITY");
-    }
-
     /*
     * Status functions
     */
@@ -568,11 +507,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return boolean whether minting is allowed or not
      */
     function isMintingAllowed() public view returns (bool) {
-        require(createdAt <= now - GRACE_PERIOD, "BCV2#isMintingAllowed: IN_GRACE_PERIOD");
-        require(isCompleted, "BCV2#isMintingAllowed: NOT_COMPLETED");
-        require(isApproved, "BCV2#isMintingAllowed: NOT_APPROVED");
-
-        return true;
+        return isCompleted && isApproved;
     }
 
     /**
@@ -581,7 +516,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * The issuance is still allowed.
      */
     function completeCollection() external onlyCreator {
-        require(!isCompleted, "BCV2#completeCollection: COLLECTION_ALREADY_COMPLETED");
+        require(!isCompleted, "completeCollection: COLLECTION_ALREADY_COMPLETED");
 
         _completeCollection();
     }
@@ -600,7 +535,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @notice Approve a collection
      */
     function setApproved(bool _value) external virtual onlyOwner {
-        require(isApproved != _value, "BCV2#setApproved: VALUE_IS_THE_SAME");
+        require(isApproved != _value, "setApproved: VALUE_IS_THE_SAME");
 
         emit SetApproved(isApproved, _value);
 
@@ -614,7 +549,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _value - Value to set
      */
     function setEditable(bool _value) external onlyOwner {
-        require(isEditable != _value, "BCV2#setEditable: VALUE_IS_THE_SAME");
+        require(isEditable != _value, "setEditable: VALUE_IS_THE_SAME");
 
         emit SetEditable(isEditable, _value);
 
@@ -641,13 +576,20 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return token URI
      */
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        require(_exists(_tokenId), "BCV2#tokenURI: INVALID_TOKEN_ID");
+        require(_exists(_tokenId), "tokenURI: INVALID_TOKEN_ID");
 
         (uint256 itemId, uint256 issuedId) = decodeTokenId(_tokenId);
+
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
 
         return string(
             abi.encodePacked(
                 baseURI(),
+                id.uintToString(),
+                "/",
                 "0x",
                 address(this).addressToString(),
                 "/",
@@ -670,7 +612,7 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @param _to address to receive the ownership of the given token ID
      * @param _tokenIds uint256 ID of the token to be transferred
      */
-    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) public {
+    function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             transferFrom(_from, _to, _tokenIds[i]);
         }
@@ -685,25 +627,10 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * Requires the msg.sender to be the owner, approved, or operator
      * @param _from - current owner of the token
      * @param _to - address to receive the ownership of the given token ID
-     * @param _tokenIds - uint256 IDs of the tokens to be transferred
-     */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds) public {
-        safeBatchTransferFrom(_from, _to, _tokenIds, "");
-    }
-
-    /**
-     * @notice Safely transfers the ownership of given token IDs to another address
-     * If the target address is a contract, it must implement {IERC721Receiver-onERC721Received},
-     * which is called upon a safe transfer, and return the magic value
-     * `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`; otherwise,
-     * the transfer is reverted.
-     * Requires the msg.sender to be the owner, approved, or operator
-     * @param _from - current owner of the token
-     * @param _to - address to receive the ownership of the given token ID
      * @param _tokenIds - uint256 ID of the tokens to be transferred
      * @param _data bytes data to send along with a safe transfer check
      */
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) public {
+    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _tokenIds, bytes memory _data) external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             safeTransferFrom(_from, _to, _tokenIds[i], _data);
         }
@@ -721,8 +648,8 @@ contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initializable, Na
      * @return id uint256 of the encoded id
      */
     function encodeTokenId(uint256 _itemId, uint256 _issuedId) public pure returns (uint256 id) {
-        require(_itemId <= MAX_ITEM_ID, "BCV2#encodeTokenId: INVALID_ITEM_ID");
-        require(_issuedId <= MAX_ISSUED_ID, "BCV2#encodeTokenId: INVALID_ISSUED_ID");
+        require(_itemId <= MAX_ITEM_ID, "encodeTokenId: INVALID_ITEM_ID");
+        require(_issuedId <= MAX_ISSUED_ID, "encodeTokenId: INVALID_ISSUED_ID");
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {

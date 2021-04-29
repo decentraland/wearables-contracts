@@ -1,11 +1,21 @@
+import { keccak256 } from '@ethersproject/solidity'
+
 export const BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 export const OTHER_BENEFICIARY_ADDRESS = web3.utils.randomHex(20)
 
+export const COLLECTION_HASH = keccak256(
+  ['string'],
+  ['Decentraland Collection']
+)
 export const EMPTY_HASH =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export const BASE_URI =
   'https://api-wearables.decentraland.org/v1/standards/erc721-metadata/collections/'
+export const MAX_UINT256 = web3.utils.toBN(
+  '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+)
+export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 
@@ -23,70 +33,74 @@ export const RARITIES = {
 
 export const ITEMS = [
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:bird_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:classic_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:clown_nose:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:asian_fox:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:killer_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.common.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:serial_killer_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:theater_mask:hat:female,male',
-    EMPTY_HASH,
   ],
   [
-    RARITIES.common.index,
-    0,
+    RARITIES.legendary.name,
     web3.utils.toWei('10'),
     BENEFICIARY_ADDRESS,
     '1:tropical_mask:hat:female,male',
-    EMPTY_HASH,
   ],
 ]
+
+export const RESCUE_ITEMS_SELECTOR = '0xf2e9d984'
+export const SET_APPROVE_COLLECTION_SELECTOR = '0x46d5a568'
+export const SET_EDITABLE_SELECTOR = '0x2cb0d48a'
+
+export function getInitialRarities() {
+  return Object.keys(RARITIES).map((key) => [
+    key,
+    RARITIES[key].value,
+    DEFAULT_RARITY_PRICE,
+  ])
+}
+
+export function getRarityNames() {
+  return Object.keys(RARITIES)
+}
+
+export function getRarityDefaulPrices() {
+  return Object.keys(RARITIES).map((_) => DEFAULT_RARITY_PRICE)
+}
 
 export async function createDummyFactory(owner) {
   const ERC721CollectionFactoryV2 = artifacts.require(
@@ -96,7 +110,7 @@ export async function createDummyFactory(owner) {
 
   const collectionImplementation = await ERC721CollectionV2.new()
 
-  return ERC721CollectionFactoryV2.new(collectionImplementation.address, owner)
+  return ERC721CollectionFactoryV2.new(owner, collectionImplementation.address)
 }
 
 export async function createDummyCollection(factory, options) {
@@ -131,6 +145,11 @@ export function getInitData(options) {
           type: 'string',
         },
         {
+          internalType: 'string',
+          name: '_baseURI',
+          type: 'string',
+        },
+        {
           internalType: 'address',
           name: '_creator',
           type: 'address',
@@ -141,21 +160,21 @@ export function getInitData(options) {
           type: 'bool',
         },
         {
-          internalType: 'string',
-          name: '_baseURI',
-          type: 'string',
+          internalType: 'bool',
+          name: '_isApproved',
+          type: 'bool',
+        },
+        {
+          internalType: 'address',
+          name: '_rarities',
+          type: 'address',
         },
         {
           components: [
             {
               internalType: 'enum ERC721BaseCollectionV2.RARITY',
               name: 'rarity',
-              type: 'uint8',
-            },
-            {
-              internalType: 'uint256',
-              name: 'totalSupply',
-              type: 'uint256',
+              type: 'string',
             },
             {
               internalType: 'uint256',
@@ -172,13 +191,8 @@ export function getInitData(options) {
               name: 'metadata',
               type: 'string',
             },
-            {
-              internalType: 'bytes32',
-              name: 'contentHash',
-              type: 'bytes32',
-            },
           ],
-          internalType: 'struct ERC721BaseCollectionV2.Item[]',
+          internalType: 'struct ERC721BaseCollectionV2.ItemParam[]',
           name: '_items',
           type: 'tuple[]',
         },
@@ -191,9 +205,11 @@ export function getInitData(options) {
     [
       options.name || CONTRACT_NAME,
       options.symbol || CONTRACT_SYMBOL,
+      options.baseURI || BASE_URI,
       options.creator,
       options.shouldComplete,
-      options.baseURI || BASE_URI,
+      options.shouldApprove,
+      options.rarities,
       options.items || ITEMS,
     ]
   )

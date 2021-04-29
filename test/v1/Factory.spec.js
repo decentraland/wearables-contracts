@@ -5,7 +5,12 @@ import {
   BASE_URI,
 } from '../helpers/collection'
 
-const ProxyRegistry = artifacts.require('ProxyRegistry')
+const BN = web3.utils.BN
+const expect = require('chai').use(require('bn-chai')(BN)).expect
+
+const ProxyRegistry = artifacts.require(
+  'contracts/mocks/ProxyRegistry.sol:ProxyRegistry'
+)
 const ERC721CollectionFactory = artifacts.require(
   'DummyERC721CollectionFactory'
 )
@@ -187,7 +192,8 @@ describe('Factory', function () {
     })
 
     it('reverts when querying if an option can be minted', async function () {
-      await assertRevert(factoryContract.canMint(optionId0 - 1))
+      const wearablesCount = await erc721Contract.wearablesCount()
+      await assertRevert(factoryContract.canMint(wearablesCount.toNumber() + 1))
     })
   })
 
@@ -366,7 +372,10 @@ describe('Factory', function () {
     })
 
     it('reverts for an invalid option', async function () {
-      await assertRevert(factoryContract.balanceOf(optionId0 - 1))
+      const wearablesCount = await erc721Contract.wearablesCount()
+      await assertRevert(
+        factoryContract.balanceOf(wearablesCount.toNumber() + 1)
+      )
     })
   })
 
@@ -401,7 +410,8 @@ describe('Factory', function () {
     })
 
     it('should return the owner event if the option is invalid', async function () {
-      const owner = await factoryContract.ownerOf(-1)
+      const wearablesCount = await erc721Contract.wearablesCount()
+      const owner = await factoryContract.ownerOf(wearablesCount.toNumber() + 1)
       expect(owner).to.be.equal(factoryOwner)
     })
   })

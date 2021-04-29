@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Metadata.sol";
@@ -20,7 +20,7 @@ import "../commons/ContextMixin.sol";
  * This is the same contract at `openzeppelin/contracts 3.1.0` but `tokenURI` was changed to virtual override
  * @dev see https://eips.ethereum.org/EIPS/eip-721
  */
-contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
+abstract contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, IERC721Enumerable {
     using SafeMath for uint256;
     using Address for address;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -89,14 +89,14 @@ contract ERC721Initializable is ContextMixin, ERC165, IERC721, IERC721Metadata, 
      */
     bytes4 private constant _INTERFACE_ID_ERC721_ENUMERABLE = 0x780e9d63;
 
-    constructor() internal {}
+    constructor() {}
 
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    function _initERC721(string memory name, string memory symbol) internal {
-        _name = name;
-        _symbol = symbol;
+    function _initERC721(string memory __name, string memory __symbol) internal {
+        _name = __name;
+        _symbol = __symbol;
 
         // register the supported interfaces to conform to ERC721 via ERC165
         _registerInterface(_INTERFACE_ID_ERC721);
