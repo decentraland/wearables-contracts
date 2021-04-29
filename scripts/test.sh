@@ -63,4 +63,4 @@ fi
 
 
 #npx buidler test
-npx hardhat --network "$network" test
+node_modules/.bin/hardhat --network "$network" test
