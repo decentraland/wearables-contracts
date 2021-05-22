@@ -4,6 +4,7 @@ require('dotenv').config()
 
 import '@nomiclabs/hardhat-truffle5'
 import '@nomiclabs/hardhat-ethers'
+import '@nomiclabs/hardhat-etherscan'
 import 'hardhat-gas-reporter'
 import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
 
@@ -86,5 +87,8 @@ module.exports = {
     currency: 'USD',
     gasPrice: 21,
     showTimeSpent: true,
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
   },
 }

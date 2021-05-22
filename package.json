@@ -30,6 +30,7 @@
     "@ethersproject/random": "^5.0.2",
     "@ethersproject/solidity": "^5.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-etherscan": "^2.1.2",
     "@nomiclabs/hardhat-ganache": "^2.0.0",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
