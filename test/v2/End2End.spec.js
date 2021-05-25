@@ -5,7 +5,6 @@ import {
   ITEMS,
   getInitialRarities,
   getRarityNames,
-  EMPTY_HASH,
   RARITIES,
   RESCUE_ITEMS_SELECTOR,
   SET_APPROVE_COLLECTION_SELECTOR,
@@ -182,7 +181,7 @@ describe('End 2 End: Approval Flow', function () {
             ITEMS[i][2].toLowerCase()
           )
           expect(metadata).to.be.equal(ITEMS[i][3])
-          expect(contentHash).to.be.equal(EMPTY_HASH)
+          expect(contentHash).to.be.equal('')
         }
       })
     })
@@ -252,9 +251,11 @@ describe('End 2 End: Approval Flow', function () {
       })
 
       it('should rescue items by the committee', async function () {
-        const newContentHash0 = web3.utils.randomHex(32)
+        const newContentHash0 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const newMetadata0 = '1:crocodile_mask:earrings:female'
-        const newContentHash1 = web3.utils.randomHex(32)
+        const newContentHash1 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwc'
         const newMetadata1 = '1:whale_mask:earrings:female'
 
         let item0 = await collectionContract.items(0)
@@ -273,7 +274,7 @@ describe('End 2 End: Approval Flow', function () {
           ITEMS[0][1].toString(),
           ITEMS[0][2].toLowerCase(),
           ITEMS[0][3],
-          EMPTY_HASH,
+          '',
         ])
 
         let item1 = await collectionContract.items(1)
@@ -292,7 +293,7 @@ describe('End 2 End: Approval Flow', function () {
           ITEMS[1][1].toString(),
           ITEMS[1][2].toLowerCase(),
           ITEMS[1][3],
-          EMPTY_HASH,
+          '',
         ])
 
         // Rescue items
@@ -309,9 +310,9 @@ describe('End 2 End: Approval Flow', function () {
                   type: 'uint256[]',
                 },
                 {
-                  internalType: 'bytes32[]',
+                  internalType: 'string[]',
                   name: '_contentHashes',
-                  type: 'bytes32[]',
+                  type: 'string[]',
                 },
                 {
                   internalType: 'string[]',
@@ -520,7 +521,7 @@ describe('End 2 End: Approval Flow', function () {
             ITEMS[i][2].toLowerCase()
           )
           expect(metadata).to.be.equal(ITEMS[i][3])
-          expect(contentHash).to.be.equal(EMPTY_HASH)
+          expect(contentHash).to.be.equal('')
         }
       })
     })
@@ -668,9 +669,11 @@ describe('End 2 End: Approval Flow', function () {
       })
 
       it('should rescue items by the committee', async function () {
-        const newContentHash0 = web3.utils.randomHex(32)
+        const newContentHash0 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const newMetadata0 = '1:crocodile_mask:earrings:female'
-        const newContentHash1 = web3.utils.randomHex(32)
+        const newContentHash1 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwc'
         const newMetadata1 = '1:whale_mask:earrings:female'
 
         let item0 = await collectionContract.items(0)
@@ -689,7 +692,7 @@ describe('End 2 End: Approval Flow', function () {
           ITEMS[0][1].toString(),
           ITEMS[0][2].toLowerCase(),
           ITEMS[0][3],
-          EMPTY_HASH,
+          '',
         ])
 
         let item1 = await collectionContract.items(1)
@@ -708,7 +711,7 @@ describe('End 2 End: Approval Flow', function () {
           ITEMS[1][1].toString(),
           ITEMS[1][2].toLowerCase(),
           ITEMS[1][3],
-          EMPTY_HASH,
+          '',
         ])
 
         // Rescue items
@@ -754,9 +757,9 @@ describe('End 2 End: Approval Flow', function () {
                     type: 'uint256[]',
                   },
                   {
-                    internalType: 'bytes32[]',
+                    internalType: 'string[]',
                     name: '_contentHashes',
-                    type: 'bytes32[]',
+                    type: 'string[]',
                   },
                   {
                     internalType: 'string[]',

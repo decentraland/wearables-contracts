@@ -7,7 +7,6 @@ import {
   ZERO_ADDRESS,
   RARITIES,
   ITEMS,
-  EMPTY_HASH,
   getInitialRarities,
 } from '../helpers/collectionV2'
 
@@ -310,7 +309,7 @@ describe('Factory V2', function () {
         expect(price).to.be.eq.BN(ITEMS[i][1])
         expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
         expect(metadata).to.be.equal(ITEMS[i][3])
-        expect(contentHash).to.be.equal(EMPTY_HASH)
+        expect(contentHash).to.be.equal('')
       }
 
       collectionsSize = await factoryContract.collectionsSize()
