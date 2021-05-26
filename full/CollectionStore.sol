@@ -265,7 +265,7 @@ interface IERC721CollectionV2 {
         address _rarities,
         ItemParam[] memory _items
     ) external;
-    function items(uint256 _itemId) external view returns (string memory, uint256, uint256, uint256, address, string memory, bytes32);
+    function items(uint256 _itemId) external view returns (string memory, uint256, uint256, uint256, address, string memory, string memory);
 }
 
 

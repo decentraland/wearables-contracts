@@ -11,7 +11,6 @@ import {
   getInitialRarities,
   getRarityNames,
   getRarityDefaulPrices,
-  EMPTY_HASH,
   DEFAULT_RARITY_PRICE,
   MAX_UINT256,
   RESCUE_ITEMS_SELECTOR,
@@ -524,7 +523,7 @@ describe('Collection Manager', function () {
         expect(price).to.be.eq.BN(ITEMS[i][1])
         expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
         expect(metadata).to.be.equal(ITEMS[i][3])
-        expect(contentHash).to.be.equal(EMPTY_HASH)
+        expect(contentHash).to.be.equal('')
       }
     })
 
@@ -670,7 +669,7 @@ describe('Collection Manager', function () {
         expect(price).to.be.eq.BN(ITEMS[i][1])
         expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
         expect(metadata).to.be.equal(ITEMS[i][3])
-        expect(contentHash).to.be.equal(EMPTY_HASH)
+        expect(contentHash).to.be.equal('')
       }
     })
 
@@ -755,7 +754,7 @@ describe('Collection Manager', function () {
         expect(price).to.be.eq.BN(ITEMS[i][1])
         expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
         expect(metadata).to.be.equal(ITEMS[i][3])
-        expect(contentHash).to.be.equal(EMPTY_HASH)
+        expect(contentHash).to.be.equal('')
       }
 
       await creatorBalance.requireDecrease(fee)
@@ -930,7 +929,7 @@ describe('Collection Manager', function () {
         expect(price).to.be.eq.BN(ITEMS[i][1])
         expect(beneficiary.toLowerCase()).to.be.equal(ITEMS[i][2].toLowerCase())
         expect(metadata).to.be.equal(ITEMS[i][3])
-        expect(contentHash).to.be.equal(EMPTY_HASH)
+        expect(contentHash).to.be.equal('')
       }
 
       await creatorBalance.requireDecrease(fee)
@@ -938,6 +937,7 @@ describe('Collection Manager', function () {
     })
 
     it('should create a collection by paying the fees in acceptedToken :: Relayed EIP721 :: Gas estimation', async function () {
+      this.timeout(100000)
       await raritiesContract.updatePrices(
         getRarityNames(),
         getRarityDefaulPrices().map((_) => 1)
@@ -949,7 +949,7 @@ describe('Collection Manager', function () {
         fromUser
       )
 
-      const itemsInTheSameTx = 60
+      const itemsInTheSameTx = 55
       const items = []
 
       for (let i = 0; i < itemsInTheSameTx; i++) {
@@ -1051,7 +1051,7 @@ describe('Collection Manager', function () {
       )
 
       console.log(
-        `Deploy a collection with ${itemsInTheSameTx.length} items -> Gas Used: ${res.receipt.gasUsed}`
+        `Deploy a collection with ${itemsInTheSameTx} items -> Gas Used: ${res.receipt.gasUsed}`
       )
     })
 
@@ -1223,9 +1223,9 @@ describe('Collection Manager', function () {
                 type: 'uint256[]',
               },
               {
-                internalType: 'bytes32[]',
+                internalType: 'string[]',
                 name: '_contentHashes',
-                type: 'bytes32[]',
+                type: 'string[]',
               },
               {
                 internalType: 'string[]',

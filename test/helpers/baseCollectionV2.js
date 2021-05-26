@@ -189,7 +189,7 @@ export function doTest(
             items[i][2].toLowerCase()
           )
           expect(metadata).to.be.equal(items[i][3])
-          expect(contentHash).to.be.equal(EMPTY_HASH)
+          expect(contentHash).to.be.equal('')
         }
       })
 
@@ -1857,7 +1857,7 @@ export function doTest(
           newItem[1].toString(),
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
 
         itemLength = await contract.itemsCount()
@@ -1878,7 +1878,7 @@ export function doTest(
           newItem[1],
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -1954,7 +1954,7 @@ export function doTest(
           newItem[1].toString(),
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
 
         itemLength = await contract.itemsCount()
@@ -1975,7 +1975,7 @@ export function doTest(
           newItem[1].toString(),
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2010,7 +2010,7 @@ export function doTest(
           newItem1[1].toString(),
           newItem1[2],
           newItem1[3],
-          EMPTY_HASH,
+          '',
         ])
 
         expect(logs[1].event).to.be.equal('AddItem')
@@ -2024,7 +2024,7 @@ export function doTest(
           newItem2[1].toString(),
           newItem2[2],
           newItem2[3],
-          EMPTY_HASH,
+          '',
         ])
 
         itemLength = await contract.itemsCount()
@@ -2045,7 +2045,7 @@ export function doTest(
           newItem1[1].toString(),
           newItem1[2],
           newItem1[3],
-          EMPTY_HASH,
+          '',
         ])
 
         item = await contract.items(itemLength.sub(web3.utils.toBN(1)))
@@ -2064,7 +2064,7 @@ export function doTest(
           newItem2[1].toString(),
           newItem2[2],
           newItem2[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2089,7 +2089,7 @@ export function doTest(
           newItem[1].toString(),
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
 
         itemLength = await contract.itemsCount()
@@ -2110,7 +2110,7 @@ export function doTest(
           newItem[1].toString(),
           newItem[2],
           newItem[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2349,6 +2349,8 @@ export function doTest(
         const itemLength = await contract.itemsCount()
         itemId0 = itemLength.sub(web3.utils.toBN(2))
         itemId1 = itemLength.sub(web3.utils.toBN(1))
+
+        await contract.setApproved(false, fromDeployer)
       })
 
       it('should edit an item data', async function () {
@@ -2368,7 +2370,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
@@ -2405,7 +2407,7 @@ export function doTest(
           newItemPrice0.toString(),
           newItemBeneficiary0,
           newMetadata0,
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2426,7 +2428,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
@@ -2506,7 +2508,7 @@ export function doTest(
           newItemPrice0.toString(),
           newItemBeneficiary0,
           newMetadata0,
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2527,7 +2529,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         item = await contract.items(itemId1)
@@ -2546,7 +2548,7 @@ export function doTest(
           item1[1].toString(),
           item1[2],
           item1[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const newItemPrice0 = web3.utils.toWei('1000')
@@ -2593,7 +2595,7 @@ export function doTest(
           newItemPrice0.toString(),
           newItemBeneficiary0,
           newMetadata0,
-          EMPTY_HASH,
+          '',
         ])
 
         item = await contract.items(itemId1)
@@ -2612,7 +2614,7 @@ export function doTest(
           newItemPrice1.toString(),
           newItemBeneficiary1,
           newMetadata1,
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2633,7 +2635,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const { logs } = await contract.editItemsData(
@@ -2667,7 +2669,7 @@ export function doTest(
           '0',
           ZERO_ADDRESS,
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2688,7 +2690,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const newItemPrice0 = web3.utils.toWei('1')
@@ -2724,7 +2726,7 @@ export function doTest(
           newItemPrice0.toString(),
           newItemBeneficiary0,
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
@@ -2845,6 +2847,37 @@ export function doTest(
           [itemBeneficiary0],
           [metadata0],
           fromCreator
+        )
+      })
+
+      it('change item price and beneficiary if the collection is approved', async function () {
+        await contract.setApproved(true)
+
+        const newItemPrice0 = web3.utils.toWei('1000')
+        const newItemBeneficiary0 = holder
+
+        await contract.editItemsData(
+          [itemId0],
+          [newItemPrice0],
+          [newItemBeneficiary0],
+          [metadata0],
+          fromCreator
+        )
+      })
+
+      it('reverts when trying to change metadata and the collection is approved', async function () {
+        const newMetadata0 = 'new:metadata:0'
+        await contract.setApproved(true)
+
+        await assertRevert(
+          contract.editItemsData(
+            [itemId0],
+            [itemPrice0],
+            [itemBeneficiary0],
+            [newMetadata0],
+            fromCreator
+          ),
+          'editItemsData: CAN_NOT_EDIT_METADATA'
         )
       })
 
@@ -3091,7 +3124,8 @@ export function doTest(
       })
 
       it('should rescue an item', async function () {
-        const newContentHash = web3.utils.randomHex(32)
+        const newContentHash =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const newMetadata = '1:crocodile_mask:earrings:female'
 
         let item = await contract.items(itemId0)
@@ -3110,7 +3144,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const { logs } = await contract.rescueItems(
@@ -3163,7 +3197,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         item = await contract.items(itemId1)
@@ -3182,12 +3216,14 @@ export function doTest(
           item1[1].toString(),
           item1[2],
           item1[3],
-          EMPTY_HASH,
+          '',
         ])
 
-        const newContentHash0 = web3.utils.randomHex(32)
+        const newContentHash0 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const newMetadata0 = '1:crocodile_mask:earrings:female'
-        const newContentHash1 = web3.utils.randomHex(32)
+        const newContentHash1 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwc'
         const newMetadata1 = '1:turtle_mask:upper_body:female'
 
         const { logs } = await contract.rescueItems(
@@ -3248,7 +3284,8 @@ export function doTest(
       })
 
       it('should rescue an item :: Relayed EIP721', async function () {
-        const newContentHash = web3.utils.randomHex(32)
+        const newContentHash =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const newMetadata = '1:crocodile_mask:earrings:female'
 
         let item = await contract.items(itemId0)
@@ -3267,7 +3304,7 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
         const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -3279,9 +3316,9 @@ export function doTest(
                 type: 'uint256[]',
               },
               {
-                internalType: 'bytes32[]',
+                internalType: 'string[]',
                 name: '_contentHashes',
-                type: 'bytes32[]',
+                type: 'string[]',
               },
               {
                 internalType: 'string[]',
@@ -3353,10 +3390,11 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
-        const newContentHash0 = web3.utils.randomHex(32)
+        const newContentHash0 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         const { logs } = await contract.rescueItems(
           [itemId0],
           [newContentHash0],
@@ -3407,10 +3445,11 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
 
-        const newContentHash0 = web3.utils.randomHex(32)
+        const newContentHash0 =
+          'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
         await contract.rescueItems(
           [itemId0],
           [newContentHash0],
@@ -3437,7 +3476,7 @@ export function doTest(
           newContentHash0,
         ])
 
-        await contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromDeployer)
+        await contract.rescueItems([itemId0], [''], [''], fromDeployer)
 
         item = await contract.items(itemId0)
         expect([
@@ -3455,15 +3494,20 @@ export function doTest(
           item0[1].toString(),
           item0[2],
           item0[3],
-          EMPTY_HASH,
+          '',
         ])
       })
 
       it('reverts when passing different length parameters', async function () {
         await assertRevert(
+          contract.rescueItems([itemId0], ['', ''], ['', ''], fromDeployer),
+          'rescueItems: LENGTH_MISMATCH'
+        )
+
+        await assertRevert(
           contract.rescueItems(
-            [itemId0],
-            [EMPTY_HASH, EMPTY_HASH],
+            [itemId0, itemId1],
+            [''],
             ['', ''],
             fromDeployer
           ),
@@ -3473,17 +3517,7 @@ export function doTest(
         await assertRevert(
           contract.rescueItems(
             [itemId0, itemId1],
-            [EMPTY_HASH],
             ['', ''],
-            fromDeployer
-          ),
-          'rescueItems: LENGTH_MISMATCH'
-        )
-
-        await assertRevert(
-          contract.rescueItems(
-            [itemId0, itemId1],
-            [EMPTY_HASH, EMPTY_HASH],
             [''],
             fromDeployer
           ),
@@ -3498,22 +3532,22 @@ export function doTest(
         await contract.setItemsManagers([0], [manager], [true], fromCreator)
 
         await assertRevert(
-          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromCreator),
+          contract.rescueItems([itemId0], [''], [''], fromCreator),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromMinter),
+          contract.rescueItems([itemId0], [''], [''], fromMinter),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromManager),
+          contract.rescueItems([itemId0], [''], [''], fromManager),
           'Ownable: caller is not the owner'
         )
 
         await assertRevert(
-          contract.rescueItems([itemId0], [EMPTY_HASH], [''], fromHacker),
+          contract.rescueItems([itemId0], [''], [''], fromHacker),
           'Ownable: caller is not the owner'
         )
       })
@@ -3533,9 +3567,9 @@ export function doTest(
                 type: 'uint256[]',
               },
               {
-                internalType: 'bytes32[]',
+                internalType: 'string[]',
                 name: '_contentHashes',
-                type: 'bytes32[]',
+                type: 'string[]',
               },
               {
                 internalType: 'string[]',
@@ -3548,7 +3582,7 @@ export function doTest(
             stateMutability: 'nonpayable',
             type: 'function',
           },
-          [[itemId0.toString()], [EMPTY_HASH], ['']]
+          [[itemId0.toString()], [''], ['']]
         )
 
         await assertRevert(
@@ -3575,7 +3609,7 @@ export function doTest(
       it('reverts when trying to rescue an invalid item', async function () {
         const itemLength = await contract.itemsCount()
         await assertRevert(
-          contract.rescueItems([itemLength], [EMPTY_HASH], [''], fromDeployer),
+          contract.rescueItems([itemLength], [''], [''], fromDeployer),
           'rescueItems: ITEM_DOES_NOT_EXIST'
         )
       })

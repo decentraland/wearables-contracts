@@ -2232,7 +2232,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
         uint256 price;
         address beneficiary;
         string metadata;
-        bytes32 contentHash; // used for safe purposes
+        string contentHash; // used for safe purposes
     }
 
     IRarities public rarities;
@@ -2260,7 +2260,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     event SetItemManager(uint256 indexed _itemId, address indexed _manager, bool _value);
 
     event AddItem(uint256 indexed _itemId, Item _item);
-    event RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata);
+    event RescueItem(uint256 indexed _itemId, string _contentHash, string _metadata);
     event Issue(address indexed _beneficiary, uint256 indexed _tokenId, uint256 indexed _itemId, uint256 _issuedId, address _caller);
     event UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary, string _metadata);
     event CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
@@ -2526,6 +2526,12 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
             require(bytes(metadata).length > 0, "editItemsData: EMPTY_METADATA");
 
             Item storage item = items[itemId];
+
+            require(
+                !isApproved || keccak256(abi.encode(item.metadata)) == keccak256(abi.encode(metadata)),
+                "editItemsData: CAN_NOT_EDIT_METADATA"
+            );
+
             item.price = price;
             item.beneficiary = beneficiary;
             item.metadata = metadata;
@@ -2537,12 +2543,12 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
     /**
      * @notice Add new items to the collection.
      * @dev The item should follow:
-     * rarity: Should be one of the RARITY enum
-     * totalSupply: Should starts in 0
-     * metadata: Shouldn't be empty
-     * price & beneficiary: Is the price is > 0, a beneficiary should be passed. If not, price and
+     * rarity: should be one of the RARITY enum
+     * totalSupply: starts in 0
+     * metadata: shouldn't be empty
+     * price & beneficiary: is the price is > 0, a beneficiary should be passed. If not, price and
      *   beneficiary should be empty.
-     * contentHash: Should be the an empty hash
+     * contentHash: starts empty
      * @param _items - items to add
      */
     function _addItems(ItemParam[] memory _items) internal {
@@ -2581,7 +2587,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
                 price: _item.price,
                 beneficiary: _item.beneficiary,
                 metadata: _item.metadata,
-                contentHash: EMPTY_CONTENT
+                contentHash: ''
             });
 
             items.push(item);
@@ -2656,7 +2662,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
      */
     function rescueItems(
         uint256[] calldata _itemIds,
-        bytes32[] calldata _contentHashes,
+        string[] calldata _contentHashes,
         string[] calldata _metadatas
     ) external onlyOwner {
         // Check lengths
@@ -2671,7 +2677,7 @@ abstract contract ERC721BaseCollectionV2 is OwnableInitializable, ERC721Initiali
 
             Item storage item = items[itemId];
 
-            bytes32 contentHash = _contentHashes[i];
+            string memory contentHash = _contentHashes[i];
             string memory metadata = _metadatas[i];
 
             item.contentHash = contentHash;

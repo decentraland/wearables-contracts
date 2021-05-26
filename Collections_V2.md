@@ -103,7 +103,7 @@ struct Item {
     uint256 price;
     address beneficiary;
     string metadata;
-    bytes32 contentHash;
+    string contentHash;
 }
 ```
 
@@ -275,7 +275,7 @@ AddItem(uint256 indexed _itemId, Item _item);
 [Emitted when an item is rescue](#owner)
 
 ```solidity
-RescueItem(uint256 indexed _itemId, bytes32 _contentHash, string _metadata)
+RescueItem(uint256 indexed _itemId, string _contentHash, string _metadata)
 ```
 
 **Issue**
@@ -442,7 +442,7 @@ Override the metadata and/or content hash of multiple items.
 ```solidity
  function rescueItems(
   uint256[] calldata _itemIds,
-  bytes32[] calldata _contentHashes,
+  string[] memory calldata _contentHashes,
   string[] calldata _metadatas
 ) external
 ```

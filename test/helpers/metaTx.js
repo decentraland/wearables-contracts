@@ -78,7 +78,7 @@ export async function getSignature(
   const signature = await new Promise((res, rej) =>
     web3.currentProvider.send(
       {
-        method: 'eth_signTypedData',
+        method: 'eth_signTypedData_v4',
         params: [signer, dataToSign],
         jsonrpc: '2.0',
         id: 999999999999,
