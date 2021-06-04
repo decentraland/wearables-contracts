@@ -1,6 +1,6 @@
-// Sources flattened with hardhat v2.0.8 https://hardhat.org
+// Sources flattened with hardhat v2.3.0 https://hardhat.org
 
-// File @openzeppelin/contracts/utils/Context.sol@v3.4.0
+// File @openzeppelin/contracts/utils/Context.sol@v3.4.1
 
 // SPDX-License-Identifier: MIT
 
@@ -28,7 +28,7 @@ abstract contract Context {
 }
 
 
-// File @openzeppelin/contracts/access/Ownable.sol@v3.4.0
+// File @openzeppelin/contracts/access/Ownable.sol@v3.4.1
 
 // SPDX-License-Identifier: MIT
 
