@@ -1,5 +1,5 @@
 <pre>
-  Title: Collections V2 approval flow
+  Title: Collections v2 actors
   Author: Ignacio Mazzara <nacho@decentraland.org>
   Type: informational
   Created: 2020-08-28
@@ -9,18 +9,8 @@
 
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Abstract](#abstract)
 - [Design](#design)
 - [Actors](#actors)
-
-## Introduction
-
-Every item as wearable, emotes, 3d object, etc in Decentraland's world is represented by a non-fungible token ERC #721 that is indivisible and unique. Those items together defines a collection which works as a registry powered by a smart contract where it is defined all the information. A collection can be built by anyone but approved by a governance system (committee).
-
-## Abstract
-
-A way to moderate the content of the Decentraland collections is needed to prevent spam, abuse, clone and copyright. The Decentraland's collections will be created in a L2 governed any kind of governance in L1. E.g: DAO. The collection deployment will has a cost in MANA based on the items amount and its rarities. Also, each collection will be created as rejected awaiting for the approval of the members of the committee.
 
 ## Design
 
@@ -44,3 +34,7 @@ A way to moderate the content of the Decentraland collections is needed to preve
 **Collection**: collection contract implementation. The owner of each collection will be the forwarder.
 
 **Rarities**: Contract with all the rarities info: name, max supply, and price to deploy. Rarities can only be added, and only the price can be updated. The only entity allowed to do this is the the DAO bridge.
+
+**Store**: Contract which allows collection's items primary sales. The contract has a fee for each primary sale. The owner sets the fee, and its also the beneficiary. The owner is the DAO bridge. The price and beneficiary for each item primary sale is set by the collection's creator/manager in the collection itself.
+
+**Marketplace**: Contract which allows NFT ERC721 compliant (with/without [fingerprint](https://github.com/decentraland/land/blob/master/contracts/estate/EstateStorage.sol#L19)) secondary sales. The contract has a fee for each secondary sale. The owner sets the fee, and its also the beneficiary. The owner is the DAO bridge. The price for each NFT secondary sale is set by the NFT owner.
