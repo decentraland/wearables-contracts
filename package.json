@@ -63,5 +63,8 @@
     "truffle": "^5.1.41",
     "validate-commit-msg": "^2.14.0",
     "web3": "^1.2.7"
+  },
+  "dependencies": {
+    "@maticnetwork/maticjs": "^2.0.43"
   }
 }
