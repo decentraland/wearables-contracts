@@ -90,8 +90,6 @@ contract ERC721BridgedCollection is OwnableInitializable, ERC721Initializable, N
     function burn(uint256[] calldata _tokenIds) onlyAdmin external {
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             uint256 tokenId = _tokenIds[i];
-
-            // @TODO: not sure about this, consume more gas?
             delete tokens[tokenId];
 
             super._burn(tokenId);

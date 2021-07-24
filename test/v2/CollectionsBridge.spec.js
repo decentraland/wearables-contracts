@@ -31,7 +31,7 @@ const ERC721CollectionV2Validator = artifacts.require(
   'ERC721CollectionV2Validator'
 )
 
-describe.only('Collection Bridge', function () {
+describe('Collection Bridge', function () {
   let manaContract
   let collectionImplementation
   let factoryContract
