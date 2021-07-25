@@ -250,6 +250,82 @@ describe('ERC721BridgedCollection', function () {
       expect(token2.tokenURI).to.be.eq.BN(tokenURI2)
     })
 
+    it('should mint tokens burnt', async function () {
+      let userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(0))
+
+      let totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(0))
+
+      await collectionsBridgedContract.mint(
+        user,
+        [
+          [fakeCollection, 1, tokenURI1],
+          [fakeCollection, 2, tokenURI2],
+        ],
+        fromAdmin
+      )
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(2))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(2))
+
+      let ownerOfToken1 = await collectionsBridgedContract.ownerOf(tokenId1)
+      let ownerOfToken2 = await collectionsBridgedContract.ownerOf(tokenId2)
+      expect(ownerOfToken1).to.be.equal(user)
+      expect(ownerOfToken2).to.be.equal(user)
+
+      let token1 = await collectionsBridgedContract.tokens(tokenId1)
+      expect(token1.collection).to.be.equal(fakeCollection)
+      expect(token1.tokenId).to.be.eq.BN(web3.utils.toBN(1))
+      expect(token1.tokenURI).to.be.eq.BN(tokenURI1)
+
+      let token2 = await collectionsBridgedContract.tokens(tokenId2)
+      expect(token2.collection).to.be.equal(fakeCollection)
+      expect(token2.tokenId).to.be.eq.BN(web3.utils.toBN(2))
+      expect(token2.tokenURI).to.be.eq.BN(tokenURI2)
+
+      await collectionsBridgedContract.burn([tokenId1, tokenId2], fromAdmin)
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(0))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(0))
+
+      await collectionsBridgedContract.mint(
+        user,
+        [
+          [fakeCollection, 1, tokenURI1],
+          [fakeCollection, 2, tokenURI2],
+        ],
+        fromAdmin
+      )
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(2))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(2))
+
+      ownerOfToken1 = await collectionsBridgedContract.ownerOf(tokenId1)
+      ownerOfToken2 = await collectionsBridgedContract.ownerOf(tokenId2)
+      expect(ownerOfToken1).to.be.equal(user)
+      expect(ownerOfToken2).to.be.equal(user)
+
+      token1 = await collectionsBridgedContract.tokens(tokenId1)
+      expect(token1.collection).to.be.equal(fakeCollection)
+      expect(token1.tokenId).to.be.eq.BN(web3.utils.toBN(1))
+      expect(token1.tokenURI).to.be.eq.BN(tokenURI1)
+
+      token2 = await collectionsBridgedContract.tokens(tokenId2)
+      expect(token2.collection).to.be.equal(fakeCollection)
+      expect(token2.tokenId).to.be.eq.BN(web3.utils.toBN(2))
+      expect(token2.tokenURI).to.be.eq.BN(tokenURI2)
+    })
+
     it('reverts when trying to mint tokens by an unauthorized user', async function () {
       await assertRevert(
         collectionsBridgedContract.mint(
@@ -411,6 +487,75 @@ describe('ERC721BridgedCollection', function () {
       expect(logs[4].args.from).to.be.equal(user)
       expect(logs[4].args.to).to.be.equal(ZERO_ADDRESS)
       expect(logs[4].args.tokenId).to.eq.BN(tokenId2)
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(0))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(0))
+    })
+
+    it('should re-burn tokens minted', async function () {
+      let userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(2))
+
+      let totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(2))
+
+      let ownerOfToken1 = await collectionsBridgedContract.ownerOf(tokenId1)
+      let ownerOfToken2 = await collectionsBridgedContract.ownerOf(tokenId2)
+      expect(ownerOfToken1).to.be.equal(user)
+      expect(ownerOfToken2).to.be.equal(user)
+
+      let token1 = await collectionsBridgedContract.tokens(tokenId1)
+      expect(token1.collection).to.be.equal(fakeCollection)
+      expect(token1.tokenId).to.be.eq.BN(web3.utils.toBN(1))
+      expect(token1.tokenURI).to.be.eq.BN(tokenURI1)
+
+      let token2 = await collectionsBridgedContract.tokens(tokenId2)
+      expect(token2.collection).to.be.equal(fakeCollection)
+      expect(token2.tokenId).to.be.eq.BN(web3.utils.toBN(2))
+      expect(token2.tokenURI).to.be.eq.BN(tokenURI2)
+
+      await collectionsBridgedContract.burn([tokenId1, tokenId2], fromAdmin)
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(0))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(0))
+
+      await collectionsBridgedContract.mint(
+        user,
+        [
+          [fakeCollection, 1, tokenURI1],
+          [fakeCollection, 2, tokenURI2],
+        ],
+        fromAdmin
+      )
+
+      userBalance = await collectionsBridgedContract.balanceOf(user)
+      expect(userBalance).to.be.eq.BN(web3.utils.toBN(2))
+
+      totalSupply = await collectionsBridgedContract.totalSupply()
+      expect(totalSupply).to.be.eq.BN(web3.utils.toBN(2))
+
+      ownerOfToken1 = await collectionsBridgedContract.ownerOf(tokenId1)
+      ownerOfToken2 = await collectionsBridgedContract.ownerOf(tokenId2)
+      expect(ownerOfToken1).to.be.equal(user)
+      expect(ownerOfToken2).to.be.equal(user)
+
+      token1 = await collectionsBridgedContract.tokens(tokenId1)
+      expect(token1.collection).to.be.equal(fakeCollection)
+      expect(token1.tokenId).to.be.eq.BN(web3.utils.toBN(1))
+      expect(token1.tokenURI).to.be.eq.BN(tokenURI1)
+
+      token2 = await collectionsBridgedContract.tokens(tokenId2)
+      expect(token2.collection).to.be.equal(fakeCollection)
+      expect(token2.tokenId).to.be.eq.BN(web3.utils.toBN(2))
+      expect(token2.tokenURI).to.be.eq.BN(tokenURI2)
+
+      await collectionsBridgedContract.burn([tokenId1, tokenId2], fromAdmin)
 
       userBalance = await collectionsBridgedContract.balanceOf(user)
       expect(userBalance).to.be.eq.BN(web3.utils.toBN(0))
