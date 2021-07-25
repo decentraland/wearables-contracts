@@ -7,14 +7,13 @@ import "./BaseCollectionValidator.sol";
 
 contract ERC721CollectionV1Validator is BaseCollectionValidator {
 
-    mapping(address => uint) public collections;
+    mapping(address => uint256) public collections;
 
    /**
     * @notice Create the contract
     * @param _collections - list of valid collections
     */
-    constructor(address[] memory
-     _collections) {
+    constructor(address[] memory _collections) {
        for (uint256 i = 0; i < _collections.length; i++) {
            collections[_collections[i]] = 1;
        }

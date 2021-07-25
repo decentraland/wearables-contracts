@@ -3,17 +3,12 @@ import { expect } from 'chai'
 
 import assertRevert from '../helpers/assertRevert'
 import { getTokenId } from '../helpers/bridgedCollection'
-import {
-  ZERO_ADDRESS,
-  encodeTokenId,
-  BASE_URI,
-  EMPTY_HASH,
-} from '../helpers/collectionV2'
+import { ZERO_ADDRESS, BASE_URI, EMPTY_HASH } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
 const ERC721BridgedCollection = artifacts.require('ERC721BridgedCollection')
 
-describe.only('ERC721BridgedCollection', function () {
+describe('ERC721BridgedCollection', function () {
   let collectionsBridgedContract
   let tokenId1
   let tokenId2
@@ -24,7 +19,6 @@ describe.only('ERC721BridgedCollection', function () {
 
   // Accounts
   let accounts
-  let deployer
   let user
   let anotherUser
   let operator
@@ -43,7 +37,6 @@ describe.only('ERC721BridgedCollection', function () {
 
   beforeEach(async function () {
     accounts = await web3.eth.getAccounts()
-    deployer = accounts[0]
     user = accounts[1]
     fakeCollection = accounts[2]
     owner = accounts[3]
