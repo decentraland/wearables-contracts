@@ -492,7 +492,7 @@ describe('CollectionsBridgeRoot', function () {
           tokensToDeposit,
           fromUser
         ),
-        'CBR#depositFor: HIGHER_THAN_MAX_TOKENS_PER_DEPOSIT'
+        'CBR#depositFor: MAX_TOKENS_PER_TX_EXCEEDED'
       )
     })
 

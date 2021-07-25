@@ -22,7 +22,7 @@ const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
 const Rarities = artifacts.require('Rarities')
 
-describe('End 2 End: Approval Flow', function () {
+describe('Collections V2 End 2 End: Approval Flow', function () {
   const name = 'collectionName'
   const symbol = 'collectionSymbol'
   const baseURI = 'collectionBaseURI'

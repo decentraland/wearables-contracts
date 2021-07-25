@@ -45,7 +45,7 @@ contract CollectionsBridgeRoot is CollectionBridgeBase, FxBaseRootTunnel {
     * @param _collectionsTokens - array of collection's tokens to deposit
     */
     function depositFor(address _to, CollectionTokenParam[] calldata _collectionsTokens) external {
-        require(_collectionsTokens.length <= maxTokensPerTx, "CBR#depositFor: HIGHER_THAN_MAX_TOKENS_PER_DEPOSIT");
+        require(_collectionsTokens.length <= maxTokensPerTx, "CBR#depositFor: MAX_TOKENS_PER_TX_EXCEEDED");
 
         address sender = _msgSender();
         IERC721BridgedCollection.Token[] memory tokens = new IERC721BridgedCollection.Token[](_collectionsTokens.length);
