@@ -41,7 +41,7 @@ contract CollectionsBridgeChild is CollectionBridgeBase, FxBaseChildTunnel {
     * @param _tokenIds - array of tokens ids to be withdrawn
     */
     function withdrawFor(address _to, uint256[] calldata _tokenIds) external {
-        require(_tokenIds.length < maxTokensPerTx, "CBC#withdrawFor: MAX_TOKENS_PER_TX_EXCEEDED");
+        require(_tokenIds.length <= maxTokensPerTx, "CBC#withdrawFor: MAX_TOKENS_PER_TX_EXCEEDED");
 
         address sender = _msgSender();
         IERC721BridgedCollection.Token[] memory tokens = new IERC721BridgedCollection.Token[](_tokenIds.length);
