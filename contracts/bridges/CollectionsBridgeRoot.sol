@@ -3,7 +3,7 @@
 pragma solidity  ^0.7.3;
 pragma experimental ABIEncoderV2;
 
-import "fx-portal/contracts/tunnel/FxBaseRootTunnel.sol";
+import "fx-portal-contracts/contracts/tunnel/FxBaseRootTunnel.sol";
 
 import "./CollectionsBridgeBase.sol";
 import "../interfaces/ICollectionValidator.sol";

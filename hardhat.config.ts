@@ -74,6 +74,7 @@ module.exports = {
     hardhat: {
       blockGasLimit: 10000000,
       gas: 10000000,
+      initialBaseFeePerGas: 0
     },
     local: {
       url: 'http://127.0.0.1:8545',
@@ -87,7 +88,7 @@ module.exports = {
     enabled: !!process.env.REPORT_GAS === true,
     currency: 'USD',
     gasPrice: 21,
-    showTimeSpent: true,
+    showTimeSpent: true
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY

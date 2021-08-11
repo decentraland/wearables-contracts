@@ -52,7 +52,7 @@
     "eslint-config-prettier": "^2.9.0",
     "eslint-plugin-prettier": "^2.4.0",
     "ethereumjs-abi": "^0.6.8",
-    "fx-portal": "github:fx-portal/contracts#d7c12b29293dbbbf662dc9c6868a99466584ca13",
+    "fx-portal-contracts": "^0.7.0",
     "ganache-cli": "^6.9.1",
     "hardhat": "^2.3.0",
     "hardhat-gas-reporter": "^1.0.4",
@@ -65,6 +65,5 @@
     "truffle": "^5.1.41",
     "validate-commit-msg": "^2.14.0",
     "web3": "^1.2.7"
-  },
-  "dependencies": {}
+  }
 }

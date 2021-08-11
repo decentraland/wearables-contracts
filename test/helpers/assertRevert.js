@@ -4,11 +4,7 @@ export default async function assertRevert(promise, message) {
   try {
     await promise
   } catch (error) {
-    const withMessage = message
-      ? message.indexOf('invalid opcode') !== -1
-        ? `VM Exception while processing transaction: ${message}`
-        : `VM Exception while processing transaction: revert ${message}`
-      : 'revert'
+    const withMessage = message ? message : 'revert'
 
     error.message.should.include(
       withMessage,
