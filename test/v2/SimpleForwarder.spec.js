@@ -5,7 +5,7 @@ import { expect } from 'chai'
 const SimpleForwarder = artifacts.require('SimpleForwarder')
 const Committee = artifacts.require('Committee')
 
-describe.only('SimpleForwarder', function () {
+describe('SimpleForwarder', function () {
   let simpleForwarderContract
   let committeeContract
 

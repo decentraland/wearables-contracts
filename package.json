@@ -29,6 +29,7 @@
     "@ethersproject/bytes": "^5.0.3",
     "@ethersproject/random": "^5.0.2",
     "@ethersproject/solidity": "^5.0.2",
+    "@maticnetwork/maticjs": "^2.0.43",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.2",
     "@nomiclabs/hardhat-ganache": "^2.0.0",
@@ -51,6 +52,7 @@
     "eslint-config-prettier": "^2.9.0",
     "eslint-plugin-prettier": "^2.4.0",
     "ethereumjs-abi": "^0.6.8",
+    "fx-portal-contracts": "^0.7.0",
     "ganache-cli": "^6.9.1",
     "hardhat": "^2.3.0",
     "hardhat-gas-reporter": "^1.0.4",
@@ -63,8 +65,5 @@
     "truffle": "^5.1.41",
     "validate-commit-msg": "^2.14.0",
     "web3": "^1.2.7"
-  },
-  "dependencies": {
-    "@maticnetwork/maticjs": "^2.0.43"
   }
 }
