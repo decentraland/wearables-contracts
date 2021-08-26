@@ -1,6 +1,7 @@
 import assertRevert from '../helpers/assertRevert'
 import {
   ITEMS,
+  RARITIES,
   getInitialRarities,
   getRarityNames,
   RESCUE_ITEMS_SELECTOR,
@@ -220,22 +221,24 @@ describe('Commitee', function () {
         collectionManagerContract.address,
         forwarderContract.address,
         collectionContract.address,
-        web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'bool',
-                name: '_value',
-                type: 'bool',
-              },
-            ],
-            name: 'setApproved',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [true]
-        ),
+        [
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+        ],
         fromUser
       )
 
@@ -247,27 +250,139 @@ describe('Commitee', function () {
         collectionManagerContract.address,
         forwarderContract.address,
         collectionContract.address,
-        web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'bool',
-                name: '_value',
-                type: 'bool',
-              },
-            ],
-            name: 'setApproved',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [false]
-        ),
+        [
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [false]
+          ),
+        ],
         fromUser
       )
 
       isApproved = await collectionContract.isApproved()
       expect(isApproved).to.be.equal(false)
+    })
+
+    it('should manage a collection :: multicall', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      const itemLength = await collectionContract.itemsCount()
+
+      expect(ITEMS.length).to.be.eq.BN(itemLength)
+
+      for (let i = 0; i < itemLength; i++) {
+        let item = await collectionContract.items(i)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary.toLowerCase(),
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          ITEMS[i][0],
+          RARITIES[ITEMS[i][0]].value.toString(),
+          '0',
+          ITEMS[i][1].toString(),
+          ITEMS[i][2],
+          ITEMS[i][3],
+          '',
+        ])
+      }
+
+      // Approve & rescue items
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        forwarderContract.address,
+        collectionContract.address,
+        [
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'uint256[]',
+                  name: '_itemIds',
+                  type: 'uint256[]',
+                },
+                {
+                  internalType: 'string[]',
+                  name: '_contentHashes',
+                  type: 'string[]',
+                },
+                {
+                  internalType: 'string[]',
+                  name: '_metadatas',
+                  type: 'string[]',
+                },
+              ],
+              name: 'rescueItems',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [
+              ITEMS.map((_, index) => index),
+              ITEMS.map((_, index) => `contenthash${index}`),
+              ITEMS.map(() => ''),
+            ]
+          ),
+        ],
+        fromUser
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      for (let i = 0; i < itemLength; i++) {
+        let item = await collectionContract.items(i)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary.toLowerCase(),
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          ITEMS[i][0],
+          RARITIES[ITEMS[i][0]].value.toString(),
+          '0',
+          ITEMS[i][1].toString(),
+          ITEMS[i][2],
+          ITEMS[i][3],
+          `contenthash${i}`,
+        ])
+      }
     })
 
     it('should manage a collection :: Relayed EIP721', async function () {
@@ -294,9 +409,9 @@ describe('Commitee', function () {
               type: 'address',
             },
             {
-              internalType: 'bytes',
+              internalType: 'bytes[]',
               name: '_data',
-              type: 'bytes',
+              type: 'bytes[]',
             },
           ],
           name: 'manageCollection',
@@ -308,22 +423,24 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
         ]
       )
 
@@ -360,9 +477,9 @@ describe('Commitee', function () {
               type: 'address',
             },
             {
-              internalType: 'bytes',
+              internalType: 'bytes[]',
               name: '_data',
-              type: 'bytes',
+              type: 'bytes[]',
             },
           ],
           name: 'manageCollection',
@@ -374,22 +491,24 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [false]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [false]
+            ),
+          ],
         ]
       )
 
@@ -407,6 +526,155 @@ describe('Commitee', function () {
       expect(isApproved).to.be.equal(false)
     })
 
+    it('should manage a collection :: multicall : Relayed EIP721', async function () {
+      let isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(false)
+
+      const itemLength = await collectionContract.itemsCount()
+
+      expect(ITEMS.length).to.be.eq.BN(itemLength)
+
+      for (let i = 0; i < itemLength; i++) {
+        let item = await collectionContract.items(i)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary.toLowerCase(),
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          ITEMS[i][0],
+          RARITIES[ITEMS[i][0]].value.toString(),
+          '0',
+          ITEMS[i][1].toString(),
+          ITEMS[i][2],
+          ITEMS[i][3],
+          '',
+        ])
+      }
+
+      // Approve & Rescue items
+      let functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'contract ICollectionManager',
+              name: '_collectionManager',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_forwarder',
+              type: 'address',
+            },
+            {
+              internalType: 'address',
+              name: '_collection',
+              type: 'address',
+            },
+            {
+              internalType: 'bytes[]',
+              name: '_data',
+              type: 'bytes[]',
+            },
+          ],
+          name: 'manageCollection',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          collectionManagerContract.address,
+          forwarderContract.address,
+          collectionContract.address,
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'uint256[]',
+                    name: '_itemIds',
+                    type: 'uint256[]',
+                  },
+                  {
+                    internalType: 'string[]',
+                    name: '_contentHashes',
+                    type: 'string[]',
+                  },
+                  {
+                    internalType: 'string[]',
+                    name: '_metadatas',
+                    type: 'string[]',
+                  },
+                ],
+                name: 'rescueItems',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [
+                ITEMS.map((_, index) => index),
+                ITEMS.map((_, index) => `contenthash${index}`),
+                ITEMS.map(() => ''),
+              ]
+            ),
+          ],
+        ]
+      )
+
+      await sendMetaTx(
+        committeeContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        'Decentraland Collection Committee',
+        '1'
+      )
+
+      isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      for (let i = 0; i < itemLength; i++) {
+        let item = await collectionContract.items(i)
+        expect([
+          item.rarity.toString(),
+          item.maxSupply.toString(),
+          item.totalSupply.toString(),
+          item.price.toString(),
+          item.beneficiary.toLowerCase(),
+          item.metadata,
+          item.contentHash,
+        ]).to.be.eql([
+          ITEMS[i][0],
+          RARITIES[ITEMS[i][0]].value.toString(),
+          '0',
+          ITEMS[i][1].toString(),
+          ITEMS[i][2],
+          ITEMS[i][3],
+          `contenthash${i}`,
+        ])
+      }
+    })
+
     it('reverts when trying to manage a collection by a committee removed member', async function () {
       let isApproved = await collectionContract.isApproved()
       expect(isApproved).to.be.equal(false)
@@ -415,22 +683,24 @@ describe('Commitee', function () {
         collectionManagerContract.address,
         forwarderContract.address,
         collectionContract.address,
-        web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'bool',
-                name: '_value',
-                type: 'bool',
-              },
-            ],
-            name: 'setApproved',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [true]
-        ),
+        [
+          web3.eth.abi.encodeFunctionCall(
+            {
+              inputs: [
+                {
+                  internalType: 'bool',
+                  name: '_value',
+                  type: 'bool',
+                },
+              ],
+              name: 'setApproved',
+              outputs: [],
+              stateMutability: 'nonpayable',
+              type: 'function',
+            },
+            [true]
+          ),
+        ],
         fromUser
       )
 
@@ -444,6 +714,36 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [false]
+            ),
+          ],
+          fromUser
+        ),
+        'Committee#manageCollection: UNAUTHORIZED_SENDER'
+      )
+
+      await committeeContract.setMembers([user], [true], fromOwner)
+
+      await committeeContract.manageCollection(
+        collectionManagerContract.address,
+        forwarderContract.address,
+        collectionContract.address,
+        [
           web3.eth.abi.encodeFunctionCall(
             {
               inputs: [
@@ -460,33 +760,7 @@ describe('Commitee', function () {
             },
             [false]
           ),
-          fromUser
-        ),
-        'Committee#manageCollection: UNAUTHORIZED_SENDER'
-      )
-
-      await committeeContract.setMembers([user], [true], fromOwner)
-
-      await committeeContract.manageCollection(
-        collectionManagerContract.address,
-        forwarderContract.address,
-        collectionContract.address,
-        web3.eth.abi.encodeFunctionCall(
-          {
-            inputs: [
-              {
-                internalType: 'bool',
-                name: '_value',
-                type: 'bool',
-              },
-            ],
-            name: 'setApproved',
-            outputs: [],
-            stateMutability: 'nonpayable',
-            type: 'function',
-          },
-          [false]
-        ),
+        ],
         fromUser
       )
     })
@@ -497,22 +771,24 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'unauthorizedMethod',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'unauthorizedMethod',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
           fromUser
         ),
         'CollectionManager#manageCollection: COMMITTEE_METHOD_NOT_ALLOWED'
@@ -528,22 +804,24 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
           fromHacker
         ),
         'Committee#manageCollection: UNAUTHORIZED_SENDER'
@@ -555,22 +833,24 @@ describe('Commitee', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
           fromOwner
         ),
         'Committee#manageCollection: UNAUTHORIZED_SENDER'
