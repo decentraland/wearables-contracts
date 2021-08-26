@@ -552,9 +552,9 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
                 type: 'address',
               },
               {
-                internalType: 'bytes',
+                internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
@@ -566,22 +566,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
             collectionManagerContract.address,
             forwarderContract.address,
             collectionContract.address,
-            web3.eth.abi.encodeFunctionCall(
-              {
-                inputs: [
-                  {
-                    internalType: 'bool',
-                    name: '_value',
-                    type: 'bool',
-                  },
-                ],
-                name: 'setApproved',
-                outputs: [],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-              [true]
-            ),
+            [
+              web3.eth.abi.encodeFunctionCall(
+                {
+                  inputs: [
+                    {
+                      internalType: 'bool',
+                      name: '_value',
+                      type: 'bool',
+                    },
+                  ],
+                  name: 'setApproved',
+                  outputs: [],
+                  stateMutability: 'nonpayable',
+                  type: 'function',
+                },
+                [true]
+              ),
+            ],
           ]
         )
 
@@ -623,9 +625,9 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
                 type: 'address',
               },
               {
-                internalType: 'bytes',
+                internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
@@ -637,22 +639,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
             collectionManagerContract.address,
             forwarderContract.address,
             collectionContract.address,
-            web3.eth.abi.encodeFunctionCall(
-              {
-                inputs: [
-                  {
-                    internalType: 'bool',
-                    name: '_value',
-                    type: 'bool',
-                  },
-                ],
-                name: 'setEditable',
-                outputs: [],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-              [false]
-            ),
+            [
+              web3.eth.abi.encodeFunctionCall(
+                {
+                  inputs: [
+                    {
+                      internalType: 'bool',
+                      name: '_value',
+                      type: 'bool',
+                    },
+                  ],
+                  name: 'setEditable',
+                  outputs: [],
+                  stateMutability: 'nonpayable',
+                  type: 'function',
+                },
+                [false]
+              ),
+            ],
           ]
         )
 
@@ -738,7 +742,7 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
               {
                 internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
