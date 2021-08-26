@@ -196,22 +196,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
           fromUser
         )
 
@@ -227,22 +229,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setEditable',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [false]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setEditable',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [false]
+            ),
+          ],
           fromUser
         )
 
