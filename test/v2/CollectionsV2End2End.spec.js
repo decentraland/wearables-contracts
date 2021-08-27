@@ -196,22 +196,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setApproved',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [true]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setApproved',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [true]
+            ),
+          ],
           fromUser
         )
 
@@ -227,22 +229,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'bool',
-                  name: '_value',
-                  type: 'bool',
-                },
-              ],
-              name: 'setEditable',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [false]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'bool',
+                    name: '_value',
+                    type: 'bool',
+                  },
+                ],
+                name: 'setEditable',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [false]
+            ),
+          ],
           fromUser
         )
 
@@ -301,36 +305,38 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
           collectionManagerContract.address,
           forwarderContract.address,
           collectionContract.address,
-          web3.eth.abi.encodeFunctionCall(
-            {
-              inputs: [
-                {
-                  internalType: 'uint256[]',
-                  name: '_itemIds',
-                  type: 'uint256[]',
-                },
-                {
-                  internalType: 'string[]',
-                  name: '_contentHashes',
-                  type: 'string[]',
-                },
-                {
-                  internalType: 'string[]',
-                  name: '_metadatas',
-                  type: 'string[]',
-                },
-              ],
-              name: 'rescueItems',
-              outputs: [],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            },
-            [
-              [0, 1],
-              [newContentHash0, newContentHash1],
-              [newMetadata0, newMetadata1],
-            ]
-          ),
+          [
+            web3.eth.abi.encodeFunctionCall(
+              {
+                inputs: [
+                  {
+                    internalType: 'uint256[]',
+                    name: '_itemIds',
+                    type: 'uint256[]',
+                  },
+                  {
+                    internalType: 'string[]',
+                    name: '_contentHashes',
+                    type: 'string[]',
+                  },
+                  {
+                    internalType: 'string[]',
+                    name: '_metadatas',
+                    type: 'string[]',
+                  },
+                ],
+                name: 'rescueItems',
+                outputs: [],
+                stateMutability: 'nonpayable',
+                type: 'function',
+              },
+              [
+                [0, 1],
+                [newContentHash0, newContentHash1],
+                [newMetadata0, newMetadata1],
+              ]
+            ),
+          ],
           fromUser
         )
 
@@ -550,9 +556,9 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
                 type: 'address',
               },
               {
-                internalType: 'bytes',
+                internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
@@ -564,22 +570,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
             collectionManagerContract.address,
             forwarderContract.address,
             collectionContract.address,
-            web3.eth.abi.encodeFunctionCall(
-              {
-                inputs: [
-                  {
-                    internalType: 'bool',
-                    name: '_value',
-                    type: 'bool',
-                  },
-                ],
-                name: 'setApproved',
-                outputs: [],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-              [true]
-            ),
+            [
+              web3.eth.abi.encodeFunctionCall(
+                {
+                  inputs: [
+                    {
+                      internalType: 'bool',
+                      name: '_value',
+                      type: 'bool',
+                    },
+                  ],
+                  name: 'setApproved',
+                  outputs: [],
+                  stateMutability: 'nonpayable',
+                  type: 'function',
+                },
+                [true]
+              ),
+            ],
           ]
         )
 
@@ -621,9 +629,9 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
                 type: 'address',
               },
               {
-                internalType: 'bytes',
+                internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
@@ -635,22 +643,24 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
             collectionManagerContract.address,
             forwarderContract.address,
             collectionContract.address,
-            web3.eth.abi.encodeFunctionCall(
-              {
-                inputs: [
-                  {
-                    internalType: 'bool',
-                    name: '_value',
-                    type: 'bool',
-                  },
-                ],
-                name: 'setEditable',
-                outputs: [],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-              [false]
-            ),
+            [
+              web3.eth.abi.encodeFunctionCall(
+                {
+                  inputs: [
+                    {
+                      internalType: 'bool',
+                      name: '_value',
+                      type: 'bool',
+                    },
+                  ],
+                  name: 'setEditable',
+                  outputs: [],
+                  stateMutability: 'nonpayable',
+                  type: 'function',
+                },
+                [false]
+              ),
+            ],
           ]
         )
 
@@ -734,9 +744,9 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
                 type: 'address',
               },
               {
-                internalType: 'bytes',
+                internalType: 'bytes[]',
                 name: '_data',
-                type: 'bytes',
+                type: 'bytes[]',
               },
             ],
             name: 'manageCollection',
@@ -748,36 +758,38 @@ describe('Collections V2 End 2 End: Approval Flow', function () {
             collectionManagerContract.address,
             forwarderContract.address,
             collectionContract.address,
-            web3.eth.abi.encodeFunctionCall(
-              {
-                inputs: [
-                  {
-                    internalType: 'uint256[]',
-                    name: '_itemIds',
-                    type: 'uint256[]',
-                  },
-                  {
-                    internalType: 'string[]',
-                    name: '_contentHashes',
-                    type: 'string[]',
-                  },
-                  {
-                    internalType: 'string[]',
-                    name: '_metadatas',
-                    type: 'string[]',
-                  },
-                ],
-                name: 'rescueItems',
-                outputs: [],
-                stateMutability: 'nonpayable',
-                type: 'function',
-              },
-              [
-                [0, 1],
-                [newContentHash0, newContentHash1],
-                [newMetadata0, newMetadata1],
-              ]
-            ),
+            [
+              web3.eth.abi.encodeFunctionCall(
+                {
+                  inputs: [
+                    {
+                      internalType: 'uint256[]',
+                      name: '_itemIds',
+                      type: 'uint256[]',
+                    },
+                    {
+                      internalType: 'string[]',
+                      name: '_contentHashes',
+                      type: 'string[]',
+                    },
+                    {
+                      internalType: 'string[]',
+                      name: '_metadatas',
+                      type: 'string[]',
+                    },
+                  ],
+                  name: 'rescueItems',
+                  outputs: [],
+                  stateMutability: 'nonpayable',
+                  type: 'function',
+                },
+                [
+                  [0, 1],
+                  [newContentHash0, newContentHash1],
+                  [newMetadata0, newMetadata1],
+                ]
+              ),
+            ],
           ]
         )
 
