@@ -59,7 +59,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         uint256 registered;
     }
 
-    mapping(string => ThirdParty) thirdParties;
+    mapping(string => ThirdParty) public thirdParties;
     string[] public thirdPartyIds;
 
     address public feesCollector;
@@ -71,7 +71,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     bool public initialItemValue;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
-    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managersValues, address _caller);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, address _caller);
     event ThirdPartyItemsBought(string _thirdPartyId, uint256 _amount, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
 
@@ -83,8 +83,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
     event ItemTiersSet(ITiers indexed _oldItemTiers, ITiers indexed _newItemTiers);
-    event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
+    event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
 
    /**
     * @notice Create the contract
@@ -224,7 +224,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
 
-            require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
+            require(bytes(thirdPartyParam.id).length > 0, "TPR#updateThirdParties: EMPTY_ID");
 
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(
@@ -240,10 +240,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
             if (bytes(thirdPartyParam.resolver).length > 0) {
                 thirdParty.resolver = thirdPartyParam.resolver;
-            }
-
-            for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
-                thirdParty.managers[thirdPartyParam.managers[m]] = true;
             }
 
             require(
@@ -278,7 +274,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _tierIndex - index of the tier to be bought
     * @param _price - price to be paid
     */
-    function buyItems(string calldata _thirdPartyId, uint256 _tierIndex, uint256 _price)  external {
+    function buyItemSlots(string calldata _thirdPartyId, uint256 _tierIndex, uint256 _price)  external {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
@@ -420,11 +416,35 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
      /**
+    * @notice Returns if an address is a third party's manager
+    * @return bool whether an address is a third party's manager or not
+    */
+    function isThirdPartyManager(string memory _thirdPartyId, address _manager) external view returns (bool) {
+        return thirdParties[_thirdPartyId].managers[_manager];
+    }
+
+     /**
     * @notice Returns the count of items from a third party
     * @return Count of third party's items
     */
     function itemsCount(string memory _thirdPartyId) external view returns (uint256) {
         return thirdParties[_thirdPartyId].itemIds.length;
+    }
+
+    /**
+    * @notice Returns an item id by index
+    * @return id of the item
+    */
+    function itemIdByIndex(string memory _thirdPartyId, uint256 _index) external view returns (string memory) {
+        return thirdParties[_thirdPartyId].itemIds[_index];
+    }
+
+     /**
+    * @notice Returns an item
+    * @return Item
+    */
+    function itemsById(string memory _thirdPartyId, string memory _itemId) external view returns (Item memory) {
+        return thirdParties[_thirdPartyId].items[_itemId];
     }
 
     /**
