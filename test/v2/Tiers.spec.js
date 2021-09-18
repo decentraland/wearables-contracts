@@ -8,7 +8,7 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 const domain = 'Decentraland Tiers'
 const version = '1'
 
-describe.only('Tiers', function () {
+describe('Tiers', function () {
   this.timeout(100000)
 
   // Accounts

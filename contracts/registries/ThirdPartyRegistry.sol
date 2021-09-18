@@ -67,8 +67,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     IERC20  public acceptedToken;
     ITiers public itemTiers;
 
-    bool public initialItemValue;
     bool public initialThirdPartyValue;
+    bool public initialItemValue;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managersValues, address _caller);
@@ -96,19 +96,20 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
 
-        transferOwnership(_owner);
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
         setItemTiers(_itemTiers);
         setInitialItemValue(false);
         setInitialThirdPartyValue(true);
+
+        transferOwnership(_owner);
     }
 
     modifier onlyCommittee() {
         require(
             committee.members(_msgSender()),
-            "onlyCreator: CALLER_IS_NOT_A_COMMITTEE_MEMBER"
+            "TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER"
         );
         _;
     }
@@ -408,6 +409,22 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
                 );
             }
         }
+    }
+
+    /**
+    * @notice Returns the count of third parties
+    * @return Count of tiers
+    */
+    function thirdPartiesCount() external view returns (uint256) {
+        return thirdPartyIds.length;
+    }
+
+     /**
+    * @notice Returns the count of items from a third party
+    * @return Count of third party's items
+    */
+    function itemsCount(string memory _thirdPartyId) external view returns (uint256) {
+        return thirdParties[_thirdPartyId].itemIds.length;
     }
 
     /**

@@ -79,8 +79,8 @@ contract Tiers is OwnableInitializable, NativeMetaTransaction {
     }
 
     /**
-     * @notice Returns the value of tiers
-     * @return Amount of tiers
+     * @notice Returns the count of tiers
+     * @return Count of tiers
      */
     function tiersCount() external view returns (uint256) {
         return tiers.length;
