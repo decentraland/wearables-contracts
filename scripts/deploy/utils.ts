@@ -16,7 +16,7 @@ export function getDeployParams() {
       path: `m/44'/60'/0'/0`
     },
     gas: "auto",
-    gasPrice: "auto",
+    gasPrice: process.env['NETWORK'] !== 'MUMBAI' ? "auto" : 8000000000,
     gasMultiplier: 1,
     timeout: 20000,
     httpHeaders: {}

@@ -8,79 +8,101 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../commons//OwnableInitializable.sol";
 import "../commons//NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/ITiers.sol";
 import "../libs/String.sol";
 
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     struct ThirdPartyParam {
-        string urnPrefix;
+        string id;
         string metadata;
         string resolver;
-        uint256 maxItems;
         address[] managers;
+        bool[] managerValues;
     }
 
     struct ItemParam {
-        string urnSuffix;
+        string id;
         string metadata;
     }
 
     struct ItemReviewParam {
-        bytes32 itemId;
+        string id;
+        string metadata;
         string contentHash;
         bool value;
     }
 
+    struct ThirdPartyReviewParam {
+        string id;
+        bool value;
+        ItemReviewParam[] items;
+    }
+
     struct Item {
-        string urnSuffix;
         string metadata;
         string contentHash;
         bool isApproved;
+        uint256 registered;
     }
 
     struct ThirdParty {
-        string urnPrefix;
         string metadata;
         string resolver;
         uint256 maxItems;
         bool isApproved;
         mapping(address => bool) managers;
-        mapping(bytes32 => Item) items;
+        mapping(string => Item) items;
         string[] itemIds;
+        uint256 registered;
     }
 
-    struct ItemLookup {
-        bytes32 thirdPartyId;
-        bytes32 itemId;
-    }
+    mapping(string => ThirdParty) thirdParties;
+    string[] public thirdPartyIds;
 
-    mapping(bytes32 => ThirdParty) thirdParties;
-    mapping(string => ItemLookup) itemsLookup;
-
-
+    address public feesCollector;
     ICommittee public committee;
-    bool public initialURNValue;
+    IERC20  public acceptedToken;
+    ITiers public itemTiers;
 
-    event ThirdPartyAdded(bytes32 indexed _thirdPartyId, string _metadata, string _resolver, string _urnPrefix, uint256 _maxItems, address[] _managers, address _caller);
-    event ManagerSet(bytes32 indexed _thirdPartyId, address _manager, bool _value, address _caller);
-    event ItemAdded(bytes32 indexed _thirdPartyId, bytes32 indexed _itemId, string _urnSuffix, string _urn, string _metadata, string _contentHash, bool _value, address _caller);
-    event ItemReviewed(bytes32 indexed _thirdPartyId, bytes32 indexed _itemId, string _contentHash, bool _value, address _caller);
-    event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee, address _caller);
-    event InitialURNValueSet(bool _oldInitialURNValue, bool _newInitialURNValue, address _caller);
+    bool public initialItemValue;
+    bool public initialThirdPartyValue;
+
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managersValues, address _caller);
+    event ThirdPartyItemsBought(string _thirdPartyId, uint256 _amount, address _caller);
+    event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
+
+    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
+    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
+    event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
+
+    event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
+    event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
+    event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
+    event ItemTiersSet(ITiers indexed _oldItemTiers, ITiers indexed _newItemTiers);
+    event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
+    event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
 
    /**
     * @notice Create the contract
     * @param _owner - owner of the contract
     * @param _committee - committee smart contract
+    * @param _itemTiers - item tiers smart contract
     */
-    constructor(address _owner, ICommittee _committee) {
+    constructor(address _owner, address _feesCollector, ICommittee _committee, IERC20 _acceptedToken, ITiers _itemTiers) {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
 
         transferOwnership(_owner);
+        setFeesCollector(_feesCollector);
         setCommittee(_committee);
-        setInitialURNValue(true);
+        setAcceptedToken(_acceptedToken);
+        setItemTiers(_itemTiers);
+        setInitialItemValue(false);
+        setInitialThirdPartyValue(true);
     }
 
     modifier onlyCommittee() {
@@ -91,6 +113,16 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         _;
     }
 
+     /**
+    * @notice Set the fees collector
+    * @param _newFeesCollector - fees collector
+    */
+    function setFeesCollector(address _newFeesCollector) onlyOwner public {
+        require(_newFeesCollector != address(0), "TPR#setFeesCollector: INVALID_FEES_COLLECTOR");
+
+        emit FeesCollectorSet(feesCollector, _newFeesCollector);
+        feesCollector = _newFeesCollector;
+    }
 
     /**
     * @notice Set the committee
@@ -99,17 +131,48 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     function setCommittee(ICommittee _newCommittee) onlyOwner public {
         require(address(_newCommittee) != address(0), "TPR#setCommittee: INVALID_COMMITTEE");
 
-        emit CommitteeSet(committee, _newCommittee, _msgSender());
+        emit CommitteeSet(committee, _newCommittee);
         committee = _newCommittee;
     }
 
     /**
-    * @notice Set the initial URN value
-    * @param _newInitialURNValue - initial value
+    * @notice Set the accepted token
+    * @param _newAcceptedToken - accepted ERC20 token for collection deployment
     */
-    function setInitialURNValue(bool _newInitialURNValue) onlyOwner public {
-        emit InitialURNValueSet(initialURNValue, _newInitialURNValue, _msgSender());
-        initialURNValue = _newInitialURNValue;
+    function setAcceptedToken(IERC20 _newAcceptedToken) onlyOwner public {
+        require(address(_newAcceptedToken) != address(0), "TPR#setAcceptedToken: INVALID_ACCEPTED_TOKEN");
+
+        emit AcceptedTokenSet(acceptedToken, _newAcceptedToken);
+        acceptedToken = _newAcceptedToken;
+    }
+
+     /**
+    * @notice Set the itemTiers
+    * @param _newItemTiers - itemTiers contract
+    */
+    function setItemTiers(ITiers _newItemTiers) onlyOwner public {
+        require(address(_newItemTiers) != address(0), "TPR#setItemTiers: INVALID_ITEM_TIERS");
+
+        emit ItemTiersSet(itemTiers, _newItemTiers);
+        itemTiers = _newItemTiers;
+    }
+
+    /**
+    * @notice Set whether third parties should be init approved or not
+    * @param _newinitialThirdPartyValue - initial value
+    */
+    function setInitialThirdPartyValue(bool _newinitialThirdPartyValue) onlyOwner public {
+        emit InitialThirdPartyValueSet(initialThirdPartyValue, _newinitialThirdPartyValue);
+        initialThirdPartyValue = _newinitialThirdPartyValue;
+    }
+
+    /**
+    * @notice Set whether items should be init approved or not
+    * @param _newinitialItemValue - initial value
+    */
+    function setInitialItemValue(bool _newinitialItemValue) onlyOwner public {
+        emit InitialItemValueSet(initialItemValue, _newinitialItemValue);
+        initialItemValue = _newinitialItemValue;
     }
 
     /**
@@ -120,64 +183,121 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
 
+            require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
             require(bytes(thirdPartyParam.resolver).length > 0, "TPR#addThirdParties: EMPTY_RESOLVER");
-            require(bytes(thirdPartyParam.urnPrefix).length > 0, "TPR#addThirdParties: EMPTY_URN_PREFIX");
-            require(thirdPartyParam.maxItems > 0, "TPR#addThirdParties: ZERO_URNS");
             require(thirdPartyParam.managers.length > 0, "TPR#addThirdParties: EMPTY_MANAGERS");
 
-            bytes32 id = keccak256(bytes(thirdPartyParam.urnPrefix));
+            ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
+            require(thirdParty.registered == 0, "TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED");
 
-            ThirdParty storage thirdParty = thirdParties[id];
-            thirdParty.urnPrefix = thirdPartyParam.urnPrefix;
+            thirdParty.registered = 1;
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
-            thirdParty.maxItems = thirdPartyParam.maxItems;
-            thirdParty.isApproved =  true; //@TODO: revisit the isApproved
+            thirdParty.isApproved = initialThirdPartyValue;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
                 thirdParty.managers[thirdPartyParam.managers[m]] = true;
             }
 
+            thirdPartyIds.push(thirdPartyParam.id);
+
             emit ThirdPartyAdded(
-                id,
+                thirdPartyParam.id,
                 thirdParty.metadata,
                 thirdParty.resolver,
-                thirdParty.urnPrefix,
-                thirdParty.maxItems,
+                thirdParty.isApproved,
                 thirdPartyParam.managers,
                 _msgSender()
             );
         }
     }
 
-     /**
-    * @notice Set third party managers
-    * @param _thirdPartyId - third party id
-    * @param _managers - managers to be set
-    * @param _values - whether the managers are being added or removed
+    /**
+    * @notice Update third parties
+    * @param _thirdParties - third parties to be updated
     */
-    function setManagers(bytes32 _thirdPartyId, address[] calldata _managers, bool[] calldata _values) onlyCommittee external {
-        require(_managers.length == _values.length, "TPR#setManagers: LENGTH_MISMATCH");
+    function updateThirdParties(ThirdPartyParam[] calldata _thirdParties) external {
+        address sender = _msgSender();
 
-        for (uint256 i = 0; i < _managers.length; i++) {
-            _setManager(_thirdPartyId, _managers[i], _values[i]);
+        for (uint256 i = 0; i < _thirdParties.length; i++) {
+            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+
+            require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
+
+            ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
+            require(
+                committee.members(sender) || thirdParty.managers[sender],
+                "TPR#updateThirdParties: CALLER_IS_NOT_A_COMMITTEE_MEMBER_OR_MANAGER"
+            );
+
+            _checkThirdParty(thirdParty);
+
+            if (bytes(thirdPartyParam.metadata).length > 0) {
+                thirdParty.metadata = thirdPartyParam.metadata;
+            }
+
+            if (bytes(thirdPartyParam.resolver).length > 0) {
+                thirdParty.resolver = thirdPartyParam.resolver;
+            }
+
+            for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
+                thirdParty.managers[thirdPartyParam.managers[m]] = true;
+            }
+
+            require(
+                thirdPartyParam.managers.length == thirdPartyParam.managerValues.length,
+                "TPR#updateThirdParties: LENGTH_MISMATCH"
+            );
+
+            for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
+                address manager = thirdPartyParam.managers[m];
+                bool value = thirdPartyParam.managerValues[m];
+                if (!value) {
+                    require(sender != manager, "TPR#updateThirdParties: MANAGER_CANT_SELF_REMOVE");
+                }
+
+                thirdParty.managers[manager] = value;
+            }
+
+            emit ThirdPartyUpdated(
+                thirdPartyParam.id,
+                thirdParty.metadata,
+                thirdParty.resolver,
+                thirdPartyParam.managers,
+                thirdPartyParam.managerValues,
+                sender
+            );
         }
     }
 
-
-     /**
-    * @notice Set a third party manager
-    * @param _thirdPartyId - third party id
-    * @param _manager - manager to be set
-    * @param _value - whether the manager is being added or removed
+    /**
+    * @notice Buy item slots
+    * @param _thirdPartyId - third parties to be added
+    * @param _tierIndex - index of the tier to be bought
+    * @param _price - price to be paid
     */
-    function _setManager(bytes32 _thirdPartyId, address _manager, bool _value) internal {
-        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-        require(thirdParty.maxItems > 0, "TPR#_setManager: INVALID_THIRD_PARTY_ID");
+    function buyItems(string calldata _thirdPartyId, uint256 _tierIndex, uint256 _price)  external {
+        address sender = _msgSender();
 
-        thirdParty.managers[_manager] = _value;
-        emit ManagerSet(_thirdPartyId, _manager, _value, _msgSender());
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        ITiers.Tier memory tier = itemTiers.tiers(_tierIndex);
+        require(tier.amount > 0, "TPR#buyItems: INVALID_AMOUNT_FOR_TIER");
+        require(tier.price == _price, "TPR#buyItems: PRICE_MISMATCH");
+
+        if (tier.price > 0) {
+            require(
+                acceptedToken.transferFrom(sender, feesCollector, tier.price),
+                "TPR#buyItems: TRANSFER_FEES_FAILED"
+            );
+        }
+
+        thirdParty.maxItems = thirdParty.maxItems.add(tier.amount);
+
+        emit ThirdPartyItemsBought(_thirdPartyId, tier.amount, sender);
     }
 
      /**
@@ -185,38 +305,64 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _thirdPartyId - third party id
     * @param _items - items to be added
     */
-    function addItems(bytes32 _thirdPartyId, ItemParam[] calldata _items) external {
+    function addItems(string calldata _thirdPartyId, ItemParam[] calldata _items) external {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
         require(thirdParty.managers[sender], "TPR#addItems: INVALID_SENDER");
-        require(thirdParty.maxItems > 0, "TPR#addURNs: INVALID_THIRD_PARTY_ID");
-        require(thirdParty.maxItems >= thirdParty.itemIds.length.add(_items.length), "TPR#addURNs: URN_FULL");
+        require(thirdParty.maxItems >= thirdParty.itemIds.length.add(_items.length), "TPR#addItems: NO_ITEM_SLOTS_AVAILABLE");
 
         for (uint256 i = 0; i < _items.length; i++) {
             ItemParam memory item = _items[i];
-            bytes32 itemId =  keccak256(bytes(item.urnSuffix));
+            _checkItemParam(item);
 
-            require(bytes(item.urnSuffix).length > 0, "TPR#addThirdParties: EMPTY_URN");
-            require(bytes(thirdParty.items[itemId].urnSuffix).length == 0, "TPR#addURNs: URN_ALREADY_ADDED");
+            require(thirdParty.items[item.id].registered == 0, "TPR#addItems: ITEM_ALREADY_ADDED");
 
-            thirdParty.items[itemId] = Item(
-                item.urnSuffix,
+            thirdParty.items[item.id] = Item(
                 item.metadata,
                 '',
-                initialURNValue
+                initialItemValue,
+                1
             );
 
-            thirdParty.itemIds.push(item.urnSuffix);
+            thirdParty.itemIds.push(item.id);
 
             emit ItemAdded(
                 _thirdPartyId,
-                itemId,
-                item.urnSuffix,
-                string(abi.encodePacked(thirdParty.urnPrefix, ":", item.urnSuffix)),
+                item.id,
                 item.metadata,
-                item.contentHash,
-                initialURNValue,
+                initialItemValue,
+                sender
+            );
+        }
+    }
+
+    /**
+    * @notice Update items metadata
+    * @param _thirdPartyId - third party id
+    * @param _items - items to be updated
+    */
+    function updateItems(string calldata _thirdPartyId, ItemParam[] calldata _items) external {
+        address sender = _msgSender();
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+        require(thirdParty.managers[sender], "TPR#updateItems: INVALID_SENDER");
+
+        for (uint256 i = 0; i < _items.length; i++) {
+            ItemParam memory itemParam = _items[i];
+            _checkItemParam(itemParam);
+
+            Item storage item = thirdParty.items[itemParam.id];
+            _checkItem(item);
+
+            require(!item.isApproved, "TPR#updateItems: ITEM_IS_APPROVED");
+
+            item.metadata = itemParam.metadata;
+
+            emit ItemUpdated(
+                _thirdPartyId,
+                itemParam.id,
+                item.metadata,
                 _msgSender()
             );
         }
@@ -224,52 +370,68 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
      /**
     * @notice Review third party items
-    * @param _thirdPartyId - third party id
-    * @param _items - Items to be reviewed
+    * @param _thirdParties - Third parties with items to be reviewed
     */
-    function reviewItems(bytes32 _thirdPartyId, ItemReviewParam[] calldata _items) onlyCommittee external {
+    function reviewThirdParties(ThirdPartyReviewParam[] calldata _thirdParties) onlyCommittee external {
         address sender = _msgSender();
 
-        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-        require(thirdParty.maxItems > 0, "TPR#reviewURNs: INVALID_THIRD_PARTY_ID");
+        for (uint256 i = 0; i < _thirdParties.length; i++) {
+            ThirdPartyReviewParam memory thirdPartyReview = _thirdParties[i];
 
-        for (uint256 i = 0; i < _items.length; i++) {
-            ItemReviewParam memory itemReview = _items[i];
-            Item storage item = thirdParty.items[itemReview.itemId];
+            ThirdParty storage thirdParty = thirdParties[thirdPartyReview.id];
+            _checkThirdParty(thirdParty);
 
-            require(bytes(item.urnSuffix).length > 0, "TPR#reviewURNs: INVALID_ITEM");
-            require(bytes(itemReview.contentHash) == bytes(item.contentHash), "TPR#reviewURNs: INVALID_ITEM_CONTENT_HASH");
+            thirdParty.isApproved = thirdPartyReview.value;
+            emit ThirdPartyReviewed(thirdPartyReview.id, thirdParty.isApproved, sender);
 
-            item.isApproved = itemReview.value;
+            for (uint256 j = 0; j < thirdPartyReview.items.length; j++) {
+                ItemReviewParam memory itemReview = thirdPartyReview.items[j];
+                require(bytes(itemReview.contentHash).length > 0, "TPR#reviewThirdParties: INVALID_CONTENT_HASH");
 
-            emit ItemReviewed(_thirdPartyId, itemReview.itemId, itemReview.contentHash, itemReview.value, _msgSender());
+                Item storage item = thirdParty.items[itemReview.id];
+                _checkItem(item);
+
+                item.contentHash = itemReview.contentHash;
+                item.isApproved = itemReview.value;
+
+                if (bytes(itemReview.metadata).length > 0) {
+                    item.metadata = itemReview.metadata;
+                }
+
+                emit ItemReviewed(
+                    thirdPartyReview.id,
+                    itemReview.id,
+                    item.metadata,
+                    item.contentHash,
+                    item.isApproved,
+                    sender
+                );
+            }
         }
     }
 
     /**
-    * @notice Get an item from a third party by URN
-    * @param _urn - item urn
-    * @return item
+    * @dev Check whether a third party has been registered
+    * @param _thirdParty - Third party
     */
-    function getItemByURN(string calldata _urn) external view returns (Item memory) {
-        address itemLookup = itemsLookup[_urn];
-
-        ThirdParty memory thirdParty = thirdParties[itemLookup.thirdPartyId];
-
-        return thirdParty.items[itemLookup.itemId];
+    function _checkThirdParty(ThirdParty storage _thirdParty) internal view {
+        require(_thirdParty.registered > 0, "TPR#_checkThirdParty: INVALID_THIRD_PARTY");
     }
 
+    /**
+    * @dev Check whether an item has been registered
+    * @param _item - Item
+    */
+    function _checkItem(Item memory _item) internal pure {
+        require(_item.registered > 0, "TPR#_checkItem: INVALID_ITEM");
+    }
+
+    /**
+    * @dev Check whether an item param is well formed
+    * @param _item - Item param
+    */
+    function _checkItemParam(ItemParam memory _item) internal pure {
+        require(bytes(_item.id).length > 0, "TPR#_checkItemParam: EMPTY_ID");
+        require(bytes(_item.metadata).length > 0, "TPR#_checkItemParam: EMPTY_METADATA");
+    }
 }
-
-
- // urns => {
-        //     hash('urn:decentraland:cryptopmotors:jackets:hash(uuid1)') => { urn: 'urn:decentraland:cryptopmotors:jackets:hash(uuid1)', isApproved: true}
-        //     hash('urn:decentraland:cryptopmotors:jackets:hash(uuid4)') => {urn: 'urn:decentraland:cryptopmotors:jackets:hash(uuid4)', isApproved: true}
-        //     hash('urn:decentraland:cryptopmotors:jackets:hash(uuid5)') => { urn: 'urn:decentraland:cryptopmotors:jackets:hash(uuid5)', isApproved: true}
-        // }
-
-        // existingURNS => [
-        //     'urn:decentraland:cryptopmotors:jackets:hash(uuid1)',
-        //     'urn:decentraland:cryptopmotors:jackets:hash(uuid4)',
-        //     'urn:decentraland:cryptopmotors:jackets:hash(uuid5)'
-        // ]
