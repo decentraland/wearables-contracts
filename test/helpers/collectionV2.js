@@ -31,6 +31,12 @@ export const RARITIES = {
   mythic: { name: 'mythic', index: 5, value: 10 },
   unique: { name: 'unique', index: 6, value: 1 },
 }
+export const TIERS = [
+  { price: web3.utils.toWei('1'), value: 10 },
+  { price: web3.utils.toWei('10'), value: 100 },
+  { price: web3.utils.toWei('20'), value: 1000 },
+  { price: web3.utils.toWei('30'), value: 10000 },
+]
 
 export const ITEMS = [
   [
@@ -93,6 +99,10 @@ export function getInitialRarities() {
     RARITIES[key].value,
     DEFAULT_RARITY_PRICE,
   ])
+}
+
+export function getInitialTiers() {
+  return Object.keys(TIERS).map((key) => [TIERS[key].value, TIERS[key].price])
 }
 
 export function getRarityNames() {

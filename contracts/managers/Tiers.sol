@@ -8,7 +8,7 @@ import "../commons/NativeMetaTransaction.sol";
 
 contract Tiers is OwnableInitializable, NativeMetaTransaction {
     struct Tier {
-        uint256 amount;
+        uint256 value;
         uint256 price;
     }
 
@@ -25,7 +25,7 @@ contract Tiers is OwnableInitializable, NativeMetaTransaction {
     */
     constructor(address _owner,  Tier[] memory _tiers) {
         // EIP712 init
-        _initializeEIP712('Decentraland TPR Items Tiers', '1');
+        _initializeEIP712('Decentraland Tiers', '1');
         // Ownable init
         _initOwnable();
         transferOwnership(_owner);
@@ -48,7 +48,7 @@ contract Tiers is OwnableInitializable, NativeMetaTransaction {
             uint256 price = _prices[i];
 
             Tier storage tier = tiers[index];
-            require(tier.amount > 0, "Tiers#updatePrices: INVALID_TIER");
+            require(tier.value > 0, "Tiers#updatePrices: INVALID_TIER");
 
             tiers[index].price = price;
 
@@ -71,8 +71,7 @@ contract Tiers is OwnableInitializable, NativeMetaTransaction {
     * @param _tier - tier to be added
     */
     function _addTier(Tier memory _tier) internal {
-        require(_tier.amount > 0, "Tiers#_addTier: INVALID_AMOUNT");
-        require(_tier.price > 0, "Tiers#_addTier: INVALID_PRICE");
+        require(_tier.value > 0, "Tiers#_addTier: INVALID_AMOUNT");
 
         tiers.push(_tier);
 
@@ -80,7 +79,7 @@ contract Tiers is OwnableInitializable, NativeMetaTransaction {
     }
 
     /**
-     * @notice Returns the amount of tiers
+     * @notice Returns the value of tiers
      * @return Amount of tiers
      */
     function tiersCount() external view returns (uint256) {

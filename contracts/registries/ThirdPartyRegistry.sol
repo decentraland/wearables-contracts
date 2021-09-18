@@ -285,7 +285,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         _checkThirdParty(thirdParty);
 
         ITiers.Tier memory tier = itemTiers.tiers(_tierIndex);
-        require(tier.amount > 0, "TPR#buyItems: INVALID_AMOUNT_FOR_TIER");
+        require(tier.value > 0, "TPR#buyItems: INVALID_VALUE_FOR_TIER");
         require(tier.price == _price, "TPR#buyItems: PRICE_MISMATCH");
 
         if (tier.price > 0) {
@@ -295,9 +295,9 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             );
         }
 
-        thirdParty.maxItems = thirdParty.maxItems.add(tier.amount);
+        thirdParty.maxItems = thirdParty.maxItems.add(tier.value);
 
-        emit ThirdPartyItemsBought(_thirdPartyId, tier.amount, sender);
+        emit ThirdPartyItemsBought(_thirdPartyId, tier.value, sender);
     }
 
      /**

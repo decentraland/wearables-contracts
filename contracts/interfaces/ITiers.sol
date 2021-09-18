@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 
 interface ITiers {
     struct Tier {
-        uint256 amount;
+        uint256 value;
         uint256 price;
     }
 
