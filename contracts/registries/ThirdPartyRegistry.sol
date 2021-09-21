@@ -72,7 +72,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, address _caller);
-    event ThirdPartyItemsBought(string _thirdPartyId, uint256 _amount, address _caller);
+    event ThirdPartyItemsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
 
     event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
@@ -294,7 +294,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         thirdParty.maxItems = thirdParty.maxItems.add(tier.value);
 
-        emit ThirdPartyItemsBought(_thirdPartyId, tier.value, sender);
+        emit ThirdPartyItemsBought(_thirdPartyId, tier.price, tier.value, sender);
     }
 
      /**

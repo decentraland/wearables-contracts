@@ -32,10 +32,26 @@ export const RARITIES = {
   unique: { name: 'unique', index: 6, value: 1 },
 }
 export const TIERS = [
-  { price: web3.utils.toWei('1'), value: 10 },
-  { price: web3.utils.toWei('10'), value: 100 },
-  { price: web3.utils.toWei('20'), value: 1000 },
-  { price: web3.utils.toWei('30'), value: 10000 },
+  { price: web3.utils.toBN(web3.utils.toWei('1')), value: 10 },
+  { price: web3.utils.toBN(web3.utils.toWei('10')), value: 100 },
+  { price: web3.utils.toBN(web3.utils.toWei('20')), value: 1000 },
+  { price: web3.utils.toBN(web3.utils.toWei('30')), value: 10000 },
+  { price: web3.utils.toBN(web3.utils.toWei('0')), value: 1 },
+]
+
+export const THIRD_PARTY_ITEMS = [
+  [
+    'collection1:item1',
+    'tpi:1:third party collection 1 item: third party collection 1 item desc:hat:BaseMale,BaseFemale',
+  ],
+  [
+    'collection1:item2',
+    'tpi:1:third party collection 1 item: third party collection 1 item desc:hat:BaseMale,BaseFemale',
+  ],
+  [
+    'collection2:item1',
+    'tpi:1:third party collection 2 item: third party collection 2 item desc:hair:BaseMale,BaseFemale',
+  ],
 ]
 
 export const ITEMS = [
