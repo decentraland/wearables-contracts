@@ -304,31 +304,30 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     */
     function addItems(string calldata _thirdPartyId, ItemParam[] calldata _items) external {
         address sender = _msgSender();
+        bool initValue = initialItemValue;
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
         require(thirdParty.managers[sender], "TPR#addItems: INVALID_SENDER");
         require(thirdParty.maxItems >= thirdParty.itemIds.length.add(_items.length), "TPR#addItems: NO_ITEM_SLOTS_AVAILABLE");
 
         for (uint256 i = 0; i < _items.length; i++) {
-            ItemParam memory item = _items[i];
-            _checkItemParam(item);
+            ItemParam memory itemParam = _items[i];
+            _checkItemParam(itemParam);
 
-            require(thirdParty.items[item.id].registered == 0, "TPR#addItems: ITEM_ALREADY_ADDED");
+            Item storage item = thirdParty.items[itemParam.id];
+            require(item.registered == 0, "TPR#addItems: ITEM_ALREADY_ADDED");
 
-            thirdParty.items[item.id] = Item(
-                item.metadata,
-                '',
-                initialItemValue,
-                1
-            );
+            item.metadata = itemParam.metadata;
+            item.isApproved = initValue;
+            item.registered = 1;
 
-            thirdParty.itemIds.push(item.id);
+            thirdParty.itemIds.push(itemParam.id);
 
             emit ItemAdded(
                 _thirdPartyId,
-                item.id,
-                item.metadata,
-                initialItemValue,
+                itemParam.id,
+                itemParam.metadata,
+                initValue,
                 sender
             );
         }

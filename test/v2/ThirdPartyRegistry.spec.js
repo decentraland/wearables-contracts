@@ -8,6 +8,7 @@ import {
   TIERS,
   getInitialTiers,
   ZERO_ADDRESS,
+  ITEMS,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
@@ -1497,7 +1498,7 @@ describe.only('ThirdPartyRegistry', function () {
       )
     })
 
-    it('reverts when trying to add a third party by hacker', async function () {
+    it('reverts when trying to update a third party by hacker', async function () {
       await assertRevert(
         thirdPartyRegistryContract.updateThirdParties(
           [updatedThirdParty1],
@@ -1963,6 +1964,18 @@ describe.only('ThirdPartyRegistry', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
+    it('reverts when the third party is invalid', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.buyItemSlots(
+          thirdParty1[0] + 'a',
+          0,
+          TIERS[0].price,
+          fromUser
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+
     it('reverts when trying to buy item slots without approving accepted token', async function () {
       await assertRevert(
         thirdPartyRegistryContract.buyItemSlots(
@@ -2030,7 +2043,7 @@ describe.only('ThirdPartyRegistry', function () {
     })
   })
 
-  describe.only('addItems', function () {
+  describe('addItems', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
@@ -2131,7 +2144,7 @@ describe.only('ThirdPartyRegistry', function () {
       }
     })
 
-    it('should buy item slots by paying in acceptedToken :: Relayed EIP721', async function () {
+    it('should add items :: Relayed EIP721', async function () {
       // Third Party 1
       let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
       expect(thirdPartyId).to.be.eql(thirdParty1[0])
@@ -2254,7 +2267,406 @@ describe.only('ThirdPartyRegistry', function () {
       }
     })
 
+    it('should add the same item to another third party', async function () {
+      // Buy 1000 item slots
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        TIERS[3].price,
+        fromUser
+      )
+      await thirdPartyRegistryContract.buyItemSlots(
+        thirdParty2[0],
+        3,
+        TIERS[3].price,
+        fromUser
+      )
+
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(0)
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
+      expect(itemsCount).to.be.eq.BN(0)
+
+      await thirdPartyRegistryContract.addItems(
+        thirdParty1[0],
+        [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[1]],
+        fromManager
+      )
+
+      await thirdPartyRegistryContract.addItems(
+        thirdParty2[0],
+        [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[2]],
+        fromManager
+      )
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(2)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+          thirdParty1[0],
+          i
+        )
+        const item = await thirdPartyRegistryContract.itemsById(
+          thirdParty1[0],
+          itemId
+        )
+
+        expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
+      expect(itemsCount).to.be.eq.BN(2)
+
+      let itemId = await thirdPartyRegistryContract.itemIdByIndex(
+        thirdParty2[0],
+        0
+      )
+      let item = await thirdPartyRegistryContract.itemsById(
+        thirdParty2[0],
+        itemId
+      )
+
+      expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[0][1])
+      expect(item.contentHash).to.be.eql('')
+      expect(item.isApproved).to.be.eql(initialValueForItems)
+      expect(item.registered).to.be.eq.BN(1)
+
+      itemId = await thirdPartyRegistryContract.itemIdByIndex(thirdParty2[0], 1)
+      item = await thirdPartyRegistryContract.itemsById(thirdParty2[0], itemId)
+
+      expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
+      expect(item.contentHash).to.be.eql('')
+      expect(item.isApproved).to.be.eql(initialValueForItems)
+      expect(item.registered).to.be.eq.BN(1)
+    })
+
+    it('add 50 items :: gas estimation', async function () {
+      // Buy 1000 item slots
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        TIERS[3].price,
+        fromUser
+      )
+      await thirdPartyRegistryContract.buyItemSlots(
+        thirdParty1[0],
+        3,
+        TIERS[3].price,
+        fromUser
+      )
+
+      const items = []
+      for (let i = 0; i < 50; i++) {
+        items.push([
+          THIRD_PARTY_ITEMS[0][0] + i.toString(),
+          THIRD_PARTY_ITEMS[0][1] + i.toString(),
+        ])
+      }
+
+      const { receipt } = await thirdPartyRegistryContract.addItems(
+        thirdParty1[0],
+        items,
+        fromManager
+      )
+      console.log(receipt.gasUsed)
+    })
+
     it('reverts when trying to add an item by a hacker', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[1]],
+          fromHacker
+        ),
+        'TPR#addItems: INVALID_SENDER'
+      )
+    })
+
+    it('reverts when trying to add an item when there is no slots available', async function () {
+      for (let i = 0; i < TIERS[0].value; i++) {
+        await thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [[THIRD_PARTY_ITEMS[0][0] + i, THIRD_PARTY_ITEMS[0][1]]],
+          fromManager
+        )
+      }
+
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[1]],
+          fromManager
+        ),
+        'TPR#addItems: NO_ITEM_SLOTS_AVAILABLE'
+      )
+    })
+
+    it('reverts when trying to add an item whith empty id', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [['', THIRD_PARTY_ITEMS[0][1]]],
+          fromManager
+        ),
+        'TPR#_checkItemParam: EMPTY_ID'
+      )
+    })
+
+    it('reverts when trying to add an item whith empty metadata', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [[THIRD_PARTY_ITEMS[0][1], '']],
+          fromManager
+        ),
+        'TPR#_checkItemParam: EMPTY_METADATA'
+      )
+    })
+
+    it('reverts when trying to add an item already added', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[0]],
+          fromManager
+        ),
+        'TPR#addItems: ITEM_ALREADY_ADDED'
+      )
+
+      await thirdPartyRegistryContract.addItems(
+        thirdParty1[0],
+        [THIRD_PARTY_ITEMS[0]],
+        fromManager
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.addItems(
+          thirdParty1[0],
+          [THIRD_PARTY_ITEMS[0]],
+          fromManager
+        ),
+        'TPR#addItems: ITEM_ALREADY_ADDED'
+      )
+    })
+  })
+
+  describe.only('updateItems', function () {
+    let UPDATED_THIRD_PARTY_ITEMS
+    beforeEach(async () => {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1, thirdParty2],
+        fromCommitteeMember
+      )
+
+      // Buy 10 item slots
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        TIERS[0].price,
+        fromUser
+      )
+      await thirdPartyRegistryContract.buyItemSlots(
+        thirdParty1[0],
+        0,
+        TIERS[0].price,
+        fromUser
+      )
+
+      await thirdPartyRegistryContract.addItems(
+        thirdParty1[0],
+        [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[1]],
+        fromManager
+      )
+
+      UPDATED_THIRD_PARTY_ITEMS = [
+        [THIRD_PARTY_ITEMS[0][0], THIRD_PARTY_ITEMS[0][1] + ' updated'],
+        [THIRD_PARTY_ITEMS[1][0], THIRD_PARTY_ITEMS[1][1] + ' updated'],
+      ]
+    })
+
+    it('should update items', async function () {
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(2)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+          thirdParty1[0],
+          i
+        )
+        const item = await thirdPartyRegistryContract.itemsById(
+          thirdParty1[0],
+          itemId
+        )
+
+        expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+
+      const { logs } = await thirdPartyRegistryContract.updateItems(
+        thirdParty1[0],
+        [UPDATED_THIRD_PARTY_ITEMS[0], UPDATED_THIRD_PARTY_ITEMS[1]],
+        fromManager
+      )
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('ItemUpdated')
+      expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[0].args._itemId).to.be.eq.BN(UPDATED_THIRD_PARTY_ITEMS[0][0])
+      expect(logs[0].args._metadata).to.be.eq.BN(
+        UPDATED_THIRD_PARTY_ITEMS[0][1]
+      )
+      expect(logs[0].args._caller).to.be.eql(manager)
+
+      expect(logs[1].event).to.be.equal('ItemUpdated')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._itemId).to.be.eq.BN(UPDATED_THIRD_PARTY_ITEMS[1][0])
+      expect(logs[1].args._metadata).to.be.eq.BN(
+        UPDATED_THIRD_PARTY_ITEMS[1][1]
+      )
+      expect(logs[1].args._caller).to.be.eql(manager)
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(2)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+          thirdParty1[0],
+          i
+        )
+        const item = await thirdPartyRegistryContract.itemsById(
+          thirdParty1[0],
+          itemId
+        )
+
+        expect(item.metadata).to.be.eql(UPDATED_THIRD_PARTY_ITEMS[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('should update items :: Relayed EIP721', async function () {
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(2)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+          thirdParty1[0],
+          i
+        )
+        const item = await thirdPartyRegistryContract.itemsById(
+          thirdParty1[0],
+          itemId
+        )
+
+        expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+
+      let functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              components: [
+                {
+                  internalType: 'string',
+                  name: 'id',
+                  type: 'string',
+                },
+                {
+                  internalType: 'string',
+                  name: 'metadata',
+                  type: 'string',
+                },
+              ],
+              internalType: 'struct ThirdPartyRegistry.ItemParam[]',
+              name: '_items',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'updateItems',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          thirdParty1[0],
+          [UPDATED_THIRD_PARTY_ITEMS[0], UPDATED_THIRD_PARTY_ITEMS[1]],
+        ]
+      )
+
+      const { logs } = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        manager,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      expect(logs.length).to.be.equal(3)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(manager)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      expect(logs[1].event).to.be.equal('ItemUpdated')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._itemId).to.be.eq.BN(UPDATED_THIRD_PARTY_ITEMS[0][0])
+      expect(logs[1].args._metadata).to.be.eq.BN(
+        UPDATED_THIRD_PARTY_ITEMS[0][1]
+      )
+      expect(logs[1].args._caller).to.be.eql(manager)
+
+      expect(logs[2].event).to.be.equal('ItemUpdated')
+      expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[2].args._itemId).to.be.eq.BN(UPDATED_THIRD_PARTY_ITEMS[1][0])
+      expect(logs[2].args._metadata).to.be.eq.BN(
+        UPDATED_THIRD_PARTY_ITEMS[1][1]
+      )
+      expect(logs[2].args._caller).to.be.eql(manager)
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(2)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+          thirdParty1[0],
+          i
+        )
+        const item = await thirdPartyRegistryContract.itemsById(
+          thirdParty1[0],
+          itemId
+        )
+
+        expect(item.metadata).to.be.eql(UPDATED_THIRD_PARTY_ITEMS[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('reverts when trying to update an item by a hacker', async function () {
       // TODO
     })
   })
