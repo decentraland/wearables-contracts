@@ -49,7 +49,7 @@ describe('Tiers', function () {
       expect(owner).to.be.equal(deployer)
 
       const tiersCount = await contract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(4)
+      expect(tiersCount).to.be.eq.BN(5)
 
       for (let i = 0; i < tiersCount.toNumber(); i++) {
         const tier = await contract.tiers(i)
@@ -65,7 +65,7 @@ describe('Tiers', function () {
 
     it('should add a tier', async function () {
       let tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(4)
+      expect(tiersCount).to.be.eq.BN(5)
 
       const { logs } = await tiersContract.addTiers([newTier1], fromDeployer)
 
@@ -74,16 +74,16 @@ describe('Tiers', function () {
       expect(logs[0].args._tier).to.be.eql(newTier1)
 
       tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(5)
+      expect(tiersCount).to.be.eq.BN(6)
 
-      const tier = await tiersContract.tiers(4)
+      const tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
     })
 
     it('should add tiers', async function () {
       let tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(4)
+      expect(tiersCount).to.be.eq.BN(5)
 
       const { logs } = await tiersContract.addTiers(
         [newTier1, newTier2],
@@ -98,20 +98,20 @@ describe('Tiers', function () {
       expect(logs[1].args._tier).to.be.eql(newTier2)
 
       tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(6)
+      expect(tiersCount).to.be.eq.BN(7)
 
-      let tier = await tiersContract.tiers(4)
+      let tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newTier2[1])
     })
 
     it('should add tiers :: Relayed EIP721', async function () {
       let tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(4)
+      expect(tiersCount).to.be.eq.BN(5)
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
@@ -166,13 +166,13 @@ describe('Tiers', function () {
       expect(logs[2].args._tier).to.be.eql(newTier2)
 
       tiersCount = await tiersContract.tiersCount()
-      expect(tiersCount).to.be.eq.BN(6)
+      expect(tiersCount).to.be.eq.BN(7)
 
-      let tier = await tiersContract.tiers(4)
+      let tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newTier2[1])
     })
@@ -256,60 +256,60 @@ describe('Tiers', function () {
     })
 
     it("should update a tier's price", async function () {
-      let tier = await tiersContract.tiers(4)
+      let tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
 
-      const { logs } = await tiersContract.updatePrices([4], [newPrice1])
+      const { logs } = await tiersContract.updatePrices([5], [newPrice1])
 
       expect(logs.length).to.be.equal(1)
       expect(logs[0].event).to.be.equal('TierPriceUpdated')
-      expect(logs[0].args._tierIndex).to.be.eq.BN(4)
+      expect(logs[0].args._tierIndex).to.be.eq.BN(5)
       expect(logs[0].args._price).to.be.eq.BN(newPrice1)
 
-      tier = await tiersContract.tiers(4)
+      tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newPrice1)
     })
 
     it("should update tiers' prices", async function () {
-      let tier = await tiersContract.tiers(4)
+      let tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newTier2[1])
 
       const { logs } = await tiersContract.updatePrices(
-        [4, 5],
+        [5, 6],
         [newPrice1, newPrice2]
       )
 
       expect(logs.length).to.be.equal(2)
       expect(logs[0].event).to.be.equal('TierPriceUpdated')
-      expect(logs[0].args._tierIndex).to.be.eq.BN(4)
+      expect(logs[0].args._tierIndex).to.be.eq.BN(5)
       expect(logs[0].args._price).to.eq.BN(newPrice1)
 
       expect(logs[1].event).to.be.equal('TierPriceUpdated')
-      expect(logs[1].args._tierIndex).to.be.eq.BN(5)
+      expect(logs[1].args._tierIndex).to.be.eq.BN(6)
       expect(logs[1].args._price).to.eq.BN(newPrice2)
 
-      tier = await tiersContract.tiers(4)
+      tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newPrice1)
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newPrice2)
     })
 
     it("should update tiers' prices :: Relayed EIP721", async function () {
-      let tier = await tiersContract.tiers(4)
+      let tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newTier1[1])
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newTier2[1])
 
@@ -333,7 +333,7 @@ describe('Tiers', function () {
           type: 'function',
         },
         [
-          [4, 5],
+          [5, 6],
           [newPrice1, newPrice2],
         ]
       )
@@ -356,18 +356,18 @@ describe('Tiers', function () {
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
       expect(logs[1].event).to.be.equal('TierPriceUpdated')
-      expect(logs[1].args._tierIndex).to.be.eq.BN(4)
+      expect(logs[1].args._tierIndex).to.be.eq.BN(5)
       expect(logs[1].args._price).to.be.eq.BN(newPrice1)
 
       expect(logs[2].event).to.be.equal('TierPriceUpdated')
-      expect(logs[2].args._tierIndex).to.be.eq.BN(5)
+      expect(logs[2].args._tierIndex).to.be.eq.BN(6)
       expect(logs[2].args._price).to.be.eq.BN(newPrice2)
 
-      tier = await tiersContract.tiers(4)
+      tier = await tiersContract.tiers(5)
       expect(tier.value).to.be.eq.BN(newTier1[0])
       expect(tier.price).to.be.eq.BN(newPrice1)
 
-      tier = await tiersContract.tiers(5)
+      tier = await tiersContract.tiers(6)
       expect(tier.value).to.be.eq.BN(newTier2[0])
       expect(tier.price).to.be.eq.BN(newPrice2)
     })
@@ -421,7 +421,7 @@ describe('Tiers', function () {
           type: 'function',
         },
         [
-          [4, 5],
+          [5, 6],
           [newPrice1, newPrice2],
         ]
       )
