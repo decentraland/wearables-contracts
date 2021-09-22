@@ -30,7 +30,7 @@ const contentHashes = [
 let thirdParty1
 let thirdParty2
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -2756,7 +2756,7 @@ describe.only('ThirdPartyRegistry', function () {
     })
   })
 
-  describe.only('reviewThirdParties', function () {
+  describe('reviewThirdParties', function () {
     let UPDATED_THIRD_PARTY_ITEMS
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
@@ -4069,7 +4069,7 @@ describe.only('ThirdPartyRegistry', function () {
         ])
         thirdPartyItemsReview.push([
           THIRD_PARTY_ITEMS[0][0] + i.toString(),
-          '',
+          THIRD_PARTY_ITEMS[0][1] + i.toString(),
           contentHashes[0],
           true,
         ])
@@ -4082,15 +4082,90 @@ describe.only('ThirdPartyRegistry', function () {
       )
 
       const { receipt } = await thirdPartyRegistryContract.reviewThirdParties(
-        [[thirdParty1[0], false, thirdPartyItemsReview]],
+        [[thirdParty1[0], true, thirdPartyItemsReview]],
         fromCommitteeMember
       )
 
       console.log(receipt.gasUsed)
     })
 
-    it('reverts when trying to review an item by hacker', async function () {
-      // TODO
+    it('reverts when trying to review a third party by hacker', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdParties(
+          [
+            [
+              thirdParty1[0],
+              false,
+              [[...THIRD_PARTY_ITEMS[0], contentHashes[0], true]],
+            ],
+          ],
+          fromManager
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdParties(
+          [
+            [
+              thirdParty1[0],
+              false,
+              [[...THIRD_PARTY_ITEMS[0], contentHashes[0], true]],
+            ],
+          ],
+          fromHacker
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
+
+    it('reverts when trying to review an invalid third party', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdParties(
+          [
+            [
+              thirdParty1[0] + 'invalid',
+              false,
+              [[...THIRD_PARTY_ITEMS[0], contentHashes[0], true]],
+            ],
+          ],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+
+    it('reverts when trying to review a third party item without content hash', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdParties(
+          [[thirdParty1[0], false, [[...THIRD_PARTY_ITEMS[0], '', true]]]],
+          fromCommitteeMember
+        ),
+        'TPR#reviewThirdParties: INVALID_CONTENT_HASH'
+      )
+    })
+
+    it('reverts when trying to review an invalid third party item', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdParties(
+          [
+            [
+              thirdParty1[0],
+              false,
+              [
+                [
+                  THIRD_PARTY_ITEMS[0][0] + 'invalid',
+                  '',
+                  contentHashes[0],
+                  true,
+                ],
+              ],
+            ],
+          ],
+          fromCommitteeMember
+        ),
+        'TPR#_checkItem: INVALID_ITEM'
+      )
     })
   })
 })
