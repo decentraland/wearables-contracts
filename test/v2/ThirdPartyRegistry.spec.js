@@ -26,7 +26,7 @@ const contentHashes = [
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Zd',
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Ze',
 ]
-
+let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
@@ -130,6 +130,8 @@ describe('ThirdPartyRegistry', function () {
       [manager, anotherManager],
       [],
     ]
+
+    THIRD_PARTIES = [thirdParty1, thirdParty2]
   })
 
   describe('initialize', function () {
@@ -4167,5 +4169,624 @@ describe('ThirdPartyRegistry', function () {
         'TPR#_checkItem: INVALID_ITEM'
       )
     })
+  })
+
+  describe('end2end', function () {
+    const itemsToAdd = []
+    const newItemsToAdd = []
+    const reviewedThirdPartyItems = []
+    let tprContract
+
+    for (let i = 0; i < TIERS[0].value; i++) {
+      itemsToAdd.push([
+        THIRD_PARTY_ITEMS[0][0] + i.toString(),
+        ...THIRD_PARTY_ITEMS[0].slice(1),
+      ])
+    }
+
+    // UPDATED_THIRD_PARTY_ITEMS = [
+    //   [THIRD_PARTY_ITEMS[0][0], THIRD_PARTY_ITEMS[0][1] + ' updated'],
+    //   [THIRD_PARTY_ITEMS[1][0], THIRD_PARTY_ITEMS[1][1] + ' updated'],
+    // ]
+
+    it('should deploy the TPR contract', async function () {
+      tprContract = await ThirdPartyRegistry.new(
+        owner,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        tiersContract.address,
+        fromDeployer
+      )
+
+      await mana.setInitialBalances()
+    })
+
+    it('should add two third parties (thirdparty1 & thirdparty2)', async function () {
+      let thirdPartiesCount = await tprContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(0)
+
+      await tprContract.addThirdParties(THIRD_PARTIES, fromCommitteeMember)
+
+      thirdPartiesCount = await tprContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      for (let t = 0; t < thirdPartiesCount; t++) {
+        const expectedThirdParty = THIRD_PARTIES[t]
+        const thirdPartyId = await tprContract.thirdPartyIds(t)
+        expect(thirdPartyId).to.be.eql(expectedThirdParty[0])
+
+        const thirdParty = await tprContract.thirdParties(thirdPartyId)
+
+        expect(thirdParty.metadata).to.be.eql(expectedThirdParty[1])
+        expect(thirdParty.resolver).to.be.eql(expectedThirdParty[2])
+        expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+        expect(thirdParty.maxItems).to.be.eq.BN(0)
+        expect(thirdParty.registered).to.be.eq.BN(1)
+
+        for (let i = 0; i < expectedThirdParty[3].length; i++) {
+          const isManager = await tprContract.isThirdPartyManager(
+            thirdPartyId,
+            expectedThirdParty[3][i]
+          )
+          expect(isManager).to.be.equal(true)
+        }
+
+        const itemsCount = await tprContract.itemsCount(thirdParty1[0])
+        expect(itemsCount).to.be.eq.BN(0)
+      }
+    })
+
+    it('reverts when trying to re-add thirdparty2', async function () {
+      await assertRevert(
+        tprContract.addThirdParties([THIRD_PARTIES[1]], fromCommitteeMember),
+        'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
+      )
+    })
+
+    it('should reject thirdparty1', async function () {
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+
+      await tprContract.reviewThirdParties(
+        [[THIRD_PARTIES[0][0], false, []]],
+        fromCommitteeMember
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.eql(false)
+    })
+
+    it('should buy 10 item slots for thirdparty1', async function () {
+      // Buy 10 item slots
+      await manaContract.approve(
+        tprContract.address,
+        TIERS[0].price,
+        fromManager
+      )
+
+      await tprContract.buyItemSlots(
+        THIRD_PARTIES[0][0],
+        0,
+        TIERS[0].price,
+        fromManager
+      )
+
+      const thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+
+      const itemsCount = await tprContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(0)
+    })
+
+    it('should add one manager for thirdparty1', async function () {
+      let isManager = await tprContract.isThirdPartyManager(
+        THIRD_PARTIES[0][0],
+        manager
+      )
+      expect(isManager).to.be.equal(true)
+
+      isManager = await tprContract.isThirdPartyManager(
+        THIRD_PARTIES[0][0],
+        anotherManager
+      )
+      expect(isManager).to.be.equal(false)
+
+      await tprContract.updateThirdParties(
+        [
+          [
+            THIRD_PARTIES[0][0],
+            THIRD_PARTIES[0][1],
+            THIRD_PARTIES[0][2],
+            [anotherManager],
+            [true],
+          ],
+        ],
+        fromManager
+      )
+
+      isManager = await tprContract.isThirdPartyManager(
+        THIRD_PARTIES[0][0],
+        manager
+      )
+      expect(isManager).to.be.equal(true)
+
+      isManager = await tprContract.isThirdPartyManager(
+        THIRD_PARTIES[0][0],
+        anotherManager
+      )
+      expect(isManager).to.be.equal(true)
+    })
+
+    it('reverts when trying to add items by not a manager', async function () {
+      await assertRevert(
+        tprContract.addItems(
+          THIRD_PARTIES[0][0],
+          [THIRD_PARTY_ITEMS[0], THIRD_PARTY_ITEMS[1]],
+          fromCommitteeMember
+        ),
+        'TPR#addItems: INVALID_SENDER'
+      )
+    })
+
+    it('should add 10 items to thirdparty1', async function () {
+      let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(0)
+
+      await tprContract.addItems(THIRD_PARTIES[0][0], itemsToAdd, fromManager)
+
+      itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(itemsToAdd.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(itemsToAdd[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(itemsToAdd[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('reverts when trying to add more items to thirdparty1', async function () {
+      await assertRevert(
+        tprContract.addItems(
+          THIRD_PARTIES[0][0],
+          [THIRD_PARTY_ITEMS[1]],
+          fromManager
+        ),
+        'as'
+      )
+    })
+
+    it('should update thirdparty1 resolver', async function () {
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.resolver).to.be.eql(THIRD_PARTIES[0][2])
+
+      const newResolver = 'https://new.api.thirdparty/v1'
+      await tprContract.updateThirdParties(
+        [[THIRD_PARTIES[0][0], THIRD_PARTIES[0][1], newResolver, [], []]],
+        fromAnotherManager
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.resolver).to.be.eql(newResolver)
+    })
+
+    it('aprove thirdparty1 and items', async function () {
+      for (let i = 0; i < itemsToAdd.length; i++) {
+        reviewedThirdPartyItems.push([
+          ...itemsToAdd[i],
+          'contentHash' + i.toString(),
+          true,
+        ])
+      }
+
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(false)
+
+      let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(itemsToAdd[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(itemsToAdd[i][1])
+        expect(item.contentHash).to.be.eql('')
+        expect(item.isApproved).to.be.eql(initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+
+      await tprContract.reviewThirdParties(
+        [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
+        fromCommitteeMember
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(true)
+
+      itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(reviewedThirdPartyItems[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(reviewedThirdPartyItems[i][1])
+        expect(item.contentHash).to.be.eql(reviewedThirdPartyItems[i][2])
+        expect(item.isApproved).to.be.eql(true)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('should buy 10 item slots more for thirdparty1', async function () {
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
+
+      let itemsCount = await tprContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+
+      // Buy 10 item slots
+      await manaContract.approve(
+        tprContract.address,
+        TIERS[0].price,
+        fromManager
+      )
+
+      await tprContract.buyItemSlots(
+        THIRD_PARTIES[0][0],
+        0,
+        TIERS[0].price,
+        fromManager
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value * 2)
+
+      itemsCount = await tprContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+    })
+
+    it('should add 5 items to thirdparty1', async function () {
+      let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+
+      for (let i = 0; i < 5; i++) {
+        itemsToAdd.push([
+          THIRD_PARTY_ITEMS[1][0] + i.toString(),
+          THIRD_PARTY_ITEMS[1][1],
+        ])
+      }
+
+      await tprContract.addItems(
+        THIRD_PARTIES[0][0],
+        itemsToAdd.slice(10),
+        fromManager
+      )
+
+      itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(itemsToAdd.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(itemsToAdd[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(itemsToAdd[i][1])
+        expect(item.contentHash).to.be.eql(
+          i < 10 ? reviewedThirdPartyItems[i][2] : ''
+        )
+        expect(item.isApproved).to.be.eql(i < 10 ? true : initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('reverts when trying to approve by not a committee member', async function () {
+      await assertRevert(
+        tprContract.reviewThirdParties(
+          [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
+          fromManager
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+
+      await assertRevert(
+        tprContract.reviewThirdParties(
+          [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
+          fromHacker
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+
+      await assertRevert(
+        tprContract.reviewThirdParties(
+          [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
+          fromUser
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
+
+    it('should aprove thirdparty1 and items', async function () {
+      for (let i = 0; i < 5; i++) {
+        reviewedThirdPartyItems.push([
+          ...itemsToAdd[i + 10],
+          'contentHash' + (i + 10).toString(),
+          true,
+        ])
+      }
+
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(true)
+
+      let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(itemsToAdd[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(itemsToAdd[i][1])
+        expect(item.contentHash).to.be.eql(
+          i < 10 ? reviewedThirdPartyItems[i][2] : ''
+        )
+        expect(item.isApproved).to.be.eql(i < 10 ? true : initialValueForItems)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+
+      await tprContract.reviewThirdParties(
+        [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
+        fromCommitteeMember
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(true)
+
+      itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(reviewedThirdPartyItems[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(reviewedThirdPartyItems[i][1])
+        expect(item.contentHash).to.be.eql(reviewedThirdPartyItems[i][2])
+        expect(item.isApproved).to.be.eql(true)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    it('should reject thirdparty1 and items', async function () {
+      let thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(true)
+
+      let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(reviewedThirdPartyItems[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(reviewedThirdPartyItems[i][1])
+        expect(item.contentHash).to.be.eql(reviewedThirdPartyItems[i][2])
+        expect(item.isApproved).to.be.eql(true)
+        expect(item.registered).to.be.eq.BN(1)
+
+        reviewedThirdPartyItems[i][3] = false
+      }
+
+      await tprContract.reviewThirdParties(
+        [[THIRD_PARTIES[0][0], false, reviewedThirdPartyItems]],
+        fromCommitteeMember
+      )
+
+      thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
+      expect(thirdParty.isApproved).to.be.equal(false)
+
+      itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
+      expect(itemsCount).to.be.eq.BN(reviewedThirdPartyItems.length)
+
+      for (let i = 0; i < itemsCount; i++) {
+        const itemId = await tprContract.itemIdByIndex(THIRD_PARTIES[0][0], i)
+        expect(itemId).to.be.equal(reviewedThirdPartyItems[i][0])
+
+        const item = await tprContract.itemsById(THIRD_PARTIES[0][0], itemId)
+        expect(item.metadata).to.be.eql(reviewedThirdPartyItems[i][1])
+        expect(item.contentHash).to.be.eql(reviewedThirdPartyItems[i][2])
+        expect(item.isApproved).to.be.eql(false)
+        expect(item.registered).to.be.eq.BN(1)
+      }
+    })
+
+    // // Third Party 1
+    // let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+    // expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+    // let thirdParty = await thirdPartyRegistryContract.thirdParties(
+    //   thirdParty1[0]
+    // )
+
+    // expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+    // expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+    // expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+    // expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+    // expect(thirdParty.registered).to.be.eq.BN(1)
+
+    // let itemsCount = await thirdPartyRegistryContract.itemsCount(
+    //   thirdParty1[0]
+    // )
+    // expect(itemsCount).to.be.eq.BN(2)
+
+    // for (let i = 0; i < itemsCount; i++) {
+    //   const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+    //     thirdParty1[0],
+    //     i
+    //   )
+    //   const item = await thirdPartyRegistryContract.itemsById(
+    //     thirdParty1[0],
+    //     itemId
+    //   )
+
+    //   expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i][1])
+    //   expect(item.contentHash).to.be.eql('')
+    //   expect(item.isApproved).to.be.eql(initialValueForItems)
+    //   expect(item.registered).to.be.eq.BN(1)
+    // }
+
+    // // Third Party 2
+    // thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(1)
+    // expect(thirdPartyId).to.be.eql(thirdParty2[0])
+
+    // thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
+
+    // expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
+    // expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
+    // expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+    // expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+    // expect(thirdParty.registered).to.be.eq.BN(1)
+
+    // itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
+    // expect(itemsCount).to.be.eq.BN(1)
+
+    // for (let i = 0; i < itemsCount; i++) {
+    //   const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+    //     thirdParty2[0],
+    //     i
+    //   )
+    //   const item = await thirdPartyRegistryContract.itemsById(
+    //     thirdParty2[0],
+    //     itemId
+    //   )
+
+    //   expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i + 2][1])
+    //   expect(item.contentHash).to.be.eql('')
+    //   expect(item.isApproved).to.be.eql(initialValueForItems)
+    //   expect(item.registered).to.be.eq.BN(1)
+    // }
+
+    // const { logs } = await thirdPartyRegistryContract.reviewThirdParties(
+    //   [
+    //     [
+    //       thirdParty1[0],
+    //       false,
+    //       [
+    //         [...THIRD_PARTY_ITEMS[0], contentHashes[0], true],
+    //         [...THIRD_PARTY_ITEMS[1], contentHashes[1], true],
+    //       ],
+    //     ],
+    //     [
+    //       thirdParty2[0],
+    //       false,
+    //       [[...THIRD_PARTY_ITEMS[2], contentHashes[2], true]],
+    //     ],
+    //   ],
+    //   fromCommitteeMember
+    // )
+
+    // expect(logs.length).to.be.equal(5)
+
+    // expect(logs[0].event).to.be.equal('ThirdPartyReviewed')
+    // expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+    // expect(logs[0].args._value).to.be.eql(false)
+    // expect(logs[0].args._caller).to.be.eql(committeeMember)
+
+    // expect(logs[1].event).to.be.equal('ItemReviewed')
+    // expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+    // expect(logs[1].args._itemId).to.be.eql(THIRD_PARTY_ITEMS[0][0])
+    // expect(logs[1].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[0][1])
+    // expect(logs[1].args._contentHash).to.be.eql(contentHashes[0])
+    // expect(logs[1].args._value).to.be.eql(true)
+    // expect(logs[1].args._caller).to.be.eql(committeeMember)
+
+    // expect(logs[2].event).to.be.equal('ItemReviewed')
+    // expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
+    // expect(logs[2].args._itemId).to.be.eql(THIRD_PARTY_ITEMS[1][0])
+    // expect(logs[2].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[1][1])
+    // expect(logs[2].args._contentHash).to.be.eql(contentHashes[1])
+    // expect(logs[2].args._value).to.be.eql(true)
+    // expect(logs[2].args._caller).to.be.eql(committeeMember)
+
+    // expect(logs[3].event).to.be.equal('ThirdPartyReviewed')
+    // expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty2[0])
+    // expect(logs[3].args._value).to.be.eql(false)
+    // expect(logs[3].args._caller).to.be.eql(committeeMember)
+
+    // expect(logs[4].event).to.be.equal('ItemReviewed')
+    // expect(logs[4].args._thirdPartyId).to.be.eql(thirdParty2[0])
+    // expect(logs[4].args._itemId).to.be.eql(THIRD_PARTY_ITEMS[2][0])
+    // expect(logs[4].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
+    // expect(logs[4].args._contentHash).to.be.eql(contentHashes[2])
+    // expect(logs[4].args._value).to.be.eql(true)
+    // expect(logs[4].args._caller).to.be.eql(committeeMember)
+
+    // // Third Party 1
+    // thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+    // expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+    // thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+    // expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+    // expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+    // expect(thirdParty.isApproved).to.be.eql(false)
+    // expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+    // expect(thirdParty.registered).to.be.eq.BN(1)
+
+    // itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+    // expect(itemsCount).to.be.eq.BN(2)
+
+    // for (let i = 0; i < itemsCount; i++) {
+    //   const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+    //     thirdParty1[0],
+    //     i
+    //   )
+    //   const item = await thirdPartyRegistryContract.itemsById(
+    //     thirdParty1[0],
+    //     itemId
+    //   )
+
+    //   expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i][1])
+    //   expect(item.contentHash).to.be.eql(contentHashes[i])
+    //   expect(item.isApproved).to.be.eql(true)
+    //   expect(item.registered).to.be.eq.BN(1)
+    // }
+
+    // // Third Party 2
+    // thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(1)
+    // expect(thirdPartyId).to.be.eql(thirdParty2[0])
+
+    // thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
+
+    // expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
+    // expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
+    // expect(thirdParty.isApproved).to.be.eql(false)
+    // expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+    // expect(thirdParty.registered).to.be.eq.BN(1)
+
+    // itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
+    // expect(itemsCount).to.be.eq.BN(1)
+
+    // for (let i = 0; i < itemsCount; i++) {
+    //   const itemId = await thirdPartyRegistryContract.itemIdByIndex(
+    //     thirdParty2[0],
+    //     i
+    //   )
+    //   const item = await thirdPartyRegistryContract.itemsById(
+    //     thirdParty2[0],
+    //     itemId
+    //   )
+
+    //   expect(item.metadata).to.be.eql(THIRD_PARTY_ITEMS[i + 2][1])
+    //   expect(item.contentHash).to.be.eql(contentHashes[i + 2])
+    //   expect(item.isApproved).to.be.eql(true)
+    //   expect(item.registered).to.be.eq.BN(1)
+    // }
   })
 })
