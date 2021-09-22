@@ -358,8 +358,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             emit ItemUpdated(
                 _thirdPartyId,
                 itemParam.id,
-                item.metadata,
-                _msgSender()
+                itemParam.metadata,
+                sender
             );
         }
     }

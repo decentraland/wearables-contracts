@@ -2455,7 +2455,7 @@ describe.only('ThirdPartyRegistry', function () {
     })
   })
 
-  describe.only('updateItems', function () {
+  describe('updateItems', function () {
     let UPDATED_THIRD_PARTY_ITEMS
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
@@ -2666,8 +2666,84 @@ describe.only('ThirdPartyRegistry', function () {
       }
     })
 
+    it('reverts when trying to update an item for an invalid third party', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0] + 'a',
+          [UPDATED_THIRD_PARTY_ITEMS[0], UPDATED_THIRD_PARTY_ITEMS[1]],
+          fromHacker
+        ),
+        'TPR#updateItems: INVALID_SENDER'
+      )
+    })
+
     it('reverts when trying to update an item by a hacker', async function () {
-      // TODO
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0],
+          [UPDATED_THIRD_PARTY_ITEMS[0], UPDATED_THIRD_PARTY_ITEMS[1]],
+          fromHacker
+        ),
+        'TPR#updateItems: INVALID_SENDER'
+      )
+    })
+
+    it('reverts when trying to update an item with invalid id', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0],
+          [
+            [
+              UPDATED_THIRD_PARTY_ITEMS[0][0] + 'a',
+              UPDATED_THIRD_PARTY_ITEMS[0][1],
+            ],
+          ],
+          fromManager
+        ),
+        'TPR#_checkItem: INVALID_ITEM'
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0],
+          [['', UPDATED_THIRD_PARTY_ITEMS[0][1]]],
+          fromManager
+        ),
+        'TPR#_checkItemParam: EMPTY_ID'
+      )
+    })
+
+    it('reverts when trying to update an item with invalid metadata', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0],
+          [[UPDATED_THIRD_PARTY_ITEMS[0][0] + 'a', '']],
+          fromManager
+        ),
+        'TPR#_checkItemParam: EMPTY_METADATA'
+      )
+    })
+
+    it('reverts when trying to update an item already approved by a manager', async function () {
+      await thirdPartyRegistryContract.reviewThirdParties(
+        [
+          [
+            thirdParty1[0],
+            true,
+            [[...UPDATED_THIRD_PARTY_ITEMS[0], '0x12', true]],
+          ],
+        ],
+        fromCommitteeMember
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.updateItems(
+          thirdParty1[0],
+          [UPDATED_THIRD_PARTY_ITEMS[0]],
+          fromManager
+        ),
+        'TPR#updateItems: ITEM_IS_APPROVED'
+      )
     })
   })
 })
