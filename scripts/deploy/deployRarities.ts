@@ -23,11 +23,7 @@ const DEFAULT_RARITY_PRICE = '500000000000000000000' // 500 MANA
 
 /**
  * @dev Steps:
- * Deploy the Collection implementation
- * Deploy the committee with the desired members. The owner will be the DAO bridge
- * Deploy the collection Manager. The owner will be the DAO bridge
- * Deploy the forwarder. Caller Is the collection manager.
- * Deploy the collection Factory. Owner is the forwarder.
+ * Deploy the Rarities smart contract
  */
 async function main() {
   const owner = process.env['OWNER']

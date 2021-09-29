@@ -62,6 +62,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     mapping(string => ThirdParty) public thirdParties;
     string[] public thirdPartyIds;
 
+    address public thirdPartyAgregator;
     address public feesCollector;
     ICommittee public committee;
     IERC20  public acceptedToken;
@@ -79,6 +80,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
     event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
 
+    event ThirdPartyAgregatorSet(address indexed _oldThirdPartyAgregator, address indexed _newThirdPartyAgregator);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
@@ -89,13 +91,24 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
    /**
     * @notice Create the contract
     * @param _owner - owner of the contract
+    * @param _thirdPartyAgregator - third party agregator
+    * @param _feesCollector - fees collector
     * @param _committee - committee smart contract
+    * @param _acceptedToken - accepted token
     * @param _itemTiers - item tiers smart contract
     */
-    constructor(address _owner, address _feesCollector, ICommittee _committee, IERC20 _acceptedToken, ITiers _itemTiers) {
+    constructor(
+        address _owner,
+        address _thirdPartyAgregator,
+        address _feesCollector,
+        ICommittee _committee,
+        IERC20 _acceptedToken,
+        ITiers _itemTiers
+    ) {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
 
+        setThirdPartyAgregator(_thirdPartyAgregator);
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
@@ -113,6 +126,26 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         );
         _;
     }
+
+    modifier onlyThirdPartyAgregator() {
+        require(
+            thirdPartyAgregator == _msgSender(),
+            "TPR#onlyThirdPartyAgregator: CALLER_IS_NOT_THE_PARTY_AGREGATOR"
+        );
+        _;
+    }
+
+    /**
+    * @notice Set the third party agregator
+    * @param _newThirdPartyAgregator - third party agregator
+    */
+    function setThirdPartyAgregator(address _newThirdPartyAgregator) onlyOwner public {
+        require(_newThirdPartyAgregator != address(0), "TPR#setThirdPartyAgregator: INVALID_THIRD_PARTY_AGREGATOR");
+
+        emit ThirdPartyAgregatorSet(thirdPartyAgregator, _newThirdPartyAgregator);
+        thirdPartyAgregator = _newThirdPartyAgregator;
+    }
+
 
      /**
     * @notice Set the fees collector
@@ -180,7 +213,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyCommittee external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyThirdPartyAgregator external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
 
@@ -228,8 +261,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(
-                committee.members(sender) || thirdParty.managers[sender],
-                "TPR#updateThirdParties: CALLER_IS_NOT_A_COMMITTEE_MEMBER_OR_MANAGER"
+                thirdParty.managers[sender] || thirdPartyAgregator == sender,
+                "TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGREGATOR"
             );
 
             _checkThirdParty(thirdParty);

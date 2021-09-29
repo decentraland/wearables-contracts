@@ -30,7 +30,7 @@ let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
-describe('ThirdPartyRegistry', function () {
+describe.only('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -41,6 +41,7 @@ describe('ThirdPartyRegistry', function () {
   let manager
   let anotherManager
   let committeeMember
+  let thirdPartyAgregator
   let collector
   let hacker
   let relayer
@@ -54,6 +55,7 @@ describe('ThirdPartyRegistry', function () {
   let fromRelayer
   let fromOwner
   let fromCommitteeMember
+  let fromThirdPartyAgregator
 
   // Contracts
   let tiersContract
@@ -87,6 +89,7 @@ describe('ThirdPartyRegistry', function () {
     collector = accounts[6]
     owner = accounts[7]
     anotherManager = accounts[8]
+    thirdPartyAgregator = accounts[9]
     fromUser = { from: user }
     fromManager = { from: manager }
     fromHacker = { from: hacker }
@@ -95,6 +98,7 @@ describe('ThirdPartyRegistry', function () {
     fromOwner = { from: owner }
     fromAnotherManager = { from: anotherManager }
     fromCommitteeMember = { from: committeeMember }
+    fromThirdPartyAgregator = { from: thirdPartyAgregator }
 
     await createMANA()
 
@@ -108,6 +112,7 @@ describe('ThirdPartyRegistry', function () {
 
     thirdPartyRegistryContract = await ThirdPartyRegistry.new(
       owner,
+      thirdPartyAgregator,
       collector,
       committeeContract.address,
       manaContract.address,
@@ -138,6 +143,7 @@ describe('ThirdPartyRegistry', function () {
     it('should be initialized with correct values', async function () {
       const contract = await ThirdPartyRegistry.new(
         owner,
+        thirdPartyAgregator,
         collector,
         committeeContract.address,
         manaContract.address,
@@ -147,6 +153,9 @@ describe('ThirdPartyRegistry', function () {
 
       const contractOwner = await contract.owner()
       expect(contractOwner).to.be.equal(owner)
+
+      const thirdPartyAgregatorContract = await contract.thirdPartyAgregator()
+      expect(thirdPartyAgregatorContract).to.be.equal(thirdPartyAgregator)
 
       const feesCollector = await contract.feesCollector()
       expect(feesCollector).to.be.equal(collector)
@@ -168,6 +177,67 @@ describe('ThirdPartyRegistry', function () {
 
       const initialItemValue = await contract.initialItemValue()
       expect(initialItemValue).to.be.equal(initialValueForItems)
+    })
+  })
+
+  describe('setThirdPartyAgregator', async function () {
+    it('should set thirdPartyAgregator', async function () {
+      let thirdPartyAgregatorContract =
+        await thirdPartyRegistryContract.thirdPartyAgregator()
+      expect(thirdPartyAgregatorContract).to.be.equal(thirdPartyAgregator)
+
+      let res = await thirdPartyRegistryContract.setThirdPartyAgregator(
+        user,
+        fromOwner
+      )
+
+      let logs = res.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('ThirdPartyAgregatorSet')
+      expect(logs[0].args._oldThirdPartyAgregator).to.be.equal(
+        thirdPartyAgregator
+      )
+      expect(logs[0].args._newThirdPartyAgregator).to.be.equal(user)
+
+      thirdPartyAgregatorContract =
+        await thirdPartyRegistryContract.thirdPartyAgregator()
+      expect(thirdPartyAgregatorContract).to.be.equal(user)
+
+      res = await thirdPartyRegistryContract.setThirdPartyAgregator(
+        thirdPartyAgregator,
+        fromOwner
+      )
+
+      logs = res.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('ThirdPartyAgregatorSet')
+      expect(logs[0].args._oldThirdPartyAgregator).to.be.equal(user)
+      expect(logs[0].args._newThirdPartyAgregator).to.be.equal(
+        thirdPartyAgregator
+      )
+
+      thirdPartyAgregatorContract =
+        await thirdPartyRegistryContract.thirdPartyAgregator()
+      expect(thirdPartyAgregatorContract).to.be.equal(thirdPartyAgregator)
+    })
+
+    it('reverts when trying to set the ZERO_ADDRESS as the thirdPartyAgregator', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setThirdPartyAgregator(
+          ZERO_ADDRESS,
+          fromOwner
+        ),
+        'TPR#setThirdPartyAgregator: INVALID_THIRD_PARTY_AGREGATOR'
+      )
+    })
+
+    it('reverts when trying to set a thirdPartyAgregator by hacker', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setThirdPartyAgregator(user, fromHacker),
+        'Ownable: caller is not the owner'
+      )
     })
   })
 
@@ -482,7 +552,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(2)
@@ -493,7 +563,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(thirdParty1[2])
       expect(logs[0].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[0].args._managers).to.be.eql(thirdParty1[3])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       expect(logs[1].event).to.be.equal('ThirdPartyAdded')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -501,7 +571,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._resolver).to.be.eql(thirdParty2[2])
       expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -609,7 +679,7 @@ describe('ThirdPartyRegistry', function () {
       const { logs } = await sendMetaTx(
         thirdPartyRegistryContract,
         functionSignature,
-        committeeMember,
+        thirdPartyAgregator,
         relayer,
         null,
         domain,
@@ -619,7 +689,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs.length).to.be.equal(3)
 
       expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.userAddress).to.be.equal(thirdPartyAgregator)
       expect(logs[0].args.relayerAddress).to.be.equal(relayer)
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
@@ -629,7 +699,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._resolver).to.be.eql(thirdParty1[2])
       expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[1].args._managers).to.be.eql(thirdParty1[3])
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
 
       expect(logs[2].event).to.be.equal('ThirdPartyAdded')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -637,7 +707,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._resolver).to.be.eql(thirdParty2[2])
       expect(logs[2].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[2].args._managers).to.be.eql(thirdParty2[3])
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -705,7 +775,7 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
-          fromCommitteeMember
+          fromThirdPartyAgregator
         ),
         'TPR#addThirdParties: EMPTY_ID'
       )
@@ -723,7 +793,7 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
-          fromCommitteeMember
+          fromThirdPartyAgregator
         ),
         'TPR#addThirdParties: EMPTY_METADATA'
       )
@@ -741,7 +811,7 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
-          fromCommitteeMember
+          fromThirdPartyAgregator
         ),
         'TPR#addThirdParties: EMPTY_RESOLVER'
       )
@@ -759,7 +829,7 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
-          fromCommitteeMember
+          fromThirdPartyAgregator
         ),
         'TPR#addThirdParties: EMPTY_MANAGERS'
       )
@@ -784,13 +854,13 @@ describe('ThirdPartyRegistry', function () {
 
       await thirdPartyRegistryContract.addThirdParties(
         [thirdPartyToBeAdded1],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded2],
-          fromCommitteeMember
+          fromThirdPartyAgregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
       )
@@ -799,7 +869,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when trying to add a third party by hacker', async function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties([thirdParty1], fromHacker),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyThirdPartyAgregator: CALLER_IS_NOT_THE_PARTY_AGREGATOR'
       )
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -867,7 +937,7 @@ describe('ThirdPartyRegistry', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       updatedThirdParty1 = [
@@ -984,7 +1054,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.updateThirdParties(
         [updatedThirdParty1, updatedThirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(2)
@@ -995,7 +1065,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(updatedThirdParty1[2])
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       expect(logs[1].event).to.be.equal('ThirdPartyUpdated')
       expect(logs[1].args._thirdPartyId).to.be.eql(updatedThirdParty2[0])
@@ -1003,7 +1073,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._resolver).to.be.eql(updatedThirdParty2[2])
       expect(logs[1].args._managers).to.be.eql(updatedThirdParty2[3])
       expect(logs[1].args._managerValues).to.be.eql(updatedThirdParty2[4])
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1226,7 +1296,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.updateThirdParties(
         [updatedThirdParty1],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(1)
@@ -1237,7 +1307,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(thirdParty1[2])
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1289,7 +1359,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.updateThirdParties(
         [updatedThirdParty1],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(1)
@@ -1300,7 +1370,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(updatedThirdParty1[2])
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1346,7 +1416,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.updateThirdParties(
         [updatedThirdParty1],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(1)
@@ -1357,7 +1427,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(thirdParty1[2])
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1403,7 +1473,7 @@ describe('ThirdPartyRegistry', function () {
 
       const { logs } = await thirdPartyRegistryContract.updateThirdParties(
         [updatedThirdParty1],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       expect(logs.length).to.be.equal(1)
@@ -1414,7 +1484,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._resolver).to.be.eql(thirdParty1[2])
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1511,7 +1581,7 @@ describe('ThirdPartyRegistry', function () {
           [updatedThirdParty1],
           fromHacker
         ),
-        'TPR#updateThirdParties: CALLER_IS_NOT_A_COMMITTEE_MEMBER_OR_MANAGER'
+        'TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGREGATOR'
       )
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -1577,7 +1647,7 @@ describe('ThirdPartyRegistry', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
     })
 
@@ -2054,7 +2124,7 @@ describe('ThirdPartyRegistry', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       await mana.setInitialBalances()
@@ -2469,7 +2539,7 @@ describe('ThirdPartyRegistry', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       await mana.setInitialBalances()
@@ -2763,7 +2833,7 @@ describe('ThirdPartyRegistry', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        fromCommitteeMember
+        fromThirdPartyAgregator
       )
 
       await mana.setInitialBalances()
@@ -4173,7 +4243,6 @@ describe('ThirdPartyRegistry', function () {
 
   describe('end2end', function () {
     const itemsToAdd = []
-    const newItemsToAdd = []
     const reviewedThirdPartyItems = []
     let tprContract
 
@@ -4184,14 +4253,10 @@ describe('ThirdPartyRegistry', function () {
       ])
     }
 
-    // UPDATED_THIRD_PARTY_ITEMS = [
-    //   [THIRD_PARTY_ITEMS[0][0], THIRD_PARTY_ITEMS[0][1] + ' updated'],
-    //   [THIRD_PARTY_ITEMS[1][0], THIRD_PARTY_ITEMS[1][1] + ' updated'],
-    // ]
-
     it('should deploy the TPR contract', async function () {
       tprContract = await ThirdPartyRegistry.new(
         owner,
+        thirdPartyAgregator,
         collector,
         committeeContract.address,
         manaContract.address,
@@ -4206,7 +4271,7 @@ describe('ThirdPartyRegistry', function () {
       let thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(0)
 
-      await tprContract.addThirdParties(THIRD_PARTIES, fromCommitteeMember)
+      await tprContract.addThirdParties(THIRD_PARTIES, fromThirdPartyAgregator)
 
       thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -4239,7 +4304,10 @@ describe('ThirdPartyRegistry', function () {
 
     it('reverts when trying to re-add thirdparty2', async function () {
       await assertRevert(
-        tprContract.addThirdParties([THIRD_PARTIES[1]], fromCommitteeMember),
+        tprContract.addThirdParties(
+          [THIRD_PARTIES[1]],
+          fromThirdPartyAgregator
+        ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
       )
     })

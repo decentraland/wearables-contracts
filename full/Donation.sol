@@ -1,4 +1,4 @@
-// Sources flattened with hardhat v2.3.0 https://hardhat.org
+// Sources flattened with hardhat v2.6.0 https://hardhat.org
 
 // File @openzeppelin/contracts/math/SafeMath.sol@v3.4.1
 

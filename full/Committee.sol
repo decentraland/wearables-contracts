@@ -1,4 +1,4 @@
-// Sources flattened with hardhat v2.3.0 https://hardhat.org
+// Sources flattened with hardhat v2.6.0 https://hardhat.org
 
 // File contracts/interfaces/ICollectionManager.sol
 
@@ -512,6 +512,7 @@ contract NativeMetaTransaction is EIP712Base {
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
 
 
 
@@ -567,11 +568,13 @@ contract Committee is OwnableInitializable, NativeMetaTransaction {
     * @param _collectionManager - collection manager
     * @param _forwarder - forwarder contract owner of the collection
     * @param _collection - collection to be managed
-    * @param _data - call data to be used
+    * @param _data - array of calls
     */
-    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes memory _data) external {
+    function manageCollection(ICollectionManager _collectionManager, address _forwarder, address _collection, bytes[] memory _data) external {
        require(members[_msgSender()], "Committee#manageCollection: UNAUTHORIZED_SENDER");
 
-        _collectionManager.manageCollection(_forwarder, _collection, _data);
+        for (uint256 i = 0; i < _data.length; i++) {
+            _collectionManager.manageCollection(_forwarder, _collection, _data[i]);
+        }
     }
 }
