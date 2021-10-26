@@ -318,14 +318,14 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         require(tier.value > 0, "TPR#buyItems: INVALID_VALUE_FOR_TIER");
         require(tier.price == _price, "TPR#buyItems: PRICE_MISMATCH");
 
+        thirdParty.maxItems = thirdParty.maxItems.add(tier.value);
+
         if (tier.price > 0) {
             require(
                 acceptedToken.transferFrom(sender, feesCollector, tier.price),
                 "TPR#buyItems: TRANSFER_FEES_FAILED"
             );
         }
-
-        thirdParty.maxItems = thirdParty.maxItems.add(tier.value);
 
         emit ThirdPartyItemsBought(_thirdPartyId, tier.price, tier.value, sender);
     }
