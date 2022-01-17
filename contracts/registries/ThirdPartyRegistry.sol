@@ -9,7 +9,7 @@ import "../commons//OwnableInitializable.sol";
 import "../commons//NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
 import "../interfaces/IERC20.sol";
-import "../interfaces/ITiers.sol";
+import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
@@ -66,7 +66,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     address public feesCollector;
     ICommittee public committee;
     IERC20  public acceptedToken;
-    ITiers public itemTiers;
+    uint256 public itemPrice;
+    IOracle public oracle;
 
     bool public initialThirdPartyValue;
     bool public initialItemValue;
@@ -74,6 +75,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, address _caller);
     event ThirdPartyItemsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
+    event ThirdPartyItemsAdded(string _thirdPartyId, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
 
     event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
@@ -84,7 +86,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
-    event ItemTiersSet(ITiers indexed _oldItemTiers, ITiers indexed _newItemTiers);
+    event OracleSet(IOracle indexed _oldOracle, IOracle indexed _newOracle);
+    event ItemPriceSet(uint256 _oldItemPrice, uint256 _newItemPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
 
@@ -95,7 +98,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _feesCollector - fees collector
     * @param _committee - committee smart contract
     * @param _acceptedToken - accepted token
-    * @param _itemTiers - item tiers smart contract
+    * @param _oracle - oracle smart contract
+    * @param _itemPrice - item price
     */
     constructor(
         address _owner,
@@ -103,7 +107,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         address _feesCollector,
         ICommittee _committee,
         IERC20 _acceptedToken,
-        ITiers _itemTiers
+        IOracle _oracle,
+        uint256 _itemPrice
     ) {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
@@ -112,9 +117,10 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
-        setItemTiers(_itemTiers);
+        setOracle(_oracle);
         setInitialItemValue(false);
         setInitialThirdPartyValue(true);
+        setItemPrice(_itemPrice);
 
         transferOwnership(_owner);
     }
@@ -181,14 +187,24 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
      /**
-    * @notice Set the itemTiers
-    * @param _newItemTiers - itemTiers contract
+    * @notice Set the oracle
+    * @param _newOracle - oracle contract
     */
-    function setItemTiers(ITiers _newItemTiers) onlyOwner public {
-        require(address(_newItemTiers) != address(0), "TPR#setItemTiers: INVALID_ITEM_TIERS");
+    function setOracle(IOracle _newOracle) onlyOwner public {
+        require(address(_newOracle) != address(0), "TPR#setOracle: INVALID_ORACLE");
 
-        emit ItemTiersSet(itemTiers, _newItemTiers);
-        itemTiers = _newItemTiers;
+        emit OracleSet(oracle, _newOracle);
+        oracle = _newOracle;
+    }
+
+     /**
+    * @notice Set the item price
+    * @param _newItemPrice - item price
+    */
+    function setItemPrice(uint256 _newItemPrice) onlyOwner public {
+        emit ItemPriceSet(itemPrice, _newItemPrice);
+        
+        itemPrice = _newItemPrice;
     }
 
     /**
@@ -303,31 +319,52 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     /**
     * @notice Buy item slots
-    * @param _thirdPartyId - third parties to be added
-    * @param _tierIndex - index of the tier to be bought
-    * @param _price - price to be paid
+    * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to 
+    * prevent minimum rate slippage
+    * @param _thirdPartyId - third party id
+    * @param _qty - qty of items to be bought
+    * @param _maxPrice - max price to paid
     */
-    function buyItemSlots(string calldata _thirdPartyId, uint256 _tierIndex, uint256 _price)  external {
+    function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice)  external {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
         _checkThirdParty(thirdParty);
 
-        ITiers.Tier memory tier = itemTiers.tiers(_tierIndex);
-        require(tier.value > 0, "TPR#buyItems: INVALID_VALUE_FOR_TIER");
-        require(tier.price == _price, "TPR#buyItems: PRICE_MISMATCH");
+        uint256 rate = oracle.getRate();
 
-        thirdParty.maxItems = thirdParty.maxItems.add(tier.value);
+        uint256 finalPrice = rate.mul(_qty).mul(itemPrice);
 
-        if (tier.price > 0) {
+        require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
+
+        thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+        if (finalPrice > 0) {
             require(
-                acceptedToken.transferFrom(sender, feesCollector, tier.price),
+                acceptedToken.transferFrom(sender, feesCollector, finalPrice),
                 "TPR#buyItems: TRANSFER_FEES_FAILED"
             );
         }
 
-        emit ThirdPartyItemsBought(_thirdPartyId, tier.price, tier.value, sender);
+        emit ThirdPartyItemsBought(_thirdPartyId, finalPrice, _qty, sender);
+    }
+
+    /**
+    * @notice Add item slots
+    * @param _thirdPartyId - third party id
+    * @param _qty - qty of items to be added
+    */
+    function addItemSlots(string calldata _thirdPartyId, uint256 _qty)  external onlyThirdPartyAgregator {
+        address sender = _msgSender();
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+        emit ThirdPartyItemsAdded(_thirdPartyId, _qty, sender);
     }
 
      /**
