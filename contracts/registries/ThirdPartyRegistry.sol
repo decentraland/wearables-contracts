@@ -9,7 +9,7 @@ import "../commons//OwnableInitializable.sol";
 import "../commons//NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
 import "../interfaces/IERC20.sol";
-import "../interfaces/IOracle.sol";
+import "../interfaces/IRateProvider.sol";
 import "../libs/String.sol";
 
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
@@ -66,15 +66,15 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     address public feesCollector;
     ICommittee public committee;
     IERC20  public acceptedToken;
-    uint256 public itemPrice;
-    IOracle public oracle;
+    uint256 public itemSlotPrice;
+    IRateProvider public rateProvider;
 
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, address _caller);
-    event ThirdPartyItemsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
+    event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
     event ThirdPartyItemsAdded(string _thirdPartyId, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
 
@@ -86,8 +86,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
-    event OracleSet(IOracle indexed _oldOracle, IOracle indexed _newOracle);
-    event ItemPriceSet(uint256 _oldItemPrice, uint256 _newItemPrice);
+    event RateProviderSet(IRateProvider indexed _oldRateProvider, IRateProvider indexed _newRateProvider);
+    event ItemSlotPriceSet(uint256 _oldItemSlotPrice, uint256 _newItemSlotPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
 
@@ -98,8 +98,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _feesCollector - fees collector
     * @param _committee - committee smart contract
     * @param _acceptedToken - accepted token
-    * @param _oracle - oracle smart contract
-    * @param _itemPrice - item price
+    * @param _rateProvider - rateProvider smart contract
+    * @param _itemSlotPrice - item price
     */
     constructor(
         address _owner,
@@ -107,8 +107,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         address _feesCollector,
         ICommittee _committee,
         IERC20 _acceptedToken,
-        IOracle _oracle,
-        uint256 _itemPrice
+        IRateProvider _rateProvider,
+        uint256 _itemSlotPrice
     ) {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
@@ -117,10 +117,10 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
-        setOracle(_oracle);
+        setRateProvider(_rateProvider);
         setInitialItemValue(false);
         setInitialThirdPartyValue(true);
-        setItemPrice(_itemPrice);
+        setItemSlotPrice(_itemSlotPrice);
 
         transferOwnership(_owner);
     }
@@ -187,24 +187,24 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
      /**
-    * @notice Set the oracle
-    * @param _newOracle - oracle contract
+    * @notice Set the rate provider
+    * @param _newRateProvider - rate provider contract
     */
-    function setOracle(IOracle _newOracle) onlyOwner public {
-        require(address(_newOracle) != address(0), "TPR#setOracle: INVALID_ORACLE");
+    function setRateProvider(IRateProvider _newRateProvider) onlyOwner public {
+        require(address(_newRateProvider) != address(0), "TPR#setRateProvider: INVALID_RATE_PROVIDER");
 
-        emit OracleSet(oracle, _newOracle);
-        oracle = _newOracle;
+        emit RateProviderSet(rateProvider, _newRateProvider);
+        rateProvider = _newRateProvider;
     }
 
      /**
-    * @notice Set the item price
-    * @param _newItemPrice - item price
+    * @notice Set the item slot price
+    * @param _newItemSlotPrice - item slot price
     */
-    function setItemPrice(uint256 _newItemPrice) onlyOwner public {
-        emit ItemPriceSet(itemPrice, _newItemPrice);
+    function setItemSlotPrice(uint256 _newItemSlotPrice) onlyOwner public {
+        emit ItemSlotPriceSet(itemSlotPrice, _newItemSlotPrice);
         
-        itemPrice = _newItemPrice;
+        itemSlotPrice = _newItemSlotPrice;
     }
 
     /**
@@ -322,19 +322,19 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to 
     * prevent minimum rate slippage
     * @param _thirdPartyId - third party id
-    * @param _qty - qty of items to be bought
+    * @param _qty - qty of item slots to be bought
     * @param _maxPrice - max price to paid
     */
-    function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice)  external {
+    function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
         _checkThirdParty(thirdParty);
 
-        uint256 rate = oracle.getRate();
+        uint256 rate = rateProvider.getRate();
 
-        uint256 finalPrice = rate.mul(_qty).mul(itemPrice);
+        uint256 finalPrice = itemSlotPrice.mul(1 ether).div(rate).mul(_qty);
 
         require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
 
@@ -343,11 +343,11 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         if (finalPrice > 0) {
             require(
                 acceptedToken.transferFrom(sender, feesCollector, finalPrice),
-                "TPR#buyItems: TRANSFER_FEES_FAILED"
+                "TPR#buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
-        emit ThirdPartyItemsBought(_thirdPartyId, finalPrice, _qty, sender);
+        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
     }
 
     /**
