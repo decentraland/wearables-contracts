@@ -334,7 +334,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         uint256 rate = rateProvider.getRate();
 
-        uint256 finalPrice = itemSlotPrice.mul(1 ether).div(rate).mul(_qty);
+        uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 
         require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
 
