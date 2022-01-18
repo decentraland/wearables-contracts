@@ -12,11 +12,11 @@ contract ChainlinkOracle is IOracle {
     using SafeMath for uint256;
 
     AggregatorV3Interface public immutable rateFeed;
-    uint256 public immutable expectedDecimals;
+    uint256 public immutable decimals;
 
-    constructor(AggregatorV3Interface _rateFeed, uint256 _expectedDecimals) {
+    constructor(AggregatorV3Interface _rateFeed, uint256 _decimals) {
         rateFeed = _rateFeed;
-        expectedDecimals = _expectedDecimals;
+        decimals = _decimals;
     }
 
     /**
@@ -24,7 +24,7 @@ contract ChainlinkOracle is IOracle {
      * @return rate in the expected token decimals
      */
     function getRate() external view override returns (uint256) {
-        uint256 decimals = uint256(rateFeed.decimals());
+        uint256 feedDecimals = uint256(rateFeed.decimals());
 
         (, int256 rate, , , ) = rateFeed.latestRoundData();
 
@@ -32,6 +32,6 @@ contract ChainlinkOracle is IOracle {
             revert('ChainlinkOracle#getRate: RATE_BELOW_0');
         }
 
-        return uint256(rate).mul(10**(decimals.sub(expectedDecimals)));
+        return uint256(rate).mul(10**(decimals.sub(feedDecimals)));
     }
 }
