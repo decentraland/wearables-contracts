@@ -5,11 +5,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../commons//OwnableInitializable.sol";
-import "../commons//NativeMetaTransaction.sol";
+import "../commons/OwnableInitializable.sol";
+import "../commons/NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
 import "../interfaces/IERC20.sol";
-import "../interfaces/IRateProvider.sol";
+import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
@@ -67,7 +67,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     ICommittee public committee;
     IERC20  public acceptedToken;
     uint256 public itemSlotPrice;
-    IRateProvider public rateProvider;
+    IOracle public oracle;
 
     bool public initialThirdPartyValue;
     bool public initialItemValue;
@@ -86,7 +86,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
-    event RateProviderSet(IRateProvider indexed _oldRateProvider, IRateProvider indexed _newRateProvider);
+    event OracleSet(IOracle indexed _oldOracle, IOracle indexed _newOracle);
     event ItemSlotPriceSet(uint256 _oldItemSlotPrice, uint256 _newItemSlotPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
@@ -98,7 +98,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _feesCollector - fees collector
     * @param _committee - committee smart contract
     * @param _acceptedToken - accepted token
-    * @param _rateProvider - rateProvider smart contract
+    * @param _oracle - oracle smart contract
     * @param _itemSlotPrice - item price
     */
     constructor(
@@ -107,7 +107,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         address _feesCollector,
         ICommittee _committee,
         IERC20 _acceptedToken,
-        IRateProvider _rateProvider,
+        IOracle _oracle,
         uint256 _itemSlotPrice
     ) {
         _initializeEIP712("Decentraland Third Party Registry", "1");
@@ -117,7 +117,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
-        setRateProvider(_rateProvider);
+        setOracle(_oracle);
         setInitialItemValue(false);
         setInitialThirdPartyValue(true);
         setItemSlotPrice(_itemSlotPrice);
@@ -187,14 +187,14 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
      /**
-    * @notice Set the rate provider
-    * @param _newRateProvider - rate provider contract
+    * @notice Set the oracle
+    * @param _newOracle - oracle contract
     */
-    function setRateProvider(IRateProvider _newRateProvider) onlyOwner public {
-        require(address(_newRateProvider) != address(0), "TPR#setRateProvider: INVALID_RATE_PROVIDER");
+    function setOracle(IOracle _newOracle) onlyOwner public {
+        require(address(_newOracle) != address(0), "TPR#setOracle: INVALID_ORACLE");
 
-        emit RateProviderSet(rateProvider, _newRateProvider);
-        rateProvider = _newRateProvider;
+        emit OracleSet(oracle, _newOracle);
+        oracle = _newOracle;
     }
 
      /**
@@ -332,7 +332,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         _checkThirdParty(thirdParty);
 
-        uint256 rate = rateProvider.getRate();
+        uint256 rate = oracle.getRate();
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 

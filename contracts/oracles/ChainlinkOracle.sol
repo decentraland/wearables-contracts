@@ -5,10 +5,10 @@ pragma experimental ABIEncoderV2;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
-import '../interfaces/IRateProvider.sol';
+import '../interfaces/IOracle.sol';
 import '../interfaces/chainlink/AggregatorV3Interface.sol';
 
-contract ChainlinkRateProvider is IRateProvider {
+contract ChainlinkOracle is IOracle {
     using SafeMath for uint256;
 
     AggregatorV3Interface public immutable rateFeed;
@@ -29,7 +29,7 @@ contract ChainlinkRateProvider is IRateProvider {
         (, int256 rate, , , ) = rateFeed.latestRoundData();
 
         if (rate < 0) {
-            revert('ChainlinkRateProvider#getRate: RATE_BELOW_0');
+            revert('ChainlinkOracle#getRate: RATE_BELOW_0');
         }
 
         return uint256(rate).mul(10**(decimals.sub(expectedDecimals)));
