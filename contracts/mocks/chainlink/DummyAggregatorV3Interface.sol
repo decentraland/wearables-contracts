@@ -3,7 +3,7 @@
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
-import '../interfaces/chainlink/AggregatorV3Interface.sol';
+import '../../interfaces/chainlink/AggregatorV3Interface.sol';
 
 contract DummyAggregatorV3Interface is AggregatorV3Interface {
     uint8 stateDecimals;
