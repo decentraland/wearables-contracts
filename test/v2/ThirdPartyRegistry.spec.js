@@ -20,11 +20,13 @@ const DummyAggregatorV3Interface = artifacts.require(
 )
 
 const BN = web3.utils.BN
+const toBN = web3.utils.toBN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 const domain = 'Decentraland Third Party Registry'
 const version = '1'
 const initialValueForThirdParties = true
 const initialValueForItems = false
+const oneEther = toBN('1000000000000000000')
 const contentHashes = [
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Zv',
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Zd',
@@ -34,7 +36,7 @@ let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
-describe('ThirdPartyRegistry', function () {
+describe.only('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -130,7 +132,7 @@ describe('ThirdPartyRegistry', function () {
       committeeContract.address,
       manaContract.address,
       chainlinkOracleContract.address,
-      web3.utils.toBN(10 ** 18),
+      oneEther,
       fromDeployer
     )
 
@@ -153,7 +155,7 @@ describe('ThirdPartyRegistry', function () {
     THIRD_PARTIES = [thirdParty1, thirdParty2]
   })
 
-  describe('initialize', function () {
+  describe.only('initialize', function () {
     it('should be initialized with correct values', async function () {
       const contract = await ThirdPartyRegistry.new(
         owner,
@@ -162,7 +164,7 @@ describe('ThirdPartyRegistry', function () {
         committeeContract.address,
         manaContract.address,
         chainlinkOracleContract.address,
-        web3.utils.toBN(10 ** 18),
+        oneEther,
         fromDeployer
       )
 
@@ -194,7 +196,7 @@ describe('ThirdPartyRegistry', function () {
       expect(oracle).to.be.equal(chainlinkOracleContract.address)
 
       const itemSlotPrice = await contract.itemSlotPrice()
-      expect(itemSlotPrice).to.be.eq.BN(web3.utils.toBN(10 ** 18))
+      expect(itemSlotPrice).to.be.eq.BN(oneEther)
     })
   })
 
@@ -901,7 +903,7 @@ describe('ThirdPartyRegistry', function () {
     })
   })
 
-  describe('setOracle', function () {
+  describe.only('setOracle', function () {
     it('should set the oracle', async function () {
       let oracle
       let response
@@ -942,6 +944,56 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when trying to set a acceptedToken by hacker', async function () {
       await assertRevert(
         thirdPartyRegistryContract.setOracle(user, fromHacker),
+        'Ownable: caller is not the owner'
+      )
+    })
+  })
+
+  describe.only('setItemSlotPrice', function () {
+    it('should set the oracle', async function () {
+      const twoEther = oneEther.mul(toBN('2'))
+
+      let itemSlotPrice
+      let response
+      let logs
+
+      itemSlotPrice = await thirdPartyRegistryContract.itemSlotPrice()
+      expect(itemSlotPrice).to.be.eq.BN(oneEther)
+
+      response = await thirdPartyRegistryContract.setItemSlotPrice(
+        twoEther,
+        fromOwner
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('ItemSlotPriceSet')
+      expect(logs[0].args._oldItemSlotPrice).to.be.eq.BN(oneEther)
+      expect(logs[0].args._newItemSlotPrice).to.be.eq.BN(twoEther)
+
+      itemSlotPrice = await thirdPartyRegistryContract.itemSlotPrice()
+      expect(itemSlotPrice).to.be.eq.BN(twoEther)
+
+      response = await thirdPartyRegistryContract.setItemSlotPrice(
+        oneEther,
+        fromOwner
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('ItemSlotPriceSet')
+      expect(logs[0].args._oldItemSlotPrice).to.be.eq.BN(twoEther)
+      expect(logs[0].args._newItemSlotPrice).to.be.eq.BN(oneEther)
+
+      itemSlotPrice = await thirdPartyRegistryContract.itemSlotPrice()
+      expect(itemSlotPrice).to.be.eq.BN(oneEther)
+    })
+
+    it('reverts when trying to set a acceptedToken by hacker', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setItemSlotPrice(oneEther, fromHacker),
         'Ownable: caller is not the owner'
       )
     })
