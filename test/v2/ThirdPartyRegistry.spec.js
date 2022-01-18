@@ -14,6 +14,10 @@ import { sendMetaTx } from '../helpers/metaTx'
 const Tiers = artifacts.require('Tiers')
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
+const ChainlinkOracle = artifacts.require('ChainlinkOracle')
+const DummyAggregatorV3Interface = artifacts.require(
+  'DummyAggregatorV3Interface'
+)
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -62,6 +66,8 @@ describe('ThirdPartyRegistry', function () {
   let committeeContract
   let manaContract
   let thirdPartyRegistryContract
+  let chainlinkOracleContract
+  let rateFeedContract
 
   async function createMANA() {
     if (!manaContract) {
@@ -110,13 +116,21 @@ describe('ThirdPartyRegistry', function () {
 
     tiersContract = await Tiers.new(deployer, getInitialTiers())
 
+    rateFeedContract = await DummyAggregatorV3Interface.new(8, 10 ** 8)
+
+    chainlinkOracleContract = await ChainlinkOracle.new(
+      rateFeedContract.address,
+      18
+    )
+
     thirdPartyRegistryContract = await ThirdPartyRegistry.new(
       owner,
       thirdPartyAgregator,
       collector,
       committeeContract.address,
       manaContract.address,
-      tiersContract.address,
+      chainlinkOracleContract.address,
+      web3.utils.toBN(10 ** 18),
       fromDeployer
     )
 
@@ -147,7 +161,8 @@ describe('ThirdPartyRegistry', function () {
         collector,
         committeeContract.address,
         manaContract.address,
-        tiersContract.address,
+        chainlinkOracleContract.address,
+        web3.utils.toBN(10 ** 18),
         fromDeployer
       )
 
@@ -166,9 +181,6 @@ describe('ThirdPartyRegistry', function () {
       const mana = await contract.acceptedToken()
       expect(mana).to.be.equal(manaContract.address)
 
-      const itemTiers = await contract.itemTiers()
-      expect(itemTiers).to.be.equal(tiersContract.address)
-
       const thirdPartiesCount = await contract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(0)
 
@@ -177,6 +189,12 @@ describe('ThirdPartyRegistry', function () {
 
       const initialItemValue = await contract.initialItemValue()
       expect(initialItemValue).to.be.equal(initialValueForItems)
+
+      const oracle = await contract.oracle()
+      expect(oracle).to.be.equal(chainlinkOracleContract.address)
+
+      const itemSlotPrice = await contract.itemSlotPrice()
+      expect(itemSlotPrice).to.be.eq.BN(web3.utils.toBN(10 ** 18))
     })
   })
 
@@ -386,54 +404,6 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when trying to set a committee by hacker', async function () {
       await assertRevert(
         thirdPartyRegistryContract.setCommittee(user, fromHacker),
-        'Ownable: caller is not the owner'
-      )
-    })
-  })
-
-  describe('setItemTiers', async function () {
-    it('should set itemTiers', async function () {
-      let itemTiers = await thirdPartyRegistryContract.itemTiers()
-      expect(itemTiers).to.be.equal(tiersContract.address)
-
-      let res = await thirdPartyRegistryContract.setItemTiers(user, fromOwner)
-
-      let logs = res.logs
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('ItemTiersSet')
-      expect(logs[0].args._oldItemTiers).to.be.equal(tiersContract.address)
-      expect(logs[0].args._newItemTiers).to.be.equal(user)
-
-      itemTiers = await thirdPartyRegistryContract.itemTiers()
-      expect(itemTiers).to.be.equal(user)
-
-      res = await thirdPartyRegistryContract.setItemTiers(
-        tiersContract.address,
-        fromOwner
-      )
-
-      logs = res.logs
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('ItemTiersSet')
-      expect(logs[0].args._oldItemTiers).to.be.equal(user)
-      expect(logs[0].args._newItemTiers).to.be.equal(tiersContract.address)
-
-      itemTiers = await thirdPartyRegistryContract.itemTiers()
-      expect(itemTiers).to.be.equal(tiersContract.address)
-    })
-
-    it('reverts when trying to set the ZERO_ADDRESS as the itemTiers', async function () {
-      await assertRevert(
-        thirdPartyRegistryContract.setItemTiers(ZERO_ADDRESS, fromOwner),
-        'TPR#setItemTiers: INVALID_ITEM_TIERS'
-      )
-    })
-
-    it('reverts when trying to set a itemTiers by hacker', async function () {
-      await assertRevert(
-        thirdPartyRegistryContract.setItemTiers(user, fromHacker),
         'Ownable: caller is not the owner'
       )
     })
@@ -927,6 +897,52 @@ describe('ThirdPartyRegistry', function () {
           version
         ),
         'NMT#executeMetaTransaction: CALL_FAILED'
+      )
+    })
+  })
+
+  describe('setOracle', function () {
+    it('should set the oracle', async function () {
+      let oracle
+      let response
+      let logs
+
+      oracle = await thirdPartyRegistryContract.oracle()
+      expect(oracle).to.be.equal(chainlinkOracleContract.address)
+
+      response = await thirdPartyRegistryContract.setOracle(user, fromOwner)
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('OracleSet')
+      expect(logs[0].args._oldOracle).to.be.equal(oracle)
+      expect(logs[0].args._newOracle).to.be.equal(user)
+
+      response = await thirdPartyRegistryContract.setOracle(oracle, fromOwner)
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+      expect(logs[0].event).to.be.equal('OracleSet')
+      expect(logs[0].args._oldOracle).to.be.equal(user)
+      expect(logs[0].args._newOracle).to.be.equal(oracle)
+
+      oracle = await thirdPartyRegistryContract.oracle()
+      expect(oracle).to.be.equal(chainlinkOracleContract.address)
+    })
+
+    it('reverts when trying to set the ZERO_ADDRESS as the oracle', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setOracle(ZERO_ADDRESS, fromOwner),
+        'TPR#setOracle: INVALID_ORACLE'
+      )
+    })
+
+    it('reverts when trying to set a acceptedToken by hacker', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setOracle(user, fromHacker),
+        'Ownable: caller is not the owner'
       )
     })
   })
