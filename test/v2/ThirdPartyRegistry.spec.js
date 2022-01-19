@@ -1860,270 +1860,482 @@ describe.only('ThirdPartyRegistry', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
-    // it('should buy item slots by paying in acceptedToken :: Relayed EIP721', async function () {
-    //   let thirdPartiesCount =
-    //     await thirdPartyRegistryContract.thirdPartiesCount()
-    //   expect(thirdPartiesCount).to.be.eq.BN(2)
+    it('should buy item slots by paying in acceptedToken :: Relayed EIP721', async function () {
+      let thirdPartiesCount
+      let maxManaToPay
+      let totalManaPaid
+      let amountToBuy
+      let functionSignature
+      let response
+      let logs
+      let thirdPartyId
+      let thirdParty
+      let maxItemsExpected
+      let isManager
+      let itemsCount
 
-    //   let fee = TIERS[0].price
-    //   let value = TIERS[0].value
-    //   let totalFee = fee
-    //   let maxItemsExpected = TIERS[0].value
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
 
-    //   await manaContract.approve(
-    //     thirdPartyRegistryContract.address,
-    //     fee,
-    //     fromUser
-    //   )
+      maxManaToPay = oneEther.div(toBN(2))
 
-    //   const slotsBuyer = await balanceSnap(manaContract, user, 'creator')
-    //   const feeCollectorBalance = await balanceSnap(
-    //     manaContract,
-    //     collector,
-    //     'feeCollector'
-    //   )
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        maxManaToPay,
+        fromUser
+      )
 
-    //   let functionSignature = web3.eth.abi.encodeFunctionCall(
-    //     {
-    //       inputs: [
-    //         {
-    //           internalType: 'string',
-    //           name: '_thirdPartyId',
-    //           type: 'string',
-    //         },
-    //         {
-    //           internalType: 'uint256',
-    //           name: '_tierIndex',
-    //           type: 'uint256',
-    //         },
-    //         {
-    //           internalType: 'uint256',
-    //           name: '_price',
-    //           type: 'uint256',
-    //         },
-    //       ],
-    //       name: 'buyItemSlots',
-    //       outputs: [],
-    //       stateMutability: 'nonpayable',
-    //       type: 'function',
-    //     },
-    //     [thirdParty1[0], 0, fee]
-    //   )
+      const slotsBuyer = await balanceSnap(manaContract, user, 'creator')
 
-    //   let res = await sendMetaTx(
-    //     thirdPartyRegistryContract,
-    //     functionSignature,
-    //     user,
-    //     relayer,
-    //     null,
-    //     domain,
-    //     version
-    //   )
-    //   let logs = res.logs
+      const feeCollectorBalance = await balanceSnap(
+        manaContract,
+        collector,
+        'feeCollector'
+      )
 
-    //   expect(logs.length).to.be.equal(2)
+      amountToBuy = 1
 
-    //   expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-    //   expect(logs[0].args.userAddress).to.be.equal(user)
-    //   expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-    //   expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'uint256',
+              name: '_qty',
+              type: 'uint256',
+            },
+            {
+              internalType: 'uint256',
+              name: '_maxPrice',
+              type: 'uint256',
+            },
+          ],
+          name: 'buyItemSlots',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], amountToBuy, maxManaToPay]
+      )
 
-    //   expect(logs[1].event).to.be.equal('ThirdPartyItemsBought')
-    //   expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
-    //   expect(logs[1].args._price).to.be.eq.BN(fee)
-    //   expect(logs[1].args._value).to.be.eq.BN(value)
-    //   expect(logs[1].args._caller).to.be.eql(user)
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        domain,
+        version
+      )
 
-    //   await slotsBuyer.requireDecrease(totalFee)
-    //   await feeCollectorBalance.requireIncrease(totalFee)
+      logs = response.logs
 
-    //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
-    //   expect(thirdPartiesCount).to.be.eq.BN(2)
+      expect(logs.length).to.be.equal(2)
 
-    //   // Third Party 1
-    //   let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
-    //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(user)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-    //   let thirdParty = await thirdPartyRegistryContract.thirdParties(
-    //     thirdParty1[0]
-    //   )
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsBought')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._price).to.be.eq.BN(maxManaToPay)
+      expect(logs[1].args._value).to.be.eq.BN(amountToBuy)
+      expect(logs[1].args._caller).to.be.eql(user)
 
-    //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
-    //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
-    //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-    //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
-    //   expect(thirdParty.registered).to.be.eq.BN(1)
+      totalManaPaid = maxManaToPay
 
-    //   let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
-    //     thirdParty1[0],
-    //     manager
-    //   )
-    //   expect(isManager).to.be.equal(true)
+      await slotsBuyer.requireDecrease(totalManaPaid)
+      await feeCollectorBalance.requireIncrease(totalManaPaid)
 
-    //   let itemsCount = await thirdPartyRegistryContract.itemsCount(
-    //     thirdParty1[0]
-    //   )
-    //   expect(itemsCount).to.be.eq.BN(0)
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
 
-    //   fee = TIERS[1].price
-    //   value = TIERS[1].value
-    //   totalFee = web3.utils.toBN(Number(totalFee) + Number(fee))
-    //   maxItemsExpected += value
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
 
-    //   await manaContract.approve(
-    //     thirdPartyRegistryContract.address,
-    //     fee,
-    //     fromUser
-    //   )
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
-    //   functionSignature = web3.eth.abi.encodeFunctionCall(
-    //     {
-    //       inputs: [
-    //         {
-    //           internalType: 'string',
-    //           name: '_thirdPartyId',
-    //           type: 'string',
-    //         },
-    //         {
-    //           internalType: 'uint256',
-    //           name: '_tierIndex',
-    //           type: 'uint256',
-    //         },
-    //         {
-    //           internalType: 'uint256',
-    //           name: '_price',
-    //           type: 'uint256',
-    //         },
-    //       ],
-    //       name: 'buyItemSlots',
-    //       outputs: [],
-    //       stateMutability: 'nonpayable',
-    //       type: 'function',
-    //     },
-    //     [thirdParty1[0], 1, fee]
-    //   )
+      maxItemsExpected = amountToBuy
 
-    //   res = await sendMetaTx(
-    //     thirdPartyRegistryContract,
-    //     functionSignature,
-    //     user,
-    //     relayer,
-    //     null,
-    //     domain,
-    //     version
-    //   )
-    //   logs = res.logs
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
 
-    //   expect(logs.length).to.be.equal(2)
+      isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+        thirdParty1[0],
+        manager
+      )
+      expect(isManager).to.be.equal(true)
 
-    //   expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
-    //   expect(logs[0].args.userAddress).to.be.equal(user)
-    //   expect(logs[0].args.relayerAddress).to.be.equal(relayer)
-    //   expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(0)
 
-    //   expect(logs[1].event).to.be.equal('ThirdPartyItemsBought')
-    //   expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
-    //   expect(logs[1].args._price).to.be.eq.BN(fee)
-    //   expect(logs[1].args._value).to.be.eq.BN(value)
-    //   expect(logs[1].args._caller).to.be.eql(user)
+      maxManaToPay = oneEther
 
-    //   await slotsBuyer.requireDecrease(totalFee)
-    //   await feeCollectorBalance.requireIncrease(totalFee)
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        maxManaToPay,
+        fromUser
+      )
 
-    //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
-    //   expect(thirdPartiesCount).to.be.eq.BN(2)
+      amountToBuy = 2
 
-    //   // Third Party 1
-    //   thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
-    //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'uint256',
+              name: '_qty',
+              type: 'uint256',
+            },
+            {
+              internalType: 'uint256',
+              name: '_maxPrice',
+              type: 'uint256',
+            },
+          ],
+          name: 'buyItemSlots',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], amountToBuy, maxManaToPay]
+      )
 
-    //   thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        user,
+        relayer,
+        null,
+        domain,
+        version
+      )
 
-    //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
-    //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
-    //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-    //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
-    //   expect(thirdParty.registered).to.be.eq.BN(1)
+      logs = response.logs
 
-    //   isManager = await thirdPartyRegistryContract.isThirdPartyManager(
-    //     thirdParty1[0],
-    //     manager
-    //   )
-    //   expect(isManager).to.be.equal(true)
+      expect(logs.length).to.be.equal(2)
 
-    //   itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
-    //   expect(itemsCount).to.be.eq.BN(0)
-    // })
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(user)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-    // it('should buy item slots for free', async function () {
-    //   let thirdPartiesCount =
-    //     await thirdPartyRegistryContract.thirdPartiesCount()
-    //   expect(thirdPartiesCount).to.be.eq.BN(2)
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsBought')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._price).to.be.eq.BN(maxManaToPay)
+      expect(logs[1].args._value).to.be.eq.BN(amountToBuy)
+      expect(logs[1].args._caller).to.be.eql(user)
 
-    //   let fee = 0
-    //   let value = TIERS[TIERS.length - 1].value
-    //   let maxItemsExpected = TIERS[TIERS.length - 1].value
+      totalManaPaid = totalManaPaid.add(maxManaToPay)
 
-    //   await manaContract.approve(
-    //     thirdPartyRegistryContract.address,
-    //     fee,
-    //     fromUser
-    //   )
+      await slotsBuyer.requireDecrease(totalManaPaid)
+      await feeCollectorBalance.requireIncrease(totalManaPaid)
 
-    //   const slotsBuyer = await balanceSnap(manaContract, user, 'creator')
-    //   const feeCollectorBalance = await balanceSnap(
-    //     manaContract,
-    //     collector,
-    //     'feeCollector'
-    //   )
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
 
-    //   let res = await thirdPartyRegistryContract.buyItemSlots(
-    //     thirdParty1[0],
-    //     TIERS.length - 1,
-    //     fee,
-    //     fromUser
-    //   )
-    //   let logs = res.logs
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
 
-    //   expect(logs.length).to.be.equal(1)
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
-    //   expect(logs[0].event).to.be.equal('ThirdPartyItemsBought')
-    //   expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
-    //   expect(logs[0].args._price).to.be.eq.BN(fee)
-    //   expect(logs[0].args._value).to.be.eq.BN(value)
-    //   expect(logs[0].args._caller).to.be.eql(user)
+      maxItemsExpected += amountToBuy
 
-    //   await slotsBuyer.requireConstant()
-    //   await feeCollectorBalance.requireConstant()
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
 
-    //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
-    //   expect(thirdPartiesCount).to.be.eq.BN(2)
+      isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+        thirdParty1[0],
+        manager
+      )
+      expect(isManager).to.be.equal(true)
 
-    //   // Third Party 1
-    //   let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
-    //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(0)
 
-    //   let thirdParty = await thirdPartyRegistryContract.thirdParties(
-    //     thirdParty1[0]
-    //   )
+      // -----
 
-    //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
-    //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
-    //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-    //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
-    //   expect(thirdParty.registered).to.be.eq.BN(1)
+      //   let thirdPartiesCount =
+      //     await thirdPartyRegistryContract.thirdPartiesCount()
+      //   expect(thirdPartiesCount).to.be.eq.BN(2)
 
-    //   let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
-    //     thirdParty1[0],
-    //     manager
-    //   )
-    //   expect(isManager).to.be.equal(true)
+      //   let fee = TIERS[0].price
+      //   let value = TIERS[0].value
+      //   let totalFee = fee
+      //   let maxItemsExpected = TIERS[0].value
 
-    //   let itemsCount = await thirdPartyRegistryContract.itemsCount(
-    //     thirdParty1[0]
-    //   )
-    //   expect(itemsCount).to.be.eq.BN(0)
-    // })
+      //   await manaContract.approve(
+      //     thirdPartyRegistryContract.address,
+      //     fee,
+      //     fromUser
+      //   )
+
+      //   const slotsBuyer = await balanceSnap(manaContract, user, 'creator')
+      //   const feeCollectorBalance = await balanceSnap(
+      //     manaContract,
+      //     collector,
+      //     'feeCollector'
+      //   )
+
+      //   let functionSignature = web3.eth.abi.encodeFunctionCall(
+      //     {
+      //       inputs: [
+      //         {
+      //           internalType: 'string',
+      //           name: '_thirdPartyId',
+      //           type: 'string',
+      //         },
+      //         {
+      //           internalType: 'uint256',
+      //           name: '_tierIndex',
+      //           type: 'uint256',
+      //         },
+      //         {
+      //           internalType: 'uint256',
+      //           name: '_price',
+      //           type: 'uint256',
+      //         },
+      //       ],
+      //       name: 'buyItemSlots',
+      //       outputs: [],
+      //       stateMutability: 'nonpayable',
+      //       type: 'function',
+      //     },
+      //     [thirdParty1[0], 0, fee]
+      //   )
+
+      //   let res = await sendMetaTx(
+      //     thirdPartyRegistryContract,
+      //     functionSignature,
+      //     user,
+      //     relayer,
+      //     null,
+      //     domain,
+      //     version
+      //   )
+      //   let logs = res.logs
+
+      //   expect(logs.length).to.be.equal(2)
+
+      //   expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      //   expect(logs[0].args.userAddress).to.be.equal(user)
+      //   expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      //   expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      //   expect(logs[1].event).to.be.equal('ThirdPartyItemsBought')
+      //   expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      //   expect(logs[1].args._price).to.be.eq.BN(fee)
+      //   expect(logs[1].args._value).to.be.eq.BN(value)
+      //   expect(logs[1].args._caller).to.be.eql(user)
+
+      //   await slotsBuyer.requireDecrease(totalFee)
+      //   await feeCollectorBalance.requireIncrease(totalFee)
+
+      //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      //   expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      //   // Third Party 1
+      //   let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      //   let thirdParty = await thirdPartyRegistryContract.thirdParties(
+      //     thirdParty1[0]
+      //   )
+
+      //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      //   expect(thirdParty.registered).to.be.eq.BN(1)
+
+      //   let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+      //     thirdParty1[0],
+      //     manager
+      //   )
+      //   expect(isManager).to.be.equal(true)
+
+      //   let itemsCount = await thirdPartyRegistryContract.itemsCount(
+      //     thirdParty1[0]
+      //   )
+      //   expect(itemsCount).to.be.eq.BN(0)
+
+      //   fee = TIERS[1].price
+      //   value = TIERS[1].value
+      //   totalFee = web3.utils.toBN(Number(totalFee) + Number(fee))
+      //   maxItemsExpected += value
+
+      //   await manaContract.approve(
+      //     thirdPartyRegistryContract.address,
+      //     fee,
+      //     fromUser
+      //   )
+
+      //   functionSignature = web3.eth.abi.encodeFunctionCall(
+      //     {
+      //       inputs: [
+      //         {
+      //           internalType: 'string',
+      //           name: '_thirdPartyId',
+      //           type: 'string',
+      //         },
+      //         {
+      //           internalType: 'uint256',
+      //           name: '_tierIndex',
+      //           type: 'uint256',
+      //         },
+      //         {
+      //           internalType: 'uint256',
+      //           name: '_price',
+      //           type: 'uint256',
+      //         },
+      //       ],
+      //       name: 'buyItemSlots',
+      //       outputs: [],
+      //       stateMutability: 'nonpayable',
+      //       type: 'function',
+      //     },
+      //     [thirdParty1[0], 1, fee]
+      //   )
+
+      //   res = await sendMetaTx(
+      //     thirdPartyRegistryContract,
+      //     functionSignature,
+      //     user,
+      //     relayer,
+      //     null,
+      //     domain,
+      //     version
+      //   )
+      //   logs = res.logs
+
+      //   expect(logs.length).to.be.equal(2)
+
+      //   expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      //   expect(logs[0].args.userAddress).to.be.equal(user)
+      //   expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      //   expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      //   expect(logs[1].event).to.be.equal('ThirdPartyItemsBought')
+      //   expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      //   expect(logs[1].args._price).to.be.eq.BN(fee)
+      //   expect(logs[1].args._value).to.be.eq.BN(value)
+      //   expect(logs[1].args._caller).to.be.eql(user)
+
+      //   await slotsBuyer.requireDecrease(totalFee)
+      //   await feeCollectorBalance.requireIncrease(totalFee)
+
+      //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      //   expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      //   // Third Party 1
+      //   thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      //   thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      //   expect(thirdParty.registered).to.be.eq.BN(1)
+
+      //   isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+      //     thirdParty1[0],
+      //     manager
+      //   )
+      //   expect(isManager).to.be.equal(true)
+
+      //   itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      //   expect(itemsCount).to.be.eq.BN(0)
+      // })
+
+      // it('should buy item slots for free', async function () {
+      //   let thirdPartiesCount =
+      //     await thirdPartyRegistryContract.thirdPartiesCount()
+      //   expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      //   let fee = 0
+      //   let value = TIERS[TIERS.length - 1].value
+      //   let maxItemsExpected = TIERS[TIERS.length - 1].value
+
+      //   await manaContract.approve(
+      //     thirdPartyRegistryContract.address,
+      //     fee,
+      //     fromUser
+      //   )
+
+      //   const slotsBuyer = await balanceSnap(manaContract, user, 'creator')
+      //   const feeCollectorBalance = await balanceSnap(
+      //     manaContract,
+      //     collector,
+      //     'feeCollector'
+      //   )
+
+      //   let res = await thirdPartyRegistryContract.buyItemSlots(
+      //     thirdParty1[0],
+      //     TIERS.length - 1,
+      //     fee,
+      //     fromUser
+      //   )
+      //   let logs = res.logs
+
+      //   expect(logs.length).to.be.equal(1)
+
+      //   expect(logs[0].event).to.be.equal('ThirdPartyItemsBought')
+      //   expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      //   expect(logs[0].args._price).to.be.eq.BN(fee)
+      //   expect(logs[0].args._value).to.be.eq.BN(value)
+      //   expect(logs[0].args._caller).to.be.eql(user)
+
+      //   await slotsBuyer.requireConstant()
+      //   await feeCollectorBalance.requireConstant()
+
+      //   thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      //   expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      //   // Third Party 1
+      //   let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      //   expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      //   let thirdParty = await thirdPartyRegistryContract.thirdParties(
+      //     thirdParty1[0]
+      //   )
+
+      //   expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      //   expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      //   expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      //   expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      //   expect(thirdParty.registered).to.be.eq.BN(1)
+
+      //   let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+      //     thirdParty1[0],
+      //     manager
+      //   )
+      //   expect(isManager).to.be.equal(true)
+
+      //   let itemsCount = await thirdPartyRegistryContract.itemsCount(
+      //     thirdParty1[0]
+      //   )
+      //   expect(itemsCount).to.be.eq.BN(0)
+    })
 
     // it('reverts when the third party is invalid', async function () {
     //   await assertRevert(
