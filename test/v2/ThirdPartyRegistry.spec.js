@@ -5,13 +5,10 @@ import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import {
   THIRD_PARTY_ITEMS,
-  TIERS,
-  getInitialTiers,
   ZERO_ADDRESS,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
-const Tiers = artifacts.require('Tiers')
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
@@ -36,7 +33,7 @@ let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
-describe('ThirdPartyRegistry', function () {
+describe.only('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -64,7 +61,6 @@ describe('ThirdPartyRegistry', function () {
   let fromThirdPartyAgregator
 
   // Contracts
-  let tiersContract
   let committeeContract
   let manaContract
   let thirdPartyRegistryContract
@@ -115,8 +111,6 @@ describe('ThirdPartyRegistry', function () {
       [committeeMember],
       fromDeployer
     )
-
-    tiersContract = await Tiers.new(deployer, getInitialTiers())
 
     rateFeedContract = await DummyAggregatorV3Interface.new(8, 2 * 10 ** 8)
 
@@ -2404,7 +2398,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -2443,7 +2437,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
@@ -2484,7 +2478,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -2566,7 +2560,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let isManager = await thirdPartyRegistryContract.isThirdPartyManager(
@@ -2599,13 +2593,13 @@ describe('ThirdPartyRegistry', function () {
       // Buy 1000 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[3].price,
+        oneEther.mul(toBN('500')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty2[0],
-        3,
-        TIERS[3].price,
+        1000,
+        oneEther.mul(toBN('500')),
         fromUser
       )
 
@@ -2716,7 +2710,7 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('reverts when trying to add an item when there is no slots available', async function () {
-      for (let i = 0; i < TIERS[0].value; i++) {
+      for (let i = 0; i < 10; i++) {
         await thirdPartyRegistryContract.addItems(
           thirdParty1[0],
           [[THIRD_PARTY_ITEMS[0][0] + i, THIRD_PARTY_ITEMS[0][1]]],
@@ -3143,7 +3137,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -3175,7 +3169,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3225,7 +3219,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -3255,7 +3249,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3289,7 +3283,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -3321,7 +3315,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3439,7 +3433,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -3469,7 +3463,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3503,7 +3497,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -3536,7 +3530,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3622,7 +3616,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -3653,7 +3647,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3688,7 +3682,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -3721,7 +3715,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3875,7 +3869,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -3906,7 +3900,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -3941,7 +3935,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -3974,7 +3968,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -4060,7 +4054,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -4091,7 +4085,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -4126,7 +4120,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       let itemsCount = await thirdPartyRegistryContract.itemsCount(
@@ -4159,7 +4153,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -4313,7 +4307,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
@@ -4344,7 +4338,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
       expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
       expect(thirdParty.isApproved).to.be.eql(false)
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
       expect(thirdParty.registered).to.be.eq.BN(1)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
@@ -4495,7 +4489,7 @@ describe('ThirdPartyRegistry', function () {
     const reviewedThirdPartyItems = []
     let tprContract
 
-    for (let i = 0; i < TIERS[0].value; i++) {
+    for (let i = 0; i < 10; i++) {
       itemsToAdd.push([
         THIRD_PARTY_ITEMS[0][0] + i.toString(),
         ...THIRD_PARTY_ITEMS[0].slice(1),
@@ -4747,7 +4741,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.maxItems).to.be.eq.BN(10)
 
       let itemsCount = await tprContract.itemsCount(thirdParty1[0])
-      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+      expect(itemsCount).to.be.eq.BN(10)
 
       // Buy 10 item slots
       await manaContract.approve(
