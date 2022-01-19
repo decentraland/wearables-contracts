@@ -2117,13 +2117,267 @@ describe.only('ThirdPartyRegistry', function () {
 
     it('reverts when the price to pay is higher than the max price provided', async function () {
       await assertRevert(
-        thirdPartyRegistryContract.buyItemSlots(
+        thirdPartyRegistryContract.buyItemSlots(thirdParty1[0], 1, 0, fromUser),
+        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+      )
+    })
+  })
+
+  describe.only('addItemSlots', function () {
+    beforeEach(async () => {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1, thirdParty2],
+        fromThirdPartyAgregator
+      )
+    })
+
+    it('should add items slots a a third party', async function () {
+      let thirdPartiesCount
+      let maxManaToPay
+      let totalManaPaid
+      let amountToAdd
+      let functionSignature
+      let response
+      let logs
+      let thirdPartyId
+      let thirdParty
+      let maxItemsExpected
+      let isManager
+      let itemsCount
+
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      amountToAdd = 1
+
+      response = await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        amountToAdd,
+        fromThirdPartyAgregator
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[0].args._value).to.be.eq.BN(amountToAdd)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
+
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      maxItemsExpected = amountToAdd
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      amountToAdd = 10
+
+      response = await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        amountToAdd,
+        fromThirdPartyAgregator
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[0].args._value).to.be.eq.BN(amountToAdd)
+      expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
+
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      maxItemsExpected += amountToAdd
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+    })
+
+    it('should add items slots a a third party :: Relayed EIP721', async function () {
+      let thirdPartiesCount
+      let maxManaToPay
+      let totalManaPaid
+      let amountToAdd
+      let functionSignature
+      let response
+      let logs
+      let thirdPartyId
+      let thirdParty
+      let maxItemsExpected
+      let isManager
+      let itemsCount
+
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      amountToAdd = 1
+
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'uint256',
+              name: '_qty',
+              type: 'uint256',
+            },
+          ],
+          name: 'addItemSlots',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], amountToAdd]
+      )
+
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        thirdPartyAgregator,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(thirdPartyAgregator)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._value).to.be.eq.BN(amountToAdd)
+      expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
+
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      maxItemsExpected = amountToAdd
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      amountToAdd = 10
+
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'uint256',
+              name: '_qty',
+              type: 'uint256',
+            },
+          ],
+          name: 'addItemSlots',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], amountToAdd]
+      )
+
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        thirdPartyAgregator,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      logs = response.logs
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(thirdPartyAgregator)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._value).to.be.eq.BN(amountToAdd)
+      expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
+
+      // Third Party 1
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      maxItemsExpected += amountToAdd
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(maxItemsExpected)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+    })
+
+    it('reverts when sender is not the third party aggregator', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItemSlots(
           thirdParty1[0],
           1,
-          0,
           fromUser
         ),
-        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+        'TPR#onlyThirdPartyAgregator: CALLER_IS_NOT_THE_PARTY_AGREGATOR'
+      )
+    })
+
+    it('reverts when the third party is invalid', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.addItemSlots(
+          thirdParty1[0] + 'a',
+          1,
+          fromThirdPartyAgregator
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
       )
     })
   })
