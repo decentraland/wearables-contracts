@@ -33,7 +33,7 @@ let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
