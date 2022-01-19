@@ -36,7 +36,7 @@ let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -2123,7 +2123,7 @@ describe.only('ThirdPartyRegistry', function () {
     })
   })
 
-  describe.only('addItemSlots', function () {
+  describe('addItemSlots', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
@@ -2131,7 +2131,7 @@ describe.only('ThirdPartyRegistry', function () {
       )
     })
 
-    it('should add items slots a a third party', async function () {
+    it('should add item slots a a third party', async function () {
       let thirdPartiesCount
       let maxManaToPay
       let totalManaPaid
@@ -2214,7 +2214,7 @@ describe.only('ThirdPartyRegistry', function () {
       expect(thirdParty.registered).to.be.eq.BN(1)
     })
 
-    it('should add items slots a a third party :: Relayed EIP721', async function () {
+    it('should add item slots a a third party :: Relayed EIP721', async function () {
       let thirdPartiesCount
       let maxManaToPay
       let totalManaPaid
@@ -2361,11 +2361,7 @@ describe.only('ThirdPartyRegistry', function () {
 
     it('reverts when sender is not the third party aggregator', async function () {
       await assertRevert(
-        thirdPartyRegistryContract.addItemSlots(
-          thirdParty1[0],
-          1,
-          fromUser
-        ),
+        thirdPartyRegistryContract.addItemSlots(thirdParty1[0], 1, fromUser),
         'TPR#onlyThirdPartyAgregator: CALLER_IS_NOT_THE_PARTY_AGREGATOR'
       )
     })
@@ -2394,13 +2390,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromUser
       )
     })
@@ -2691,13 +2687,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 1000 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[3].price,
+        oneEther.mul(toBN('25')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        3,
-        TIERS[3].price,
+        50,
+        oneEther.mul(toBN('25')),
         fromUser
       )
 
@@ -2809,13 +2805,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromUser
       )
 
@@ -3103,13 +3099,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromUser
       )
 
@@ -3122,13 +3118,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty2[0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromUser
       )
 
@@ -4384,13 +4380,13 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 1000 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        TIERS[3].price,
+        oneEther.mul('25'),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        3,
-        TIERS[3].price,
+        50,
+        oneEther.mul('25'),
         fromUser
       )
 
@@ -4522,7 +4518,8 @@ describe.only('ThirdPartyRegistry', function () {
         collector,
         committeeContract.address,
         manaContract.address,
-        tiersContract.address,
+        chainlinkOracleContract.address,
+        oneEther,
         fromDeployer
       )
 
@@ -4591,19 +4588,19 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         tprContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromManager
       )
 
       await tprContract.buyItemSlots(
         THIRD_PARTIES[0][0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromManager
       )
 
       const thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value)
+      expect(thirdParty.maxItems).to.be.eq.BN(10)
 
       const itemsCount = await tprContract.itemsCount(thirdParty1[0])
       expect(itemsCount).to.be.eq.BN(0)
@@ -4764,27 +4761,27 @@ describe.only('ThirdPartyRegistry', function () {
       // Buy 10 item slots
       await manaContract.approve(
         tprContract.address,
-        TIERS[0].price,
+        oneEther.mul(toBN('5')),
         fromManager
       )
 
       await tprContract.buyItemSlots(
         THIRD_PARTIES[0][0],
-        0,
-        TIERS[0].price,
+        10,
+        oneEther.mul(toBN('5')),
         fromManager
       )
 
       thirdParty = await tprContract.thirdParties(THIRD_PARTIES[0][0])
-      expect(thirdParty.maxItems).to.be.eq.BN(TIERS[0].value * 2)
+      expect(thirdParty.maxItems).to.be.eq.BN(20)
 
       itemsCount = await tprContract.itemsCount(thirdParty1[0])
-      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+      expect(itemsCount).to.be.eq.BN(10)
     })
 
     it('should add 5 items to thirdparty1', async function () {
       let itemsCount = await tprContract.itemsCount(THIRD_PARTIES[0][0])
-      expect(itemsCount).to.be.eq.BN(TIERS[0].value)
+      expect(itemsCount).to.be.eq.BN(10)
 
       for (let i = 0; i < 5; i++) {
         itemsToAdd.push([
