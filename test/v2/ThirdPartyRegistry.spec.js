@@ -2133,17 +2133,12 @@ describe('ThirdPartyRegistry', function () {
 
     it('should add item slots a a third party', async function () {
       let thirdPartiesCount
-      let maxManaToPay
-      let totalManaPaid
       let amountToAdd
-      let functionSignature
       let response
       let logs
       let thirdPartyId
       let thirdParty
       let maxItemsExpected
-      let isManager
-      let itemsCount
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -2216,8 +2211,6 @@ describe('ThirdPartyRegistry', function () {
 
     it('should add item slots a a third party :: Relayed EIP721', async function () {
       let thirdPartiesCount
-      let maxManaToPay
-      let totalManaPaid
       let amountToAdd
       let functionSignature
       let response
@@ -2225,8 +2218,6 @@ describe('ThirdPartyRegistry', function () {
       let thirdPartyId
       let thirdParty
       let maxItemsExpected
-      let isManager
-      let itemsCount
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -4380,13 +4371,13 @@ describe('ThirdPartyRegistry', function () {
       // Buy 1000 item slots
       await manaContract.approve(
         thirdPartyRegistryContract.address,
-        oneEther.mul('25'),
+        oneEther.mul(toBN('500')),
         fromUser
       )
       await thirdPartyRegistryContract.buyItemSlots(
         thirdParty1[0],
-        50,
-        oneEther.mul('25'),
+        1000,
+        oneEther.mul(toBN('500')),
         fromUser
       )
 
