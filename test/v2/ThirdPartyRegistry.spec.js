@@ -36,7 +36,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
