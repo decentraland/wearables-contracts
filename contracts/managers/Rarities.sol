@@ -3,10 +3,10 @@
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
-import '../interfaces/ICollectionManager.sol';
-import '../commons/OwnableInitializable.sol';
-import '../commons/NativeMetaTransaction.sol';
-import '../libs/String.sol';
+import "../interfaces/ICollectionManager.sol";
+import "../commons/OwnableInitializable.sol";
+import "../commons/NativeMetaTransaction.sol";
+import "../libs/String.sol";
 
 contract Rarities is OwnableInitializable, NativeMetaTransaction {
     using String for string;
@@ -25,30 +25,25 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
     event AddRarity(Rarity _rarity);
     event UpdatePrice(string _name, uint256 _price);
 
-    /**
-     * @notice Create the contract
-     * @param _owner - owner of the contract
-     */
-    constructor(address _owner, Rarity[] memory _rarities) {
+
+   /**
+    * @notice Create the contract
+    * @param _owner - owner of the contract
+    */
+    constructor(address _owner,  Rarity[] memory _rarities) {
         // EIP712 init
         _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init
         _initOwnable();
         transferOwnership(_owner);
 
-        for (uint256 i = 0; i < _rarities.length; i++) {
+        for (uint256 i = 0 ; i < _rarities.length; i++) {
             _addRarity(_rarities[i]);
         }
     }
 
-    function updatePrices(string[] calldata _names, uint256[] calldata _prices)
-        external
-        onlyOwner
-    {
-        require(
-            _names.length == _prices.length,
-            'Rarities#updatePrices: LENGTH_MISMATCH'
-        );
+    function updatePrices(string[] calldata _names, uint256[] calldata _prices) external onlyOwner {
+        require(_names.length == _prices.length, "Rarities#updatePrices: LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < _names.length; i++) {
             string memory name = _names[i];
@@ -56,10 +51,7 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
             bytes32 rarityKey = keccak256(bytes(name.toLowerCase()));
             uint256 index = rarityIndex[rarityKey];
 
-            require(
-                rarityIndex[rarityKey] > 0,
-                'Rarities#updatePrices: INVALID_RARITY'
-            );
+            require(rarityIndex[rarityKey] > 0, "Rarities#updatePrices: INVALID_RARITY");
 
             rarities[index - 1].price = price;
 
@@ -75,16 +67,10 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
 
     function _addRarity(Rarity memory _rarity) internal {
         uint256 rarityLength = bytes(_rarity.name).length;
-        require(
-            rarityLength > 0 && rarityLength <= 32,
-            'Rarities#_addRarity: INVALID_LENGTH'
-        );
+        require(rarityLength > 0 && rarityLength <= 32, "Rarities#_addRarity: INVALID_LENGTH");
 
         bytes32 rarityKey = keccak256(bytes(_rarity.name.toLowerCase()));
-        require(
-            rarityIndex[rarityKey] == 0,
-            'Rarities#_addRarity: RARITY_ALREADY_ADDED'
-        );
+        require(rarityIndex[rarityKey] == 0, "Rarities#_addRarity: RARITY_ALREADY_ADDED");
 
         rarities.push(_rarity);
 
@@ -106,19 +92,12 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
      * @dev will revert if the rarity is out of bounds
      * @return rarity for the given index
      */
-    function getRarityByName(string memory _rarity)
-        public
-        view
-        returns (Rarity memory)
-    {
+    function getRarityByName(string memory _rarity) public view returns (Rarity memory) {
         bytes32 rarityKey = keccak256(bytes(_rarity.toLowerCase()));
 
         uint256 index = rarityIndex[rarityKey];
 
-        require(
-            rarityIndex[rarityKey] > 0,
-            'Rarities#getRarityByName: INVALID_RARITY'
-        );
+        require(rarityIndex[rarityKey] > 0, "Rarities#getRarityByName: INVALID_RARITY");
 
         return rarities[index - 1];
     }
