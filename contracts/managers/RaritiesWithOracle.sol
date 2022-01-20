@@ -34,8 +34,8 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
 
     /**
      * @notice Create the contract
-     * @dev Rarity price is the price of a rarity in in the rate returned by the oracle.
-     *      For example if the oracle returns the rate of USD by MANA and the price of the rarity
+     * @dev Rarity price is the price of a rarity in the rate returned by the oracle.
+     *      For example if the oracle returns the rate of USD by MANA, then the price of the rarity
      *      has to be in USD
      * @param _owner - owner of the contract
      */
@@ -133,8 +133,8 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
     /**
      * @notice Returns a rarity with the price updated to reflect its price
      *         in the expected token. For example, the price is set in USD 
-     *         but it has to be paid in MANA so price will be returned in 
-     *         MANA instead.
+     *         but it has to be paid in MANA so the price will be returned 
+     *         rated in MANA instead.
      * @dev will revert if the rarity is out of bounds
      * @return rarity for the given index
      */
