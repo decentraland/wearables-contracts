@@ -31,6 +31,9 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
 
     /**
      * @notice Create the contract
+     * @dev Rarity price is the price of a rarity in in the rate returned by the oracle.
+     *      For example if the oracle returns the rate of USD by MANA and the price of the rarity
+     *      has to be in USD
      * @param _owner - owner of the contract
      */
     constructor(
