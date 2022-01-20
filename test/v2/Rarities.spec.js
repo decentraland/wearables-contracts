@@ -5,17 +5,14 @@ import {
   DEFAULT_RARITY_PRICE,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
-
 const Rarities = artifacts.require('Rarities')
-const ChainlinkOracle = artifacts.require('ChainlinkOracle')
-const AggregatorV3Interface = artifacts.require('DummyAggregatorV3Interface')
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 const domain = 'Decentraland Rarities'
 const version = '1'
 
-describe.only('Rarities', function () {
+describe('Rarities', function () {
   this.timeout(100000)
 
   // Accounts
@@ -31,8 +28,6 @@ describe.only('Rarities', function () {
   let fromRelayer
 
   // Contracts
-  let aggregatorV3interfaceContract
-  let chainlinkOracleContract
   let raritiesContract
 
   beforeEach(async function () {
@@ -47,33 +42,12 @@ describe.only('Rarities', function () {
     fromRelayer = { from: relayer }
     fromDeployer = { from: deployer }
 
-    aggregatorV3interfaceContract = await AggregatorV3Interface.new(
-      8,
-      2 * 10 ** 8,
-      fromDeployer
-    )
-
-    chainlinkOracleContract = await ChainlinkOracle.new(
-      aggregatorV3interfaceContract.address,
-      18,
-      fromDeployer
-    )
-
-    raritiesContract = await Rarities.new(
-      deployer,
-      getInitialRarities(),
-      chainlinkOracleContract.address,
-      fromDeployer
-    )
+    raritiesContract = await Rarities.new(deployer, getInitialRarities())
   })
 
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
-      const contract = await Rarities.new(
-        deployer,
-        getInitialRarities(),
-        chainlinkOracleContract.address
-      )
+      const contract = await Rarities.new(deployer, getInitialRarities())
 
       const owner = await contract.owner()
       expect(owner).to.be.equal(deployer)
@@ -87,37 +61,6 @@ describe.only('Rarities', function () {
         expect(rarity.maxSupply).to.be.eq.BN(RARITIES[rarity.name].value)
         expect(rarity.price).to.be.eq.BN(DEFAULT_RARITY_PRICE)
       }
-
-      const oracle = await contract.oracle()
-      expect(oracle).to.be.equal(chainlinkOracleContract.address)
-    })
-  })
-
-  describe('setOracle', function () {
-    it('should update the oracle with the provided one', async function () {
-      const newOracle = user
-      const response = await raritiesContract.setOracle(newOracle, fromDeployer)
-
-      // Check events
-      const { logs } = response
-
-      expect(logs.length).to.be.equal(1)
-      expect(logs[0].event).to.be.equal('OracleSet')
-      expect(logs[0].args._oldOracle).to.be.equal(
-        chainlinkOracleContract.address
-      )
-      expect(logs[0].args._newOracle).to.be.equal(user)
-
-      // Check new oracle
-      const oracle = await raritiesContract.oracle()
-      expect(oracle).to.be.equal(newOracle)
-    })
-
-    it('should revert when the sender is not owner', async function () {
-      await assertRevert(
-        raritiesContract.setOracle(user, fromHacker),
-        'Ownable: caller is not the owner'
-      )
     })
   })
 

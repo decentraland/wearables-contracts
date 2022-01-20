@@ -4,7 +4,6 @@ pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 import '../interfaces/ICollectionManager.sol';
-import '../interfaces/IOracle.sol';
 import '../commons/OwnableInitializable.sol';
 import '../commons/NativeMetaTransaction.sol';
 import '../libs/String.sol';
@@ -23,48 +22,23 @@ contract Rarities is OwnableInitializable, NativeMetaTransaction {
     /// @dev indexes will start in 1
     mapping(bytes32 => uint256) rarityIndex;
 
-    IOracle public oracle;
-
     event AddRarity(Rarity _rarity);
     event UpdatePrice(string _name, uint256 _price);
-    event OracleSet(IOracle indexed _oldOracle, IOracle indexed _newOracle);
 
     /**
      * @notice Create the contract
-     * @dev Rarity price is the price of a rarity in in the rate returned by the oracle.
-     *      For example if the oracle returns the rate of USD by MANA and the price of the rarity
-     *      has to be in USD
      * @param _owner - owner of the contract
      */
-    constructor(
-        address _owner,
-        Rarity[] memory _rarities,
-        IOracle _oracle
-    ) {
+    constructor(address _owner, Rarity[] memory _rarities) {
         // EIP712 init
         _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init
         _initOwnable();
         transferOwnership(_owner);
-        setOracle(_oracle);
 
         for (uint256 i = 0; i < _rarities.length; i++) {
             _addRarity(_rarities[i]);
         }
-    }
-
-    /**
-     * @notice Set the oracle
-     * @param _newOracle - oracle contract
-     */
-    function setOracle(IOracle _newOracle) public onlyOwner {
-        require(
-            address(_newOracle) != address(0),
-            'Rarities#setOracle: INVALID_ORACLE'
-        );
-
-        emit OracleSet(oracle, _newOracle);
-        oracle = _newOracle;
     }
 
     function updatePrices(string[] calldata _names, uint256[] calldata _prices)
