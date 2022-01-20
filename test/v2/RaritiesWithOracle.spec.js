@@ -3,6 +3,7 @@ import {
   RARITIES,
   getInitialRarities,
   DEFAULT_RARITY_PRICE,
+  SECONDARY_RARITY_PRICE,
 } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 
@@ -10,12 +11,20 @@ const RaritiesWithOracle = artifacts.require('RaritiesWithOracle')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
 const AggregatorV3Interface = artifacts.require('DummyAggregatorV3Interface')
 
-const BN = web3.utils.BN
+const { BN, toBN } = web3.utils
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 const domain = 'Decentraland Rarities'
 const version = '1'
 
-describe.only('RaritiesWithOracle', function () {
+const conversionRate = 2
+
+const getPriceAfterRate = (price) =>
+  toBN(price).div(toBN(conversionRate.toString()))
+
+const defaultRarityPriceAfterRate = getPriceAfterRate(DEFAULT_RARITY_PRICE)
+const secondaryRarityPriceAfterRate = getPriceAfterRate(SECONDARY_RARITY_PRICE)
+
+describe('RaritiesWithOracle', function () {
   this.timeout(100000)
 
   // Accounts
@@ -49,7 +58,7 @@ describe.only('RaritiesWithOracle', function () {
 
     aggregatorV3interfaceContract = await AggregatorV3Interface.new(
       8,
-      2 * 10 ** 8,
+      conversionRate * 10 ** 8,
       fromDeployer
     )
 
@@ -133,12 +142,12 @@ describe.only('RaritiesWithOracle', function () {
 
         expect(rarity.name).to.be.equal(RARITIES[rarityName].name)
         expect(rarity.maxSupply).to.be.eq.BN(RARITIES[rarityName].value)
-        expect(rarity.price).to.be.eq.BN(DEFAULT_RARITY_PRICE)
+        expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
       }
     })
 
     it('should get rarity by using special characters', async function () {
-      const newRarity = ['newrarity-V2', '4', '2']
+      const newRarity = ['newrarity-V2', '4', DEFAULT_RARITY_PRICE]
 
       await raritiesContract.addRarities([newRarity], fromDeployer)
       const inputs = [
@@ -152,7 +161,7 @@ describe.only('RaritiesWithOracle', function () {
 
         expect(rarity.name).to.be.equal(newRarity[0])
         expect(rarity.maxSupply).to.be.eq.BN(newRarity[1])
-        expect(rarity.price).to.be.eq.BN(newRarity[2])
+        expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
       }
     })
 
@@ -165,8 +174,8 @@ describe.only('RaritiesWithOracle', function () {
   })
 
   describe('addRarity', function () {
-    const newRarity1 = ['newrarity1', '2', '1']
-    const newRarity2 = ['newrarity2', '4', '2']
+    const newRarity1 = ['newrarity1', '2', DEFAULT_RARITY_PRICE]
+    const newRarity2 = ['newrarity2', '4', SECONDARY_RARITY_PRICE]
 
     it('should add a rarity', async function () {
       let raritiesCount = await raritiesContract.raritiesCount()
@@ -187,7 +196,7 @@ describe.only('RaritiesWithOracle', function () {
       const rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
     })
 
     it('should add rarities', async function () {
@@ -212,12 +221,12 @@ describe.only('RaritiesWithOracle', function () {
       let rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+      expect(rarity.price).to.be.eq.BN(secondaryRarityPriceAfterRate)
     })
 
     it('should add rarities :: Relayed EIP721', async function () {
@@ -287,16 +296,16 @@ describe.only('RaritiesWithOracle', function () {
       let rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+      expect(rarity.price).to.be.eq.BN(secondaryRarityPriceAfterRate)
     })
 
     it('should accept a rarity with a mix of characters in the name', async function () {
-      const newRarity = ['newRarity-v2', '2', '1']
+      const newRarity = ['newRarity-v2', '2', DEFAULT_RARITY_PRICE]
 
       let raritiesCount = await raritiesContract.raritiesCount()
       expect(raritiesCount).to.be.eq.BN(7)
@@ -316,7 +325,7 @@ describe.only('RaritiesWithOracle', function () {
       const rarity = await raritiesContract.getRarityByName(newRarity[0])
       expect(rarity.name).to.be.equal(newRarity[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity[1])
-      expect(rarity.price).to.be.eq.BN(newRarity[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
     })
 
     it('reverts when trying to add an already added rarity', async function () {
@@ -404,10 +413,10 @@ describe.only('RaritiesWithOracle', function () {
   })
 
   describe('updatePrice', function () {
-    const newRarity1 = ['newrarity1', '2', '1']
-    const newRarity2 = ['newrarity-V2', '4', '2']
+    const newRarity1 = ['newrarity1', '2', DEFAULT_RARITY_PRICE]
+    const newRarity2 = ['newrarity-V2', '4', DEFAULT_RARITY_PRICE]
 
-    const newPrice1 = '10'
+    const newPrice1 = SECONDARY_RARITY_PRICE
     const newPrice2 = '0'
 
     beforeEach(async () => {
@@ -418,7 +427,7 @@ describe.only('RaritiesWithOracle', function () {
       let rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       const { logs } = await raritiesContract.updatePrices(
         [newRarity1[0]],
@@ -433,19 +442,19 @@ describe.only('RaritiesWithOracle', function () {
       rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newPrice1)
+      expect(rarity.price).to.be.eq.BN(secondaryRarityPriceAfterRate)
     })
 
     it("should update rarities' prices", async function () {
       let rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       const { logs } = await raritiesContract.updatePrices(
         [newRarity1[0], newRarity2[0]],
@@ -464,24 +473,24 @@ describe.only('RaritiesWithOracle', function () {
       rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newPrice1)
+      expect(rarity.price).to.be.eq.BN(secondaryRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newPrice2)
+      expect(rarity.price).to.be.eq.BN(0)
     })
 
     it("should update rarities' prices :: Relayed EIP721", async function () {
       let rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newRarity1[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newRarity2[2])
+      expect(rarity.price).to.be.eq.BN(defaultRarityPriceAfterRate)
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
@@ -536,12 +545,12 @@ describe.only('RaritiesWithOracle', function () {
       rarity = await raritiesContract.getRarityByName(newRarity1[0])
       expect(rarity.name).to.be.equal(newRarity1[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity1[1])
-      expect(rarity.price).to.be.eq.BN(newPrice1)
+      expect(rarity.price).to.be.eq.BN(secondaryRarityPriceAfterRate)
 
       rarity = await raritiesContract.getRarityByName(newRarity2[0])
       expect(rarity.name).to.be.equal(newRarity2[0])
       expect(rarity.maxSupply).to.be.eq.BN(newRarity2[1])
-      expect(rarity.price).to.be.eq.BN(newPrice2)
+      expect(rarity.price).to.be.eq.BN(0)
     })
 
     it("reverts when params' length mismatch", async function () {
