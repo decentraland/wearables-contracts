@@ -3,6 +3,8 @@
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 import '../interfaces/ICollectionManager.sol';
 import '../interfaces/IOracle.sol';
 import '../commons/OwnableInitializable.sol';
@@ -11,6 +13,7 @@ import '../libs/String.sol';
 
 contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
     using String for string;
+    using SafeMath for uint256;
 
     struct Rarity {
         string name;
@@ -128,7 +131,10 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
     }
 
     /**
-     * @notice Returns a rarity
+     * @notice Returns a rarity with the price updated to reflect its price
+     *         in the expected token. For example, the price is set in USD 
+     *         but it has to be paid in MANA so price will be returned in 
+     *         MANA instead.
      * @dev will revert if the rarity is out of bounds
      * @return rarity for the given index
      */
@@ -146,6 +152,14 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
             'Rarities#getRarityByName: INVALID_RARITY'
         );
 
-        return rarities[index - 1];
+        Rarity memory rarity = rarities[index - 1];
+
+        uint256 originalPrice = rarity.price;
+        uint256 rate = oracle.getRate();
+        uint256 finalPrice = originalPrice.mul(1 ether).div(rate);
+
+        rarity.price = finalPrice;
+
+        return rarity;
     }
 }
