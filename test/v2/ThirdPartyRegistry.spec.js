@@ -2134,7 +2134,7 @@ describe('ThirdPartyRegistry', function () {
 
       expect(logs.length).to.be.equal(1)
 
-      expect(logs[0].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[0].event).to.be.equal('ThirdPartyItemSlotsAdded')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._value).to.be.eq.BN(slotsToAddOrBuy)
       expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
@@ -2166,7 +2166,7 @@ describe('ThirdPartyRegistry', function () {
 
       expect(logs.length).to.be.equal(1)
 
-      expect(logs[0].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[0].event).to.be.equal('ThirdPartyItemSlotsAdded')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._value).to.be.eq.BN(slotsToAddOrBuy)
       expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
@@ -2239,7 +2239,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args.relayerAddress).to.be.equal(relayer)
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-      expect(logs[1].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsAdded')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._value).to.be.eq.BN(slotsToAddOrBuy)
       expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
@@ -2302,7 +2302,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args.relayerAddress).to.be.equal(relayer)
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-      expect(logs[1].event).to.be.equal('ThirdPartyItemsAdded')
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsAdded')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._value).to.be.eq.BN(slotsToAddOrBuy)
       expect(logs[1].args._caller).to.be.eql(thirdPartyAgregator)
