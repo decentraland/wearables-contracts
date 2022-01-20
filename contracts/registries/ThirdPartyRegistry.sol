@@ -478,7 +478,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     /**
     * @notice Returns the count of third parties
-    * @return Count of tiers
+    * @return Count of third parties
     */
     function thirdPartiesCount() external view returns (uint256) {
         return thirdPartyIds.length;
