@@ -1,5 +1,7 @@
+import hr from 'hardhat'
+
 async function main() {
-  // TODO: Add something to verify if necessary
+  await hr.run('verify:verify', {})
 }
 
 main()
