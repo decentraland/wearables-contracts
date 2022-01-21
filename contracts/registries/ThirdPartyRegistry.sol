@@ -332,7 +332,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         _checkThirdParty(thirdParty);
 
-        uint256 rate = oracle.getRate();
+        uint256 rate = _getRateFromOracle();
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 
@@ -514,6 +514,21 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     */
     function itemsById(string memory _thirdPartyId, string memory _itemId) external view returns (Item memory) {
         return thirdParties[_thirdPartyId].items[_itemId];
+    }
+
+    /**
+    * @dev Safely call Oracle.getRate
+    * @return Rate
+    */
+    function _getRateFromOracle() internal view returns(uint256) {
+        /* solium-disable-next-line */
+        (bool success, bytes memory data) = address(oracle).staticcall(
+            abi.encodeWithSelector(oracle.getRate.selector)
+        );
+
+        require(success, "TPR#_getRateFromOracle: INVALID_RATE_FROM_ORACLE");
+
+        return abi.decode(data, (uint256));
     }
 
     /**

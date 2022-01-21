@@ -20,7 +20,7 @@ beforeEach(async function () {
   )
 })
 
-describe.only('ChainlinkOracle', function () {
+describe('ChainlinkOracle', function () {
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
       const chainlinkOracleContract = await ChainlinkOracle.new(

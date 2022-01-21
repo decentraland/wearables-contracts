@@ -9,6 +9,7 @@ import { sendMetaTx } from '../helpers/metaTx'
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
+const InvalidOracle = artifacts.require('DummyInvalidOracle')
 const DummyAggregatorV3Interface = artifacts.require(
   'DummyAggregatorV3Interface'
 )
@@ -36,7 +37,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -2101,6 +2102,36 @@ describe.only('ThirdPartyRegistry', function () {
           fromUser
         ),
         'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+      )
+    })
+
+    it('reverts when oracle.getRate attempts to change the state', async function () {
+      const oracleContract = await InvalidOracle.new()
+
+      thirdPartyRegistryContract = await ThirdPartyRegistry.new(
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        oracleContract.address,
+        oneEther,
+        fromDeployer
+      )
+
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.buyItemSlots(
+          thirdParty1[0],
+          slotsToAddOrBuy,
+          priceOfSlotsToBuy,
+          fromUser
+        ),
+        'TPR#_getRateFromOracle: INVALID_RATE_FROM_ORACLE'
       )
     })
   })
