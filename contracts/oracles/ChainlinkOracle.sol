@@ -11,16 +11,16 @@ import '../interfaces/chainlink/AggregatorV3Interface.sol';
 contract ChainlinkOracle is IOracle {
     using SafeMath for uint256;
 
-    AggregatorV3Interface public immutable rateFeed;
+    AggregatorV3Interface public immutable dataFeed;
     uint256 public immutable decimals;
 
     /**
      * @notice Create the contract
-     * @param _rateFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
+     * @param _dataFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
      * @param _decimals - amount of decimals the rate should be returned with
      */
-    constructor(AggregatorV3Interface _rateFeed, uint256 _decimals) {
-        rateFeed = _rateFeed;
+    constructor(AggregatorV3Interface _dataFeed, uint256 _decimals) {
+        dataFeed = _dataFeed;
         decimals = _decimals;
     }
 
@@ -29,9 +29,9 @@ contract ChainlinkOracle is IOracle {
      * @return rate in the expected token decimals
      */
     function getRate() external view override returns (uint256) {
-        uint256 feedDecimals = uint256(rateFeed.decimals());
+        uint256 feedDecimals = uint256(dataFeed.decimals());
 
-        (, int256 rate, , , ) = rateFeed.latestRoundData();
+        (, int256 rate, , , ) = dataFeed.latestRoundData();
 
         if (rate < 0) {
             revert('ChainlinkOracle#getRate: RATE_BELOW_0');

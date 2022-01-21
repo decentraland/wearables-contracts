@@ -11,25 +11,25 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 const oracleContractDecimals = 18
 const feedContractDecimals = 8
 
-let rateFeedContract
+let dataFeedContract
 
 beforeEach(async function () {
-  rateFeedContract = await DummyAggregatorV3Interface.new(
+  dataFeedContract = await DummyAggregatorV3Interface.new(
     feedContractDecimals,
     10 ** feedContractDecimals
   )
 })
 
-describe('ChainlinkOracle', function () {
+describe.only('ChainlinkOracle', function () {
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
       const chainlinkOracleContract = await ChainlinkOracle.new(
-        rateFeedContract.address,
+        dataFeedContract.address,
         oracleContractDecimals
       )
 
-      const rateFeed = await chainlinkOracleContract.rateFeed()
-      expect(rateFeed).to.be.equal(rateFeedContract.address)
+      const dataFeed = await chainlinkOracleContract.dataFeed()
+      expect(dataFeed).to.be.equal(dataFeedContract.address)
 
       const decimals = await chainlinkOracleContract.decimals()
       expect(decimals).to.eq.BN(oracleContractDecimals)
@@ -39,7 +39,7 @@ describe('ChainlinkOracle', function () {
   describe('getRate', function () {
     it('should return the rate', async function () {
       const chainlinkOracleContract = await ChainlinkOracle.new(
-        rateFeedContract.address,
+        dataFeedContract.address,
         oracleContractDecimals
       )
 
@@ -49,12 +49,12 @@ describe('ChainlinkOracle', function () {
     })
 
     it('should revert when feed answer is negative', async function () {
-      const rateFeedContract = await DummyAggregatorV3Interface.new(
+      const dataFeedContract = await DummyAggregatorV3Interface.new(
         feedContractDecimals,
         10 ** feedContractDecimals * -1
       )
       const chainlinkOracleContract = await ChainlinkOracle.new(
-        rateFeedContract.address,
+        dataFeedContract.address,
         oracleContractDecimals
       )
 

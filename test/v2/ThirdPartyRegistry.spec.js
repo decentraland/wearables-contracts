@@ -36,7 +36,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe('ThirdPartyRegistry', function () {
+describe.only('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -68,7 +68,7 @@ describe('ThirdPartyRegistry', function () {
   let manaContract
   let thirdPartyRegistryContract
   let chainlinkOracleContract
-  let rateFeedContract
+  let dataFeedContract
 
   async function createMANA() {
     if (!manaContract) {
@@ -115,10 +115,10 @@ describe('ThirdPartyRegistry', function () {
       fromDeployer
     )
 
-    rateFeedContract = await DummyAggregatorV3Interface.new(8, 2 * 10 ** 8)
+    dataFeedContract = await DummyAggregatorV3Interface.new(8, 2 * 10 ** 8)
 
     chainlinkOracleContract = await ChainlinkOracle.new(
-      rateFeedContract.address,
+      dataFeedContract.address,
       18
     )
 
