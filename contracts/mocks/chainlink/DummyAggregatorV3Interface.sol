@@ -25,31 +25,6 @@ contract DummyAggregatorV3Interface is AggregatorV3Interface {
         return stateDecimals;
     }
 
-    function description() external pure override returns (string memory) {
-        return 'description';
-    }
-
-    function version() external pure override returns (uint256) {
-        return 0;
-    }
-
-    function getRoundData(
-        uint80 // _roundId
-    )
-        external
-        view
-        override
-        returns (
-            uint80,
-            int256,
-            uint256,
-            uint256,
-            uint80
-        )
-    {
-        return (0, answer, 0, 0, 0);
-    }
-
     function latestRoundData()
         external
         view
