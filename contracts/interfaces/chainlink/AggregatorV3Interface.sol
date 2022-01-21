@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 /**
  * @notice Interface used by Chainlink Data Feeds
  * @dev Obtained from https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
- *      Not using @chainlink/contracts because of the amount of unnecessary stuff it installs while only this interface is required
+ *      Not using chainlink/contracts lib because of the amount of unnecessary stuff it installs while only this interface is required
  *      Natspec added from https://docs.chain.link/docs/price-feeds-api-reference/
  *      getRoundData and latestRoundData should both raise "No data present"
  *      if they do not have data to report, instead of returning unset values
