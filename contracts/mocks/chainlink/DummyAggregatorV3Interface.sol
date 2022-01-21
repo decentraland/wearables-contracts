@@ -5,10 +5,17 @@ pragma experimental ABIEncoderV2;
 
 import '../../interfaces/chainlink/AggregatorV3Interface.sol';
 
+/**
+ * @dev Dummy to be used in tests to mock a chainlink data feed
+ */
 contract DummyAggregatorV3Interface is AggregatorV3Interface {
     uint8 stateDecimals;
     int256 answer;
 
+    /**
+     * @param _decimals - Number of decimals the decimals function has to return
+     * @param _answer - Value returned as the second argument of the return value of both getRoundData and latestRoundData
+     */
     constructor(uint8 _decimals, int256 _answer) {
         stateDecimals = _decimals;
         answer = _answer;
