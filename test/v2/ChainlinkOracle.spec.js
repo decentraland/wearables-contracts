@@ -10,13 +10,14 @@ const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const oracleContractDecimals = 18
 const feedContractDecimals = 8
+const feedContractAnswer = 10 ** feedContractDecimals
 
 let dataFeedContract
 
 beforeEach(async function () {
   dataFeedContract = await DummyAggregatorV3Interface.new(
     feedContractDecimals,
-    10 ** feedContractDecimals
+    feedContractAnswer
   )
 })
 
@@ -48,29 +49,36 @@ describe('ChainlinkOracle', function () {
       expect(rate).to.eq.BN(expectedRate)
     })
 
-    describe('when getting the rate from the data feed', () => {
-      const testDataFeedRate = async (answer) => {
-        const dataFeedContract = await DummyAggregatorV3Interface.new(
-          feedContractDecimals,
-          answer
-        )
-        const chainlinkOracleContract = await ChainlinkOracle.new(
-          dataFeedContract.address,
-          oracleContractDecimals
-        )
+    it('reverts when the data feed answer is negative', async function () {
+      const dataFeedContract = await DummyAggregatorV3Interface.new(
+        feedContractDecimals,
+        feedContractAnswer * -1
+      )
 
-        const expectedError = 'ChainlinkOracle#getRate: INVALID_RATE'
+      const chainlinkOracleContract = await ChainlinkOracle.new(
+        dataFeedContract.address,
+        oracleContractDecimals
+      )
 
-        await assertRevert(chainlinkOracleContract.getRate(), expectedError)
-      }
+      const expectedError = 'ChainlinkOracle#getRate: INVALID_RATE'
 
-      it('should revert when the data feed answer is negative', async function () {
-        await testDataFeedRate(10 ** feedContractDecimals * -1)
-      })
+      await assertRevert(chainlinkOracleContract.getRate(), expectedError)
+    })
 
-      it('should revert when the data feed answer is 0', async function () {
-        await testDataFeedRate(0)
-      })
+    it('reverts when the data feed answer is 0', async function () {
+      const dataFeedContract = await DummyAggregatorV3Interface.new(
+        feedContractDecimals,
+        0
+      )
+
+      const chainlinkOracleContract = await ChainlinkOracle.new(
+        dataFeedContract.address,
+        oracleContractDecimals
+      )
+
+      const expectedError = 'ChainlinkOracle#getRate: INVALID_RATE'
+
+      await assertRevert(chainlinkOracleContract.getRate(), expectedError)
     })
   })
 })
