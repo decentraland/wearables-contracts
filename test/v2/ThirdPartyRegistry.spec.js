@@ -2144,7 +2144,7 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    it('should add item slots a a third party', async function () {
+    it('should add item slots to a third party', async function () {
       let thirdPartiesCount
       let response
       let logs
@@ -2217,7 +2217,7 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.registered).to.be.eq.BN(1)
     })
 
-    it('should add item slots a a third party :: Relayed EIP721', async function () {
+    it('should add item slots to a third party :: Relayed EIP721', async function () {
       let thirdPartiesCount
       let functionSignature
       let response
