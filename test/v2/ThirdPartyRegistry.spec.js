@@ -116,7 +116,13 @@ describe('ThirdPartyRegistry', function () {
       fromDeployer
     )
 
-    dataFeedContract = await DummyAggregatorV3Interface.new(8, 2 * 10 ** 8)
+    const dataFeedDecimals = 8
+    const dataFeedAnswer = 2 * 10 ** dataFeedDecimals // 200000000
+
+    dataFeedContract = await DummyAggregatorV3Interface.new(
+      dataFeedDecimals,
+      dataFeedAnswer
+    )
 
     chainlinkOracleContract = await ChainlinkOracle.new(
       dataFeedContract.address,
