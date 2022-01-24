@@ -2056,6 +2056,35 @@ describe('ThirdPartyRegistry', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
+    it('should only transfer the price calculated by the rate and not the max price', async function () {
+      const maxPrice = priceOfSlotsToBuy.mul(toBN('2')) // twice the amount required for the slots
+
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        maxPrice,
+        fromUser
+      )
+
+      const buyer = await balanceSnap(manaContract, user, 'creator')
+
+      const feeCollector = await balanceSnap(
+        manaContract,
+        collector,
+        'feeCollector'
+      )
+
+      await thirdPartyRegistryContract.buyItemSlots(
+        thirdParty1[0],
+        slotsToAddOrBuy,
+        maxPrice,
+        fromUser
+      )
+
+      // Only the required amount is transfered, meaning half the max price provided
+      await buyer.requireDecrease(priceOfSlotsToBuy)
+      await feeCollector.requireIncrease(priceOfSlotsToBuy)
+    })
+
     it('reverts when the third party is invalid', async function () {
       await assertRevert(
         thirdPartyRegistryContract.buyItemSlots(
