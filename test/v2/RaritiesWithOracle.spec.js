@@ -9,6 +9,7 @@ import { sendMetaTx } from '../helpers/metaTx'
 
 const RaritiesWithOracle = artifacts.require('RaritiesWithOracle')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
+const InvalidOracle = artifacts.require('DummyInvalidOracle')
 const AggregatorV3Interface = artifacts.require('DummyAggregatorV3Interface')
 
 const { BN, toBN } = web3.utils
@@ -169,6 +170,22 @@ describe('RaritiesWithOracle', function () {
       await assertRevert(
         raritiesContract.getRarityByName('invalid'),
         'Rarities#getRarityByName: INVALID_RARITY'
+      )
+    })
+
+    it('reverts when the orale performs a state mutation on getRate', async function () {
+      chainlinkOracleContract = await InvalidOracle.new()
+
+      raritiesContract = await RaritiesWithOracle.new(
+        deployer,
+        getInitialRarities(),
+        chainlinkOracleContract.address,
+        fromDeployer
+      )
+
+      await assertRevert(
+        raritiesContract.getRarityByName(RARITIES.common.name),
+        'Rarities#_getRateFromOracle: INVALID_RATE_FROM_ORACLE'
       )
     })
   })

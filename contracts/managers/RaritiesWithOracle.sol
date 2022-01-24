@@ -155,11 +155,26 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
         Rarity memory rarity = rarities[index - 1];
 
         uint256 originalPrice = rarity.price;
-        uint256 rate = oracle.getRate();
+        uint256 rate = _getRateFromOracle();
         uint256 finalPrice = originalPrice.mul(1 ether).div(rate);
 
         rarity.price = finalPrice;
 
         return rarity;
+    }
+
+    /**
+    * @dev Safely call Oracle.getRate
+    * @return Rate
+    */
+    function _getRateFromOracle() internal view returns(uint256) {
+        /* solium-disable-next-line */
+        (bool success, bytes memory data) = address(oracle).staticcall(
+            abi.encodeWithSelector(oracle.getRate.selector)
+        );
+
+        require(success, "Rarities#_getRateFromOracle: INVALID_RATE_FROM_ORACLE");
+
+        return abi.decode(data, (uint256));
     }
 }
