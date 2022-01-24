@@ -123,7 +123,7 @@ describe('RaritiesWithOracle', function () {
       expect(oracle).to.be.equal(newOracle)
     })
 
-    it('should revert when the sender is not owner', async function () {
+    it('reverts when the sender is not owner', async function () {
       await assertRevert(
         raritiesContract.setOracle(user, fromHacker),
         'Ownable: caller is not the owner'
