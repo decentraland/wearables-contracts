@@ -33,8 +33,8 @@ contract ChainlinkOracle is IOracle {
 
         (, int256 rate, , , ) = dataFeed.latestRoundData();
 
-        if (rate < 0) {
-            revert('ChainlinkOracle#getRate: RATE_BELOW_0');
+        if (rate <= 0) {
+            revert('ChainlinkOracle#getRate: INVALID_RATE');
         }
 
         return uint256(rate).mul(10**(decimals.sub(feedDecimals)));

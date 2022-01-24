@@ -48,19 +48,29 @@ describe('ChainlinkOracle', function () {
       expect(rate).to.eq.BN(expectedRate)
     })
 
-    it('should revert when feed answer is negative', async function () {
-      const dataFeedContract = await DummyAggregatorV3Interface.new(
-        feedContractDecimals,
-        10 ** feedContractDecimals * -1
-      )
-      const chainlinkOracleContract = await ChainlinkOracle.new(
-        dataFeedContract.address,
-        oracleContractDecimals
-      )
+    describe('when getting the rate from the data feed', () => {
+      const testDataFeedRate = async (answer) => {
+        const dataFeedContract = await DummyAggregatorV3Interface.new(
+          feedContractDecimals,
+          answer
+        )
+        const chainlinkOracleContract = await ChainlinkOracle.new(
+          dataFeedContract.address,
+          oracleContractDecimals
+        )
 
-      const expectedError = 'ChainlinkOracle#getRate: RATE_BELOW_0'
+        const expectedError = 'ChainlinkOracle#getRate: INVALID_RATE'
 
-      await assertRevert(chainlinkOracleContract.getRate(), expectedError)
+        await assertRevert(chainlinkOracleContract.getRate(), expectedError)
+      }
+
+      it('should revert when the data feed answer is negative', async function () {
+        await testDataFeedRate(10 ** feedContractDecimals * -1)
+      })
+
+      it('should revert when the data feed answer is 0', async function () {
+        await testDataFeedRate(0)
+      })
     })
   })
 })
