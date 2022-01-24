@@ -21,7 +21,7 @@ const domain = 'Decentraland Third Party Registry'
 const version = '1'
 const initialValueForThirdParties = true
 const initialValueForItems = false
-const oneEther = toBN('1000000000000000000')
+const oneEther = toBN(web3.utils.toWei('1'))
 
 const contentHashes = [
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Zv',
