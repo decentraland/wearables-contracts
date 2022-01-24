@@ -40,6 +40,14 @@ enum COLLECTOR {
   'BSC_TESTNET' = '',
 }
 
+enum ORACLE {
+  'MUMBAI' = '0x0000000000000000000000000000000000000000', // TODO: Update when deployed
+  'MATIC' = '',
+  'GOERLI' = '',
+  'LOCALHOST' = '',
+  'BSC_TESTNET' = '',
+}
+
 /**
  * @dev Steps:
  * Deploy the Third Party Registry smart contract
@@ -55,6 +63,11 @@ async function main() {
     throw 'Invalid network'
   }
 
+  const itemSlotPrice = process.env['ITEM_SLOT_PRICE']
+  if (!itemSlotPrice) {
+    throw 'Invalid item slot price'
+  }
+
   // Deploy the TPR contract
   const ThirdPartyRegistry = await ethers.getContractFactory(
     'ThirdPartyRegistry'
@@ -64,7 +77,9 @@ async function main() {
     THIRD_PARTY_AGREGATOR[network],
     COLLECTOR[network],
     COMMITTEE[network],
-    MANA[network]
+    MANA[network],
+    ORACLE[network],
+    itemSlotPrice
   )
 
   console.log(`Contract deployed by: ${accountAddress}`)
@@ -78,6 +93,8 @@ async function main() {
       COLLECTOR[network],
       COMMITTEE[network],
       MANA[network],
+      ORACLE[network],
+      itemSlotPrice,
     ],
   })
 }
