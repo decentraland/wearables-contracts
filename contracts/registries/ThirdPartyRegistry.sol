@@ -38,6 +38,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     struct ThirdPartyReviewParam {
         string id;
         bool value;
+        bytes32 root;
+
         ItemReviewParam[] items;
     }
 
@@ -49,14 +51,17 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
     struct ThirdParty {
+        bool isApproved;
+        bytes32 root;
+        uint256 maxItems;
+        uint256 consumedSlots;
+        uint256 registered;
         string metadata;
         string resolver;
-        uint256 maxItems;
-        bool isApproved;
+        string[] itemIds;
         mapping(address => bool) managers;
         mapping(string => Item) items;
-        string[] itemIds;
-        uint256 registered;
+        mapping(string => bool) rules;
     }
 
     mapping(string => ThirdParty) public thirdParties;
@@ -203,7 +208,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     */
     function setItemSlotPrice(uint256 _newItemSlotPrice) onlyOwner public {
         emit ItemSlotPriceSet(itemSlotPrice, _newItemSlotPrice);
-        
+
         itemSlotPrice = _newItemSlotPrice;
     }
 
@@ -319,7 +324,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     /**
     * @notice Buy item slots
-    * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to 
+    * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to
     * prevent minimum rate slippage
     * @param _thirdPartyId - third party id
     * @param _qty - qty of item slots to be bought
@@ -392,6 +397,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             item.registered = 1;
 
             thirdParty.itemIds.push(itemParam.id);
+            thirdParty.consumedSlots = thirdParty.consumedSlots.add(1);
 
             emit ItemAdded(
                 _thirdPartyId,
@@ -475,6 +481,100 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             }
         }
     }
+
+     /**
+    * @notice Consume third party slots
+    * @param _thirdPartyId - third party id
+    */
+    function _consumeSlots(
+        string calldata _thirdPartyId,
+        uint256 _qty,
+        bytes32 _hash,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) internal {
+        address sender = _msgSender();
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        require(_qty > 0, "TPR#consumeSlots: INVALID_QTY");
+        require(thirdParty.maxItems >= thirdParty.consumedSlots.add(_qty), "TPR#consumeSlots: NO_ITEM_SLOTS_AVAILABLE");
+
+        bytes32 messageHash = keccak256(address(this), _thirdPartyId, _qty, _hash);
+        require(_thirdParty.receipts[messageHash] > 0, "TPR#consumeSlots: MESSAGE_ALREADY_PROCESSED");
+
+        address signer = ecrecover(
+            messageHash,
+            sigV,
+            sigR,
+            sigS
+        );
+        require(thirdParty.managers[signer], "TPR#consumeSlots: INVALID_SIGNER");
+
+        thirdParty.receipts[messageHash] = _qty;
+        thirdParty.consumedSlots = thirdParty.consumedSlots.add(_qty);
+
+
+        emit ItemSlotConsumed(
+            _thirdPartyId,
+            _qty,
+            signer,
+            sender
+        );
+    }
+
+     /**
+    * @notice Review third party items by using a merklee tree root
+    * @param _thirdParties - Third parties with items to be reviewed
+    */
+    function reviewThirdPartiesWithRoot(string calldata _thirdPartyId,
+        bytes32 _root,
+        uint256 _qty,
+        bytes32 sigR,
+        bytes32 sigS,
+        uint8 sigV
+    ) onlyCommittee external {
+        address sender = _msgSender();
+
+        require(_root != bytes32(0), "TPR#reviewThirdPartiesWithRoot: INVALID_ROOT");
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+        _checkThirdParty(thirdParty);
+
+        if (qty > 0) {
+            _consumeSlots(_thirdPartyId, _root, _qty, sigR, sigS, sigV);
+        }
+
+        thirdParty.isApproved = true;
+        thirdParty.root = _root;
+
+        emit ThirdPartyReviewedWithRoot(thirdPartyReview.id, thirdPartyReview.root, thirdParty.isApproved, sender);
+    }
+
+     /**
+    * @notice Set rules
+    */
+    function setRules(string memory _thirdPartyId, string[] memory _rules, bool[] _values) onlyCommittee external {
+        address sender = _msgSender();
+
+        require(_rules.length == _values.length, "TPR#setRules: LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < _rules.length; i++) {
+            string rule = _rules[i];
+            bool value = _values[i];
+
+            require(bytes(rule).length > 0, "TPR#setRules: INVALID_RULE");
+
+            ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+            _checkThirdParty(thirdParty);
+
+            thirdParty.rules[rule] = value;
+
+            emit ThirdPartyRuleAdded(thirdPartyReview.id, rule, value, sender);
+        }
+    }
+
 
     /**
     * @notice Returns the count of third parties
