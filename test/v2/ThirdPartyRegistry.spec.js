@@ -2099,30 +2099,28 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    describe('when the price to pay is higher than the max price provided', function () {
-      it('reverts when the max price provided is 0', async function () {
-        await assertRevert(
-          thirdPartyRegistryContract.buyItemSlots(
-            thirdParty1[0],
-            slotsToAddOrBuy,
-            toBN(0),
-            fromUser
-          ),
-          'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
-        )
-      })
+    it('reverts when the max price provided is 0', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.buyItemSlots(
+          thirdParty1[0],
+          slotsToAddOrBuy,
+          toBN(0),
+          fromUser
+        ),
+        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+      )
+    })
 
-      it('reverts when the max price provided is 1 wei', async function () {
-        await assertRevert(
-          thirdPartyRegistryContract.buyItemSlots(
-            thirdParty1[0],
-            slotsToAddOrBuy,
-            toBN(1),
-            fromUser
-          ),
-          'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
-        )
-      })
+    it('reverts when the max price provided is 1 wei less than required', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.buyItemSlots(
+          thirdParty1[0],
+          slotsToAddOrBuy,
+          priceOfSlotsToBuy.sub(toBN('1')),
+          fromUser
+        ),
+        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+      )
     })
 
     it('reverts when oracle.getRate attempts to change the state', async function () {
