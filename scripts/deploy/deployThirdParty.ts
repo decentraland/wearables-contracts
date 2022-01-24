@@ -1,4 +1,4 @@
-import { run, ethers } from "hardhat"
+import { run, ethers } from 'hardhat'
 
 enum NETWORKS {
   'MUMBAI' = 'MUMBAI',
@@ -40,8 +40,8 @@ enum COLLECTOR {
   'BSC_TESTNET' = '',
 }
 
-enum TIERS {
-  'MUMBAI' = '0xdC899B9c1Fa80292606C3cfbA88bbBf0935c2e48',
+enum ORACLE {
+  'MUMBAI' = '0x0000000000000000000000000000000000000000', // TODO: Update when deployed
   'MATIC' = '',
   'GOERLI' = '',
   'LOCALHOST' = '',
@@ -60,22 +60,32 @@ async function main() {
 
   const network = NETWORKS[(process.env['NETWORK'] || 'LOCALHOST') as NETWORKS]
   if (!network) {
-    throw ('Invalid network')
+    throw 'Invalid network'
+  }
+
+  const itemSlotPrice = process.env['ITEM_SLOT_PRICE']
+  if (!itemSlotPrice) {
+    throw 'Invalid item slot price'
   }
 
   // Deploy the TPR contract
-  const ThirdPartyRegistry = await ethers.getContractFactory("ThirdPartyRegistry")
-  const tpr = await ThirdPartyRegistry.deploy(owner,
+  const ThirdPartyRegistry = await ethers.getContractFactory(
+    'ThirdPartyRegistry'
+  )
+  const tpr = await ThirdPartyRegistry.deploy(
+    owner,
     THIRD_PARTY_AGREGATOR[network],
     COLLECTOR[network],
     COMMITTEE[network],
     MANA[network],
-    TIERS[network])
+    ORACLE[network],
+    itemSlotPrice
+  )
 
   console.log(`Contract deployed by: ${accountAddress}`)
   console.log('TPR:', tpr.address)
 
-  await run("verify:verify", {
+  await run('verify:verify', {
     address: '0xC6349360CF0143Bf54FDC376060532C044883b8C',
     constructorArguments: [
       owner,
@@ -83,16 +93,15 @@ async function main() {
       COLLECTOR[network],
       COMMITTEE[network],
       MANA[network],
-      TIERS[network]
+      ORACLE[network],
+      itemSlotPrice,
     ],
   })
-
-
 }
 
 main()
   .then(() => process.exit(0))
-  .catch(error => {
+  .catch((error) => {
     console.error(error)
     process.exit(1)
   })
