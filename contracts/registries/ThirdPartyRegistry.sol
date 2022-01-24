@@ -99,7 +99,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _committee - committee smart contract
     * @param _acceptedToken - accepted token
     * @param _oracle - oracle smart contract
-    * @param _itemSlotPrice - item price
+    * @param _itemSlotPrice - item price in USD dollar. 18 decimals
     */
     constructor(
         address _owner,
