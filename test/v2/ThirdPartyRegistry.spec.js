@@ -4665,6 +4665,22 @@ describe.only('ThirdPartyRegistry', function () {
     })
   })
 
+  describe('setRules', function () {
+    it('should revert if rules length is different from values length', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
+    })
+
+    it('should set rules values for a given third party', async function () {})
+  })
+
   describe('end2end', function () {
     const itemsToAdd = []
     const reviewedThirdPartyItems = []
