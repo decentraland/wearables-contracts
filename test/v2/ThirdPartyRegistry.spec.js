@@ -4544,6 +4544,58 @@ describe('ThirdPartyRegistry', function () {
     })
   })
 
+  describe.only('reviewThirdPartyWithRoot', function () {
+    const dummyBytes32 =
+      '0xfb29356fd617c9cd94242484eb432bffba7866624463d685cd6453d68c1073b3'
+
+    it('should approve the third party, update the root and emit the reviewed event when qty is 0', async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+        thirdParty1[0],
+        0,
+        dummyBytes32,
+        dummyBytes32,
+        dummyBytes32,
+        0,
+        fromCommitteeMember
+      )
+    })
+
+    it('reverts when sender is not from commitee', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          'some-third-party-id',
+          0,
+          dummyBytes32,
+          dummyBytes32,
+          dummyBytes32,
+          0,
+          fromUser
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
+
+    it('reverts when third party is not registered', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          'unregistered-third-party-id',
+          0,
+          dummyBytes32,
+          dummyBytes32,
+          dummyBytes32,
+          0,
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+  })
+
   describe('end2end', function () {
     const itemsToAdd = []
     const reviewedThirdPartyItems = []
