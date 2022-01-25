@@ -16,6 +16,7 @@ export const MAX_UINT256 = web3.utils.toBN(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
 export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
+export const SECONDARY_RARITY_PRICE = web3.utils.toWei('200')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 export const MAX_TOKENS_PER_TX = 20
