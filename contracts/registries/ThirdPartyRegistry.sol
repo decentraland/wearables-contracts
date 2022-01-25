@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "hardhat/console.sol";
+
 import "../commons/OwnableInitializable.sol";
 import "../commons/NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
@@ -15,14 +17,13 @@ import "../libs/String.sol";
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
-    bytes32 private constant CONSUME_SLOTS_TYPE_HASH = keccak256(
-        bytes("ConsumeSlots(string thirdPartyId, uint256 qty, bytes32 root)")
+    bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
+        bytes("ConsumeSlots(string thirdPartyId,uint256 qty)")
     );
 
     struct ConsumeSlots {
         string thirdPartyId;
         uint256 qty;
-        bytes32 root;
     }    
 
     struct ThirdPartyParam {
@@ -521,7 +522,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         _checkThirdParty(thirdParty);
 
         if (_qty > 0) {
-            _consumeSlots(_thirdPartyId, _qty, _root, _sigR, _sigS, _sigV);
+            _consumeSlots(_thirdPartyId, _qty, _sigR, _sigS, _sigV);
         }
 
         thirdParty.isApproved = true;
@@ -602,7 +603,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @notice Consume third party slots
      * @param _thirdPartyId - third party id
      * @param _qty - Amount of slots to be consumed
-     * @param _root - Merkle tree root
      * @param _sigR - ECDSA signature R
      * @param _sigS - ECDSA signature S
      * @param _sigV - ECDSA signature V
@@ -610,7 +610,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     function _consumeSlots(
         string calldata _thirdPartyId,
         uint256 _qty,
-        bytes32 _root,
         bytes32 _sigR,
         bytes32 _sigS,
         uint8 _sigV
@@ -619,15 +618,13 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
-        require(_qty > 0, 'TPR#_consumeSlots: INVALID_QTY');
-
         uint256 newConsumedSlots = thirdParty.consumedSlots.add(_qty);
 
         require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
 
-        bytes32 messageHash = toTypedMessageHash(keccak256(abi.encode(CONSUME_SLOTS_TYPE_HASH, _thirdPartyId, _qty, _root)));
+        bytes32 messageHash = toTypedMessageHash(keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, _thirdPartyId, _qty)));
 
-        require(thirdParty.receipts[messageHash] > 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
+        require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
 
         address signer = ecrecover(messageHash, _sigV, _sigR, _sigS);
 
