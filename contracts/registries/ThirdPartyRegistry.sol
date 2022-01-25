@@ -48,8 +48,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     struct ThirdPartyReviewParam {
         string id;
         bool value;
-        bytes32 root;
-
         ItemReviewParam[] items;
     }
 
