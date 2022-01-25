@@ -5,6 +5,7 @@ import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
+import { getSignature } from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
@@ -37,7 +38,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe('ThirdPartyRegistry', function () {
+describe.only('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -4544,27 +4545,28 @@ describe('ThirdPartyRegistry', function () {
     })
   })
 
-  describe.only('reviewThirdPartyWithRoot', function () {
+  describe('reviewThirdPartyWithRoot', function () {
     const dummyBytes32 =
       '0xfb29356fd617c9cd94242484eb432bffba7866624463d685cd6453d68c1073b3'
 
-    it('should approve the third party, update the root and emit the reviewed event when qty is 0', async function () {
+    it('should update the third party and emit the reviewed event when qty is 0', async function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         fromThirdPartyAgregator
       )
 
-      const { logs } = await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
-        thirdParty1[0],
-        0,
-        dummyBytes32,
-        dummyBytes32,
-        dummyBytes32,
-        0,
-        fromCommitteeMember
-      )
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          0,
+          dummyBytes32,
+          dummyBytes32,
+          dummyBytes32,
+          0,
+          fromCommitteeMember
+        )
 
-      expect(logs.length).to.be.equal(1);
+      expect(logs.length).to.be.equal(1)
 
       expect(logs[0].event).to.be.equal('ThirdPartyReviewedWithRoot')
       expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
@@ -4572,11 +4574,65 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._isApproved).to.be.equal(true)
       expect(logs[0].args._sender).to.be.equal(committeeMember)
 
-      const thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+      const thirdParty = await thirdPartyRegistryContract.thirdParties(
+        thirdParty1[0]
+      )
 
       expect(thirdParty.root).to.be.equal(dummyBytes32)
       expect(thirdParty.isApproved).to.be.equal(true)
     })
+
+    // TODO: Check why the signature from getSignature does not return the manager when ecrecovered
+    // it('should update the third party and emit reviewed and consumed events when qty is > 0', async function () {
+    //   await thirdPartyRegistryContract.addThirdParties(
+    //     [thirdParty1],
+    //     fromThirdPartyAgregator
+    //   )
+
+    //   await thirdPartyRegistryContract.addItemSlots(
+    //     thirdParty1[0],
+    //     10,
+    //     fromThirdPartyAgregator
+    //   )
+
+    //   const thirdPartyId = thirdParty1[0]
+    //   const qty = 10
+
+    //   const { r, s, v } = await getSignature(
+    //     thirdPartyRegistryContract,
+    //     thirdPartyId,
+    //     qty,
+    //     manager,
+    //     domain,
+    //     version
+    //   )
+
+    //   const { logs } =
+    //     await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+    //       thirdPartyId,
+    //       qty,
+    //       dummyBytes32,
+    //       r,
+    //       s,
+    //       v,
+    //       fromCommitteeMember
+    //     )
+
+    //   expect(logs.length).to.be.equal(1)
+
+    //   expect(logs[0].event).to.be.equal('ThirdPartyReviewedWithRoot')
+    //   expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+    //   expect(logs[0].args._root).to.be.equal(dummyBytes32)
+    //   expect(logs[0].args._isApproved).to.be.equal(true)
+    //   expect(logs[0].args._sender).to.be.equal(committeeMember)
+
+    //   const thirdParty = await thirdPartyRegistryContract.thirdParties(
+    //     thirdParty1[0]
+    //   )
+
+    //   expect(thirdParty.root).to.be.equal(dummyBytes32)
+    //   expect(thirdParty.isApproved).to.be.equal(true)
+    // })
 
     it('reverts when sender is not from commitee', async function () {
       await assertRevert(
