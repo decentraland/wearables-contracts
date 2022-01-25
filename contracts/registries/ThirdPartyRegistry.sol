@@ -542,15 +542,15 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         require(_rules.length == _values.length, "TPR#setRules: LENGTH_MISMATCH");
 
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
         for (uint256 i = 0; i < _rules.length; i++) {
             string memory rule = _rules[i];
             bool value = _values[i];
 
             require(bytes(rule).length > 0, "TPR#setRules: INVALID_RULE");
-
-            ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-
-            _checkThirdParty(thirdParty);
 
             thirdParty.rules[rule] = value;
 
