@@ -5,8 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "hardhat/console.sol";
-
 import "../commons/OwnableInitializable.sol";
 import "../commons/NativeMetaTransaction.sol";
 import "../interfaces/ICommittee.sol";
