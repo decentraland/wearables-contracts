@@ -4554,7 +4554,7 @@ describe('ThirdPartyRegistry', function () {
         fromThirdPartyAgregator
       )
 
-      await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+      const { logs } = await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
         thirdParty1[0],
         0,
         dummyBytes32,
@@ -4563,6 +4563,19 @@ describe('ThirdPartyRegistry', function () {
         0,
         fromCommitteeMember
       )
+
+      expect(logs.length).to.be.equal(1);
+
+      expect(logs[0].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[0].args._root).to.be.equal(dummyBytes32)
+      expect(logs[0].args._isApproved).to.be.equal(true)
+      expect(logs[0].args._sender).to.be.equal(committeeMember)
+
+      const thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(thirdParty.root).to.be.equal(dummyBytes32)
+      expect(thirdParty.isApproved).to.be.equal(true)
     })
 
     it('reverts when sender is not from commitee', async function () {
