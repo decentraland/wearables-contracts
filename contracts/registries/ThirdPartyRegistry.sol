@@ -504,7 +504,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @param _sigS - ECDSA signature S
      * @param _sigV - ECDSA signature V
      */
-    function reviewThirdPartiesWithRoot(
+    function reviewThirdPartyWithRoot(
         string calldata _thirdPartyId,
         uint256 _qty,
         bytes32 _root,
@@ -514,7 +514,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     ) onlyCommittee external {
         address sender = _msgSender();
 
-        require(_root != bytes32(0), "TPR#reviewThirdPartiesWithRoot: INVALID_ROOT");
+        require(_root != bytes32(0), "TPR#reviewThirdPartyWithRoot: INVALID_ROOT");
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
