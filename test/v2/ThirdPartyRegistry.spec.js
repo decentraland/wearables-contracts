@@ -4666,7 +4666,7 @@ describe.only('ThirdPartyRegistry', function () {
   })
 
   describe('setRules', function () {
-    it('should revert if rules length is different from values length', async function () {
+    it('reverts if rules length is different from values length', async function () {
       await assertRevert(
         thirdPartyRegistryContract.setRules(
           thirdParty1[0],
@@ -4676,9 +4676,103 @@ describe.only('ThirdPartyRegistry', function () {
         ),
         'TPR#setRules: LENGTH_MISMATCH'
       )
+
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          [],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
     })
 
-    it('should set rules values for a given third party', async function () {})
+    it('reverts if thir party is not registered', async function () {
+      assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+
+    it('should update rules mapping of a third party', async function () {
+      const rule1 = 'a'
+      const rule2 = 'b'
+      const rule3 = 'c'
+
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      const getRuleValue = (rule) =>
+        thirdPartyRegistryContract.getRuleValue(thirdParty1[0], rule)
+
+      let rule1Val = await getRuleValue(rule1)
+      let rule2Val = await getRuleValue(rule2)
+      let rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(false)
+      expect(rule3Val).to.be.equal(false)
+
+      let response = await thirdPartyRegistryContract.setRules(
+        thirdParty1[0],
+        [rule1, rule2, rule3],
+        [true, true, true],
+        fromCommitteeMember
+      )
+
+      let logs = response.logs
+
+      expect(logs.length).to.be.equal(3)
+
+      const assertLog = (log, rule, value) => {
+        expect(log.event).to.be.equal('ThirdPartyRuleAdded')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._rule).to.be.equal(rule)
+        expect(log.args._value).to.be.equal(value)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLog(logs[0], rule1, true)
+      assertLog(logs[1], rule2, true)
+      assertLog(logs[2], rule3, true)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(true)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(true)
+
+      response = await thirdPartyRegistryContract.setRules(
+        thirdParty1[0],
+        [rule1, rule2, rule3],
+        [false, true, false],
+        fromCommitteeMember
+      )
+
+      logs = response.logs
+
+      assertLog(logs[0], rule1, false)
+      assertLog(logs[1], rule2, true)
+      assertLog(logs[2], rule3, false)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(false)
+    })
   })
 
   describe('end2end', function () {
