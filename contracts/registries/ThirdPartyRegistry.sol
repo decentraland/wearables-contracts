@@ -558,6 +558,14 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         }
     }
 
+    /**
+     * @notice Get the value of a given rule in a third party
+     * @param _thirdPartyId - Id of the third party
+     * @param _rule - Rule for which the value is to be obtained
+     */
+    function getRuleValue(string calldata _thirdPartyId, string calldata _rule) external view returns (bool){
+        return thirdParties[_thirdPartyId].rules[_rule];
+    }
 
     /**
     * @notice Returns the count of third parties
