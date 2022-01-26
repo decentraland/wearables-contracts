@@ -18,7 +18,7 @@ enum DATA_FEED {
 
 /**
  * @dev Steps:
- * Deploy the Third Party Registry smart contract
+ * Deploy the ChainlinkOracle smart contract
  */
 async function main() {
   const account = ethers.provider.getSigner()
