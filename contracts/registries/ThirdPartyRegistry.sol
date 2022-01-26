@@ -23,7 +23,15 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         string thirdPartyId;
         uint256 qty;
         bytes32 salt;
-    }    
+    }
+
+    struct ConsumeSlotsParam {
+        uint256 qty;
+        bytes32 salt;
+        bytes32 sigR;
+        bytes32 sigS;
+        uint8 sigV;
+    }
 
     struct ThirdPartyParam {
         string id;
@@ -498,21 +506,13 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @notice Review third parties with Merkle Root
      * @dev The amount of slots should be the same as the amount of items in the merkle tree 
      * @param _thirdPartyId - third party id
-     * @param _qty - Amount of slots to be consumed
-     * @param _salt - Salt used in the signature
      * @param _root - Merkle tree root
-     * @param _sigR - ECDSA signature R
-     * @param _sigS - ECDSA signature S
-     * @param _sigV - ECDSA signature V
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
      */
     function reviewThirdPartyWithRoot(
         string calldata _thirdPartyId,
-        uint256 _qty,
-        bytes32 _salt,
         bytes32 _root,
-        bytes32 _sigR,
-        bytes32 _sigS,
-        uint8 _sigV
+        ConsumeSlotsParam[] calldata _consumeSlotsParams
     ) onlyCommittee external {
         address sender = _msgSender();
 
@@ -520,16 +520,20 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
-        _checkThirdParty(thirdParty);
-
-        if (_qty > 0) {
-            _consumeSlots(_thirdPartyId, _qty, _salt, _sigR, _sigS, _sigV);
-        }
+        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
 
         thirdParty.isApproved = true;
         thirdParty.root = _root;
 
         emit ThirdPartyReviewedWithRoot(_thirdPartyId, _root, thirdParty.isApproved, sender);
+    }
+
+    /**
+     * @notice Consume third party slots
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
+     */
+    function consumeSlots(string calldata _thirdPartyId, ConsumeSlotsParam[] calldata _consumeSlotsParams) onlyCommittee external {
+        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
     }
 
     /**
@@ -610,43 +614,41 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     /**
      * @notice Consume third party slots
-     * @param _thirdPartyId - third party id
-     * @param _qty - Amount of slots to be consumed
-     * @param _salt - Salt used in the signature
-     * @param _sigR - ECDSA signature R
-     * @param _sigS - ECDSA signature S
-     * @param _sigV - ECDSA signature V
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
      */
-    function _consumeSlots(
-        string calldata _thirdPartyId,
-        uint256 _qty,
-        bytes32 _salt,
-        bytes32 _sigR,
-        bytes32 _sigS,
-        uint8 _sigV
-    ) internal {
+    function _consumeSlots(string calldata _thirdPartyId, ConsumeSlotsParam[] calldata _consumeSlotsParams) internal {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
-        uint256 newConsumedSlots = thirdParty.consumedSlots.add(_qty);
+        _checkThirdParty(thirdParty);
 
-        require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
+        for (uint256 i = 0; i < _consumeSlotsParams.length; i++) {
+            ConsumeSlotsParam memory consumeSlotParam = _consumeSlotsParams[i];
 
-        bytes32 messageHash = toTypedMessageHash(
-            keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), _qty, _salt))
-        );
+            if (consumeSlotParam.qty == 0) {
+                continue;
+            }
 
-        require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
+            uint256 newConsumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
 
-        address signer = ecrecover(messageHash, _sigV, _sigR, _sigS);
+            require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
 
-        require(thirdParty.managers[signer], 'TPR#_consumeSlots: INVALID_SIGNER');
+            bytes32 messageHash = toTypedMessageHash(
+                keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), consumeSlotParam.qty, consumeSlotParam.salt))
+            );
 
-        thirdParty.receipts[messageHash] = _qty;
-        thirdParty.consumedSlots = thirdParty.consumedSlots.add(_qty);
+            require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
 
-        emit ItemSlotsConsumed(_thirdPartyId, _qty, signer, sender);
+            address signer = ecrecover(messageHash, consumeSlotParam.sigV, consumeSlotParam.sigR, consumeSlotParam.sigS);
+
+            require(thirdParty.managers[signer], 'TPR#_consumeSlots: INVALID_SIGNER');
+
+            thirdParty.receipts[messageHash] = consumeSlotParam.qty;
+            thirdParty.consumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
+
+            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, sender);
+        }
     }
 
     /**
