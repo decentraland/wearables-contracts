@@ -16,12 +16,13 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
-        bytes("ConsumeSlots(string thirdPartyId,uint256 qty)")
+        bytes("ConsumeSlots(string thirdPartyId,uint256 qty,bytes32 salt)")
     );
 
     struct ConsumeSlots {
         string thirdPartyId;
         uint256 qty;
+        bytes32 salt;
     }    
 
     struct ThirdPartyParam {
@@ -498,6 +499,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @dev The amount of slots should be the same as the amount of items in the merkle tree 
      * @param _thirdPartyId - third party id
      * @param _qty - Amount of slots to be consumed
+     * @param _salt - Salt used in the signature
      * @param _root - Merkle tree root
      * @param _sigR - ECDSA signature R
      * @param _sigS - ECDSA signature S
@@ -506,6 +508,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     function reviewThirdPartyWithRoot(
         string calldata _thirdPartyId,
         uint256 _qty,
+        bytes32 _salt,
         bytes32 _root,
         bytes32 _sigR,
         bytes32 _sigS,
@@ -520,7 +523,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         _checkThirdParty(thirdParty);
 
         if (_qty > 0) {
-            _consumeSlots(_thirdPartyId, _qty, _sigR, _sigS, _sigV);
+            _consumeSlots(_thirdPartyId, _qty, _salt, _sigR, _sigS, _sigV);
         }
 
         thirdParty.isApproved = true;
@@ -609,6 +612,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @notice Consume third party slots
      * @param _thirdPartyId - third party id
      * @param _qty - Amount of slots to be consumed
+     * @param _salt - Salt used in the signature
      * @param _sigR - ECDSA signature R
      * @param _sigS - ECDSA signature S
      * @param _sigV - ECDSA signature V
@@ -616,6 +620,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     function _consumeSlots(
         string calldata _thirdPartyId,
         uint256 _qty,
+        bytes32 _salt,
         bytes32 _sigR,
         bytes32 _sigS,
         uint8 _sigV
@@ -629,7 +634,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
 
         bytes32 messageHash = toTypedMessageHash(
-            keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), _qty))
+            keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), _qty, _salt))
         );
 
         require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');

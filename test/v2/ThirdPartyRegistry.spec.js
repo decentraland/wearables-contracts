@@ -4562,6 +4562,7 @@ describe('ThirdPartyRegistry', function () {
           dummyBytes32,
           dummyBytes32,
           dummyBytes32,
+          dummyBytes32,
           0,
           fromCommitteeMember
         )
@@ -4588,19 +4589,21 @@ describe('ThirdPartyRegistry', function () {
         fromThirdPartyAgregator
       )
 
+      const qty = 10
+
       await thirdPartyRegistryContract.addItemSlots(
         thirdParty1[0],
-        10,
+        qty,
         fromThirdPartyAgregator
       )
 
       const thirdPartyId = thirdParty1[0]
-      const qty = 10
 
       const { r, s, v } = await getSignature(
         thirdPartyRegistryContract,
         thirdPartyId,
         qty,
+        dummyBytes32,
         manager,
         domain,
         version
@@ -4610,6 +4613,7 @@ describe('ThirdPartyRegistry', function () {
         await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           thirdPartyId,
           qty,
+          dummyBytes32,
           dummyBytes32,
           r,
           s,
@@ -4646,19 +4650,21 @@ describe('ThirdPartyRegistry', function () {
         fromThirdPartyAgregator
       )
 
+      const qty = 10
+
       await thirdPartyRegistryContract.addItemSlots(
         thirdParty1[0],
-        10,
+        qty,
         fromThirdPartyAgregator
       )
 
       const thirdPartyId = thirdParty1[0]
-      const qty = 10
 
       const { r, s, v } = await getSignature(
         thirdPartyRegistryContract,
         thirdPartyId,
         qty,
+        dummyBytes32,
         user,
         domain,
         version
@@ -4668,6 +4674,7 @@ describe('ThirdPartyRegistry', function () {
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           thirdPartyId,
           qty,
+          dummyBytes32,
           dummyBytes32,
           r,
           s,
@@ -4691,6 +4698,7 @@ describe('ThirdPartyRegistry', function () {
         thirdPartyRegistryContract,
         thirdPartyId,
         qty,
+        dummyBytes32,
         manager,
         domain,
         version
@@ -4700,6 +4708,7 @@ describe('ThirdPartyRegistry', function () {
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           thirdPartyId,
           qty,
+          dummyBytes32,
           dummyBytes32,
           r,
           s,
@@ -4716,19 +4725,21 @@ describe('ThirdPartyRegistry', function () {
         fromThirdPartyAgregator
       )
 
+      const qty = 10
+
       await thirdPartyRegistryContract.addItemSlots(
         thirdParty1[0],
-        20,
+        qty * 2,
         fromThirdPartyAgregator
       )
 
       const thirdPartyId = thirdParty1[0]
-      const qty = 10
 
       const { r, s, v } = await getSignature(
         thirdPartyRegistryContract,
         thirdPartyId,
         qty,
+        dummyBytes32,
         manager,
         domain,
         version
@@ -4737,6 +4748,7 @@ describe('ThirdPartyRegistry', function () {
       await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
         thirdPartyId,
         qty,
+        dummyBytes32,
         dummyBytes32,
         r,
         s,
@@ -4748,6 +4760,7 @@ describe('ThirdPartyRegistry', function () {
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           thirdPartyId,
           qty,
+          dummyBytes32,
           dummyBytes32,
           r,
           s,
@@ -4766,6 +4779,7 @@ describe('ThirdPartyRegistry', function () {
           dummyBytes32,
           dummyBytes32,
           dummyBytes32,
+          dummyBytes32,
           0,
           fromUser
         ),
@@ -4778,6 +4792,7 @@ describe('ThirdPartyRegistry', function () {
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           'unregistered-third-party-id',
           0,
+          dummyBytes32,
           dummyBytes32,
           dummyBytes32,
           dummyBytes32,

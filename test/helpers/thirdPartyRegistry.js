@@ -2,6 +2,7 @@ export async function getSignature(
   contract,
   thirdPartyId,
   qty,
+  salt,
   signer,
   domain,
   version
@@ -25,11 +26,13 @@ export async function getSignature(
   const consumeSlotsType = [
     { name: 'thirdPartyId', type: 'string' },
     { name: 'qty', type: 'uint256' },
+    { name: 'salt', type: 'bytes32' },
   ]
 
   let message = {
     thirdPartyId,
     qty,
+    salt,
   }
 
   const dataToSign = {
