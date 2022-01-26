@@ -38,7 +38,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe.only('ThirdPartyRegistry', function () {
+describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -4582,57 +4582,181 @@ describe.only('ThirdPartyRegistry', function () {
       expect(thirdParty.isApproved).to.be.equal(true)
     })
 
-    // TODO: Check why the signature from getSignature does not return the manager when ecrecovered
-    // it('should update the third party and emit reviewed and consumed events when qty is > 0', async function () {
-    //   await thirdPartyRegistryContract.addThirdParties(
-    //     [thirdParty1],
-    //     fromThirdPartyAgregator
-    //   )
+    it('should update the third party and emit reviewed and consumed events when qty is > 0', async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
 
-    //   await thirdPartyRegistryContract.addItemSlots(
-    //     thirdParty1[0],
-    //     10,
-    //     fromThirdPartyAgregator
-    //   )
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        10,
+        fromThirdPartyAgregator
+      )
 
-    //   const thirdPartyId = thirdParty1[0]
-    //   const qty = 10
+      const thirdPartyId = thirdParty1[0]
+      const qty = 10
 
-    //   const { r, s, v } = await getSignature(
-    //     thirdPartyRegistryContract,
-    //     thirdPartyId,
-    //     qty,
-    //     manager,
-    //     domain,
-    //     version
-    //   )
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdPartyId,
+        qty,
+        manager,
+        domain,
+        version
+      )
 
-    //   const { logs } =
-    //     await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
-    //       thirdPartyId,
-    //       qty,
-    //       dummyBytes32,
-    //       r,
-    //       s,
-    //       v,
-    //       fromCommitteeMember
-    //     )
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdPartyId,
+          qty,
+          dummyBytes32,
+          r,
+          s,
+          v,
+          fromCommitteeMember
+        )
 
-    //   expect(logs.length).to.be.equal(1)
+      expect(logs.length).to.be.equal(2)
 
-    //   expect(logs[0].event).to.be.equal('ThirdPartyReviewedWithRoot')
-    //   expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
-    //   expect(logs[0].args._root).to.be.equal(dummyBytes32)
-    //   expect(logs[0].args._isApproved).to.be.equal(true)
-    //   expect(logs[0].args._sender).to.be.equal(committeeMember)
+      expect(logs[0].event).to.be.equal('ItemSlotsConsumed')
+      expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[0].args._qty).to.be.eq.BN(qty)
+      expect(logs[0].args._signer).to.be.equal(manager)
+      expect(logs[0].args._sender).to.be.equal(committeeMember)
 
-    //   const thirdParty = await thirdPartyRegistryContract.thirdParties(
-    //     thirdParty1[0]
-    //   )
+      expect(logs[1].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[1].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[1].args._root).to.be.equal(dummyBytes32)
+      expect(logs[1].args._isApproved).to.be.equal(true)
+      expect(logs[1].args._sender).to.be.equal(committeeMember)
 
-    //   expect(thirdParty.root).to.be.equal(dummyBytes32)
-    //   expect(thirdParty.isApproved).to.be.equal(true)
-    // })
+      const thirdParty = await thirdPartyRegistryContract.thirdParties(
+        thirdParty1[0]
+      )
+
+      expect(thirdParty.root).to.be.equal(dummyBytes32)
+      expect(thirdParty.isApproved).to.be.equal(true)
+      expect(thirdParty.consumedSlots).to.be.eq.BN(qty)
+    })
+
+    it('reverts when the signer is not the third party manager', async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        10,
+        fromThirdPartyAgregator
+      )
+
+      const thirdPartyId = thirdParty1[0]
+      const qty = 10
+
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdPartyId,
+        qty,
+        user,
+        domain,
+        version
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdPartyId,
+          qty,
+          dummyBytes32,
+          r,
+          s,
+          v,
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: INVALID_SIGNER'
+      )
+    })
+
+    it('reverts when there are not enough slots to consume', async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      const thirdPartyId = thirdParty1[0]
+      const qty = 10
+
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdPartyId,
+        qty,
+        manager,
+        domain,
+        version
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdPartyId,
+          qty,
+          dummyBytes32,
+          r,
+          s,
+          v,
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE'
+      )
+    })
+
+    it('reverts when the message was already processed', async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        20,
+        fromThirdPartyAgregator
+      )
+
+      const thirdPartyId = thirdParty1[0]
+      const qty = 10
+
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdPartyId,
+        qty,
+        manager,
+        domain,
+        version
+      )
+
+      await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+        thirdPartyId,
+        qty,
+        dummyBytes32,
+        r,
+        s,
+        v,
+        fromCommitteeMember
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdPartyId,
+          qty,
+          dummyBytes32,
+          r,
+          s,
+          v,
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED'
+      )
+    })
 
     it('reverts when sender is not from commitee', async function () {
       await assertRevert(
