@@ -628,7 +628,9 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
 
-        bytes32 messageHash = toTypedMessageHash(keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, _thirdPartyId, _qty)));
+        bytes32 messageHash = toTypedMessageHash(
+            keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), _qty))
+        );
 
         require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
 
