@@ -4549,12 +4549,14 @@ describe('ThirdPartyRegistry', function () {
   })
 
   describe('reviewThirdPartyWithRoot', function () {
-    it('should update the third party and emit the reviewed event when consume slots is empty', async function () {
+    beforeEach(async function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         fromThirdPartyAgregator
       )
+    })
 
+    it('should review a third party :: no slots consumption', async function () {
       const { logs } =
         await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
           thirdParty1[0],
@@ -4579,12 +4581,63 @@ describe('ThirdPartyRegistry', function () {
       expect(thirdParty.isApproved).to.be.equal(true)
     })
 
-    it('should update the third party and emit reviewed and consumed events with the provided consume slots params', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
+    it('should review a third party :: with slots consumption :: one signature', async function () {
+      const qty = 10
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        qty,
         fromThirdPartyAgregator
       )
 
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(
+        '0x0000000000000000000000000000000000000000000000000000000000000000'
+      )
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const sig = await getSignature(
+        thirdPartyRegistryContract,
+        thirdParty1[0],
+        qty,
+        dummyBytes32,
+        manager,
+        domain,
+        version
+      )
+
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          dummyBytes32,
+          [[qty, dummyBytes32, sig.r, sig.s, sig.v]],
+          fromCommitteeMember
+        )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(dummyBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(qty)
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('ItemSlotsConsumed')
+      expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[0].args._qty).to.be.eq.BN(qty)
+      expect(logs[0].args._signer).to.be.equal(manager)
+      expect(logs[0].args._sender).to.be.equal(committeeMember)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[1].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[1].args._root).to.be.eq.BN(dummyBytes32)
+      expect(logs[1].args._isApproved).to.be.equal(true)
+      expect(logs[1].args._sender).to.be.equal(committeeMember)
+    })
+
+    it('should review a third party :: with slots consumption :: multiple signatures', async function () {
       const qty1 = 10
       const qty2 = 20
       const qty3 = 30
@@ -4662,7 +4715,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when sender is not from commitee', async function () {
       await assertRevert(
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
-          'some-third-party-id',
+          thirdParty1[0],
           dummyBytes32,
           [],
           fromUser
@@ -4674,7 +4727,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when third party is not registered', async function () {
       await assertRevert(
         thirdPartyRegistryContract.reviewThirdPartyWithRoot(
-          'unregistered-third-party-id',
+          thirdParty2[0],
           dummyBytes32,
           [],
           fromCommitteeMember
@@ -4685,12 +4738,14 @@ describe('ThirdPartyRegistry', function () {
   })
 
   describe('consumeSlots', function () {
-    it('should do nothing if no consume slots params are provided', async function () {
+    beforeEach(async function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         fromThirdPartyAgregator
       )
+    })
 
+    it('should do nothing if no consume slots params are provided', async function () {
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
       const consumedSlots = tp.consumeSlots
@@ -4708,11 +4763,6 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('should do nothing if the only no consume slots param qty is 0', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        fromThirdPartyAgregator
-      )
-
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
       const consumedSlots = tp.consumeSlots
@@ -4730,11 +4780,6 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('should update the third party and log events for each consume slots params', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        fromThirdPartyAgregator
-      )
-
       const qty1 = 10
       const qty2 = 20
       const qty3 = 30
@@ -4798,7 +4843,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when the third party is not registered', async function () {
       await assertRevert(
         thirdPartyRegistryContract.consumeSlots(
-          thirdParty1[0],
+          thirdParty2[0],
           [],
           fromCommitteeMember
         ),
@@ -4807,11 +4852,6 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('reverts when the third party has no slots available', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        fromThirdPartyAgregator
-      )
-
       await assertRevert(
         thirdPartyRegistryContract.consumeSlots(
           thirdParty1[0],
@@ -4830,11 +4870,6 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('reverts when the message was already processed', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        fromThirdPartyAgregator
-      )
-
       await thirdPartyRegistryContract.addItemSlots(
         thirdParty1[0],
         slotsToAddOrBuy * 2,
@@ -4868,11 +4903,6 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('reverts when the signer is not a manager', async function () {
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        fromThirdPartyAgregator
-      )
-
       await thirdPartyRegistryContract.addItemSlots(
         thirdParty1[0],
         slotsToAddOrBuy,
