@@ -30,8 +30,7 @@ const contentHashes = [
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Ze',
 ]
 
-const dummyBytes32 =
-  '0xfb29356fd617c9cd94242484eb432bffba7866624463d685cd6453d68c1073b3'
+const dummyBytes32 = web3.utils.randomHex(32)
 
 let THIRD_PARTIES
 let thirdParty1
