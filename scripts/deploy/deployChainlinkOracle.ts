@@ -9,8 +9,8 @@ enum NETWORKS {
 }
 
 enum DATA_FEED {
-  'MUMBAI' = '0x0000000000000000000000000000000000000000', // TODO: Update when deployed
-  'MATIC' = '',
+  'MUMBAI' = '0x0000000000000000000000000000000000000000', // TODO: Update when dummy aggregator is deployed 
+  'MATIC' = '0xA1CbF3Fe43BC3501e3Fc4b573e822c70e76A7512', // https://docs.chain.link/docs/matic-addresses/
   'GOERLI' = '',
   'LOCALHOST' = '',
   'BSC_TESTNET' = '',
