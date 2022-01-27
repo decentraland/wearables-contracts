@@ -1,4 +1,4 @@
-import { run, ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 
 enum NETWORKS {
   'MUMBAI' = 'MUMBAI',
@@ -84,19 +84,6 @@ async function main() {
 
   console.log(`Contract deployed by: ${accountAddress}`)
   console.log('TPR:', tpr.address)
-
-  await run('verify:verify', {
-    address: '0xC6349360CF0143Bf54FDC376060532C044883b8C',
-    constructorArguments: [
-      owner,
-      THIRD_PARTY_AGREGATOR[network],
-      COLLECTOR[network],
-      COMMITTEE[network],
-      MANA[network],
-      ORACLE[network],
-      itemSlotPrice,
-    ],
-  })
 }
 
 main()

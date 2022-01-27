@@ -6,7 +6,7 @@ pragma experimental ABIEncoderV2;
 import '../../interfaces/chainlink/AggregatorV3Interface.sol';
 
 /**
- * @dev Dummy to be used in tests to mock a chainlink data feed
+ * @dev Dummy to be used to mock a chainlink data feed
  */
 contract DummyAggregatorV3Interface is AggregatorV3Interface {
     uint8 stateDecimals;
