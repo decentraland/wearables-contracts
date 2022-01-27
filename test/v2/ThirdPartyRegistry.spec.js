@@ -31,6 +31,8 @@ const contentHashes = [
 ]
 
 const dummyBytes32 = web3.utils.randomHex(32)
+const zeroBytes32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000'
 
 let THIRD_PARTIES
 let thirdParty1
@@ -4592,9 +4594,7 @@ describe('ThirdPartyRegistry', function () {
 
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
-      expect(tp.root).to.be.equal(
-        '0x0000000000000000000000000000000000000000000000000000000000000000'
-      )
+      expect(tp.root).to.be.equal(zeroBytes32)
       expect(tp.isApproved).to.be.equal(true)
       expect(tp.consumedSlots).to.be.eq.BN(0)
 
@@ -4652,9 +4652,7 @@ describe('ThirdPartyRegistry', function () {
 
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
-      expect(tp.root).to.be.equal(
-        '0x0000000000000000000000000000000000000000000000000000000000000000'
-      )
+      expect(tp.root).to.be.equal(zeroBytes32)
       expect(tp.isApproved).to.be.equal(true)
       expect(tp.consumedSlots).to.be.eq.BN(0)
 
@@ -4727,9 +4725,7 @@ describe('ThirdPartyRegistry', function () {
 
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
-      expect(tp.root).to.be.equal(
-        '0x0000000000000000000000000000000000000000000000000000000000000000'
-      )
+      expect(tp.root).to.be.equal(zeroBytes32)
       expect(tp.isApproved).to.be.equal(true)
       expect(tp.consumedSlots).to.be.eq.BN(0)
 
@@ -4850,6 +4846,18 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[4].args._root).to.be.eq.BN(dummyBytes32)
       expect(logs[4].args._isApproved).to.be.equal(true)
       expect(logs[4].args._sender).to.be.equal(committeeMember)
+    })
+
+    it('reverts when root is invalid', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          zeroBytes32,
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#reviewThirdPartyWithRoot: INVALID_ROOT'
+      )
     })
 
     it('reverts when sender is not from commitee', async function () {
@@ -5429,7 +5437,7 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    it('reverts if thir party is not registered', async function () {
+    it('reverts if the third party is not registered', async function () {
       assertRevert(
         thirdPartyRegistryContract.setRules(
           thirdParty1[0],
