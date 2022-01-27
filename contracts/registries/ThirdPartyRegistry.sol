@@ -518,9 +518,11 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
         require(_root != bytes32(0), "TPR#reviewThirdPartyWithRoot: INVALID_ROOT");
 
-        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
-
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
 
         thirdParty.isApproved = true;
         thirdParty.root = _root;
@@ -533,6 +535,10 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
      * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
      */
     function consumeSlots(string calldata _thirdPartyId, ConsumeSlotsParam[] calldata _consumeSlotsParams) onlyCommittee external {
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
         _consumeSlots(_thirdPartyId, _consumeSlotsParams);
     }
 
@@ -621,8 +627,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-
-        _checkThirdParty(thirdParty);
 
         for (uint256 i = 0; i < _consumeSlotsParams.length; i++) {
             ConsumeSlotsParam memory consumeSlotParam = _consumeSlotsParams[i];
