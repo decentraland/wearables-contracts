@@ -4762,23 +4762,6 @@ describe('ThirdPartyRegistry', function () {
       expect(tp.consumeSlots).to.be.eq.BN(consumedSlots)
     })
 
-    it('should do nothing if the only no consume slots param qty is 0', async function () {
-      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
-
-      const consumedSlots = tp.consumeSlots
-
-      const { logs } = await thirdPartyRegistryContract.consumeSlots(
-        thirdParty1[0],
-        [[0, dummyBytes32, dummyBytes32, dummyBytes32, 0]],
-        fromCommitteeMember
-      )
-
-      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
-
-      expect(logs.length).to.be.equal(0)
-      expect(tp.consumedSlots).to.be.eq.BN(consumedSlots)
-    })
-
     it('should update the third party and log events for each consume slots params', async function () {
       const qty1 = 10
       const qty2 = 20
@@ -4811,7 +4794,7 @@ describe('ThirdPartyRegistry', function () {
       const sig2 = await _getSignature(qty2)
       const sig3 = await _getSignature(qty3)
 
-      const { logs } = await thirdPartyRegistryContract.consumeSlots(
+      const { logs, receipt } = await thirdPartyRegistryContract.consumeSlots(
         thirdParty1[0],
         [
           [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
@@ -4820,6 +4803,8 @@ describe('ThirdPartyRegistry', function () {
         ],
         fromCommitteeMember
       )
+
+      console.log(receipt.gasUsed)
 
       tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
@@ -4838,6 +4823,17 @@ describe('ThirdPartyRegistry', function () {
       assertLogs(logs[2], qty3)
 
       expect(tp.consumedSlots).to.be.eq.BN(total)
+    })
+
+    it('reverts when the only consume slots param qty is 0', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty1[0],
+          [[0, dummyBytes32, dummyBytes32, dummyBytes32, 0]],
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: INVALID_QTY'
+      )
     })
 
     it('reverts when the third party is not registered', async function () {

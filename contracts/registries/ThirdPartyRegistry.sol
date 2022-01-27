@@ -627,9 +627,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         for (uint256 i = 0; i < _consumeSlotsParams.length; i++) {
             ConsumeSlotsParam memory consumeSlotParam = _consumeSlotsParams[i];
 
-            if (consumeSlotParam.qty == 0) {
-                continue;
-            }
+            require(consumeSlotParam.qty > 0, "TPR#_consumeSlots: INVALID_QTY");
 
             uint256 newConsumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
 
