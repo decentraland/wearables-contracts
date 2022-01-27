@@ -5189,40 +5189,6 @@ describe('ThirdPartyRegistry', function () {
   })
 
   describe('setRules', function () {
-    it('reverts if rules length is different from values length', async function () {
-      await assertRevert(
-        thirdPartyRegistryContract.setRules(
-          thirdParty1[0],
-          ['a', 'b', 'c'],
-          [],
-          fromCommitteeMember
-        ),
-        'TPR#setRules: LENGTH_MISMATCH'
-      )
-
-      await assertRevert(
-        thirdPartyRegistryContract.setRules(
-          thirdParty1[0],
-          [],
-          [true, false, true],
-          fromCommitteeMember
-        ),
-        'TPR#setRules: LENGTH_MISMATCH'
-      )
-    })
-
-    it('reverts if thir party is not registered', async function () {
-      assertRevert(
-        thirdPartyRegistryContract.setRules(
-          thirdParty1[0],
-          ['a', 'b', 'c'],
-          [true, false, true],
-          fromCommitteeMember
-        ),
-        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
-      )
-    })
-
     it('should update rules mapping of a third party', async function () {
       const rule1 = 'a'
       const rule2 = 'b'
@@ -5295,6 +5261,184 @@ describe('ThirdPartyRegistry', function () {
       expect(rule1Val).to.be.equal(false)
       expect(rule2Val).to.be.equal(true)
       expect(rule3Val).to.be.equal(false)
+    })
+
+    it('should update rules mapping of a third party :: Relayed EIP721', async function () {
+      const rule1 = 'a'
+      const rule2 = 'b'
+      const rule3 = 'c'
+
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      const getRuleValue = (rule) =>
+        thirdPartyRegistryContract.getRuleValue(thirdParty1[0], rule)
+
+      let rule1Val = await getRuleValue(rule1)
+      let rule2Val = await getRuleValue(rule2)
+      let rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(false)
+      expect(rule3Val).to.be.equal(false)
+
+      let functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'string[]',
+              name: '_rules',
+              type: 'string[]',
+            },
+            {
+              internalType: 'bool[]',
+              name: '_values',
+              type: 'bool[]',
+            },
+          ],
+          name: 'setRules',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], [rule1, rule2, rule3], [true, true, true]]
+      )
+
+      let response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      let logs = response.logs
+
+      expect(logs.length).to.be.equal(4)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      const assertLog = (log, rule, value) => {
+        expect(log.event).to.be.equal('ThirdPartyRuleAdded')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._rule).to.be.equal(rule)
+        expect(log.args._value).to.be.equal(value)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLog(logs[1], rule1, true)
+      assertLog(logs[2], rule2, true)
+      assertLog(logs[3], rule3, true)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(true)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(true)
+
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'string[]',
+              name: '_rules',
+              type: 'string[]',
+            },
+            {
+              internalType: 'bool[]',
+              name: '_values',
+              type: 'bool[]',
+            },
+          ],
+          name: 'setRules',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], [rule1, rule2, rule3], [false, true, false]]
+      )
+
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      logs = response.logs
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      assertLog(logs[1], rule1, false)
+      assertLog(logs[2], rule2, true)
+      assertLog(logs[3], rule3, false)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(false)
+    })
+
+    it('reverts if rules length is different from values length', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          [],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
+    })
+
+    it('reverts if thir party is not registered', async function () {
+      assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
     })
   })
 
