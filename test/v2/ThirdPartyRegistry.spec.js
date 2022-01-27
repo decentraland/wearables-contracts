@@ -5448,6 +5448,18 @@ describe('ThirdPartyRegistry', function () {
         'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
       )
     })
+
+    it('reverts when the sender is not a committee member', async function () {
+      assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [true, false, true],
+          fromUser
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
   })
 
   describe('end2end', function () {
