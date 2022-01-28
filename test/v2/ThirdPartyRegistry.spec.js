@@ -5,6 +5,7 @@ import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
+import { getSignature } from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
@@ -28,6 +29,11 @@ const contentHashes = [
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Zd',
   'QmbpvfgQt2dFCYurW4tKjea2yaDZ9XCaVCTDJ5oxTYT8Ze',
 ]
+
+const dummyBytes32 = web3.utils.randomHex(32)
+const zeroBytes32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000'
+
 let THIRD_PARTIES
 let thirdParty1
 let thirdParty2
@@ -4540,6 +4546,918 @@ describe('ThirdPartyRegistry', function () {
           fromCommitteeMember
         ),
         'TPR#_checkItem: INVALID_ITEM'
+      )
+    })
+  })
+
+  describe('reviewThirdPartyWithRoot', function () {
+    beforeEach(async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+    })
+
+    it('should review a third party :: no slots consumption', async function () {
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          dummyBytes32,
+          [],
+          fromCommitteeMember
+        )
+
+      expect(logs.length).to.be.equal(1)
+
+      expect(logs[0].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[0].args._root).to.be.equal(dummyBytes32)
+      expect(logs[0].args._isApproved).to.be.equal(true)
+      expect(logs[0].args._sender).to.be.equal(committeeMember)
+
+      const thirdParty = await thirdPartyRegistryContract.thirdParties(
+        thirdParty1[0]
+      )
+
+      expect(thirdParty.root).to.be.equal(dummyBytes32)
+      expect(thirdParty.isApproved).to.be.equal(true)
+    })
+
+    it('should review a third party :: with slots consumption :: one signature', async function () {
+      const qty = 10
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        qty,
+        fromThirdPartyAgregator
+      )
+
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(zeroBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const sig = await getSignature(
+        thirdPartyRegistryContract,
+        thirdParty1[0],
+        qty,
+        dummyBytes32,
+        manager,
+        domain,
+        version
+      )
+
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          dummyBytes32,
+          [[qty, dummyBytes32, sig.r, sig.s, sig.v]],
+          fromCommitteeMember
+        )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(dummyBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(qty)
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('ItemSlotsConsumed')
+      expect(logs[0].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[0].args._qty).to.be.eq.BN(qty)
+      expect(logs[0].args._signer).to.be.equal(manager)
+      expect(logs[0].args._sender).to.be.equal(committeeMember)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[1].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[1].args._root).to.be.eq.BN(dummyBytes32)
+      expect(logs[1].args._isApproved).to.be.equal(true)
+      expect(logs[1].args._sender).to.be.equal(committeeMember)
+    })
+
+    it('should review a third party :: with slots consumption :: multiple signatures', async function () {
+      const qty1 = 10
+      const qty2 = 20
+      const qty3 = 30
+
+      const total = qty1 + qty2 + qty3
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        total,
+        fromThirdPartyAgregator
+      )
+
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(zeroBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const _getSignature = (qty) =>
+        getSignature(
+          thirdPartyRegistryContract,
+          thirdParty1[0],
+          qty,
+          dummyBytes32,
+          manager,
+          domain,
+          version
+        )
+
+      const sig1 = await _getSignature(qty1)
+      const sig2 = await _getSignature(qty2)
+      const sig3 = await _getSignature(qty3)
+
+      const { logs } =
+        await thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          dummyBytes32,
+          [
+            [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
+            [qty2, dummyBytes32, sig2.r, sig2.s, sig2.v],
+            [qty3, dummyBytes32, sig3.r, sig3.s, sig3.v],
+          ],
+          fromCommitteeMember
+        )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(dummyBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(total)
+
+      expect(logs.length).to.be.equal(4)
+
+      const assertConsumeLog = (log, qty) => {
+        expect(log.event).to.be.equal('ItemSlotsConsumed')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._qty).to.be.eq.BN(qty)
+        expect(log.args._signer).to.be.equal(manager)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertConsumeLog(logs[0], qty1)
+      assertConsumeLog(logs[1], qty2)
+      assertConsumeLog(logs[2], qty3)
+
+      expect(logs[3].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[3].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[3].args._root).to.be.eq.BN(dummyBytes32)
+      expect(logs[3].args._isApproved).to.be.equal(true)
+      expect(logs[3].args._sender).to.be.equal(committeeMember)
+    })
+
+    it('should review a third party :: with slots consumption :: multiple signatures :: Relayed EIP721', async function () {
+      const qty1 = 10
+      const qty2 = 20
+      const qty3 = 30
+
+      const total = qty1 + qty2 + qty3
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        total,
+        fromThirdPartyAgregator
+      )
+
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(zeroBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const _getSignature = (qty) =>
+        getSignature(
+          thirdPartyRegistryContract,
+          thirdParty1[0],
+          qty,
+          dummyBytes32,
+          manager,
+          domain,
+          version
+        )
+
+      const sig1 = await _getSignature(qty1)
+      const sig2 = await _getSignature(qty2)
+      const sig3 = await _getSignature(qty3)
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'bytes32',
+              name: '_root',
+              type: 'bytes32',
+            },
+            {
+              components: [
+                {
+                  internalType: 'uint256',
+                  name: 'qty',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'salt',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'sigR',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'sigS',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'uint8',
+                  name: 'sigV',
+                  type: 'uint8',
+                },
+              ],
+              internalType: 'struct ThirdPartyRegistry.ConsumeSlotsParam[]',
+              name: '_consumeSlotsParams',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'reviewThirdPartyWithRoot',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          thirdParty1[0],
+          dummyBytes32,
+          [
+            [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
+            [qty2, dummyBytes32, sig2.r, sig2.s, sig2.v],
+            [qty3, dummyBytes32, sig3.r, sig3.s, sig3.v],
+          ],
+        ]
+      )
+
+      const { logs } = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.root).to.be.equal(dummyBytes32)
+      expect(tp.isApproved).to.be.equal(true)
+      expect(tp.consumedSlots).to.be.eq.BN(total)
+
+      expect(logs.length).to.be.equal(5)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      const assertConsumeLog = (log, qty) => {
+        expect(log.event).to.be.equal('ItemSlotsConsumed')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._qty).to.be.eq.BN(qty)
+        expect(log.args._signer).to.be.equal(manager)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertConsumeLog(logs[1], qty1)
+      assertConsumeLog(logs[2], qty2)
+      assertConsumeLog(logs[3], qty3)
+
+      expect(logs[4].event).to.be.equal('ThirdPartyReviewedWithRoot')
+      expect(logs[4].args._thirdPartyId).to.be.equal(thirdParty1[0])
+      expect(logs[4].args._root).to.be.eq.BN(dummyBytes32)
+      expect(logs[4].args._isApproved).to.be.equal(true)
+      expect(logs[4].args._sender).to.be.equal(committeeMember)
+    })
+
+    it('reverts when root is invalid', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          zeroBytes32,
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#reviewThirdPartyWithRoot: INVALID_ROOT'
+      )
+    })
+
+    it('reverts when sender is not from commitee', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty1[0],
+          dummyBytes32,
+          [],
+          fromUser
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
+
+    it('reverts when third party is not registered', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.reviewThirdPartyWithRoot(
+          thirdParty2[0],
+          dummyBytes32,
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+  })
+
+  describe('consumeSlots', function () {
+    beforeEach(async function () {
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+    })
+
+    it('should do nothing if no consume slots params are provided', async function () {
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      const consumedSlots = tp.consumeSlots
+
+      const { logs } = await thirdPartyRegistryContract.consumeSlots(
+        thirdParty1[0],
+        [],
+        fromCommitteeMember
+      )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(logs.length).to.be.equal(0)
+      expect(tp.consumeSlots).to.be.eq.BN(consumedSlots)
+    })
+
+    it('should update the third party and log events for each consume slots params', async function () {
+      const qty1 = 10
+      const qty2 = 20
+      const qty3 = 30
+
+      const total = qty1 + qty2 + qty3
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        total,
+        fromThirdPartyAgregator
+      )
+
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const _getSignature = (qty) =>
+        getSignature(
+          thirdPartyRegistryContract,
+          thirdParty1[0],
+          qty,
+          dummyBytes32,
+          manager,
+          domain,
+          version
+        )
+
+      const sig1 = await _getSignature(qty1)
+      const sig2 = await _getSignature(qty2)
+      const sig3 = await _getSignature(qty3)
+
+      const { logs, receipt } = await thirdPartyRegistryContract.consumeSlots(
+        thirdParty1[0],
+        [
+          [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
+          [qty2, dummyBytes32, sig2.r, sig2.s, sig2.v],
+          [qty3, dummyBytes32, sig3.r, sig3.s, sig3.v],
+        ],
+        fromCommitteeMember
+      )
+
+      console.log(receipt.gasUsed)
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(logs.length).to.be.equal(3)
+
+      const assertLogs = (log, qty) => {
+        expect(log.event).to.be.equal('ItemSlotsConsumed')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._qty).to.be.eq.BN(qty)
+        expect(log.args._signer).to.be.equal(manager)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLogs(logs[0], qty1)
+      assertLogs(logs[1], qty2)
+      assertLogs(logs[2], qty3)
+
+      expect(tp.consumedSlots).to.be.eq.BN(total)
+    })
+
+    it('should update the third party and log events for each consume slots params :: Relayed EIP721', async function () {
+      const qty1 = 10
+      const qty2 = 20
+      const qty3 = 30
+
+      const total = qty1 + qty2 + qty3
+
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        total,
+        fromThirdPartyAgregator
+      )
+
+      let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      const _getSignature = (qty) =>
+        getSignature(
+          thirdPartyRegistryContract,
+          thirdParty1[0],
+          qty,
+          dummyBytes32,
+          manager,
+          domain,
+          version
+        )
+
+      const sig1 = await _getSignature(qty1)
+      const sig2 = await _getSignature(qty2)
+      const sig3 = await _getSignature(qty3)
+
+      const functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              components: [
+                {
+                  internalType: 'uint256',
+                  name: 'qty',
+                  type: 'uint256',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'salt',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'sigR',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'bytes32',
+                  name: 'sigS',
+                  type: 'bytes32',
+                },
+                {
+                  internalType: 'uint8',
+                  name: 'sigV',
+                  type: 'uint8',
+                },
+              ],
+              internalType: 'struct ThirdPartyRegistry.ConsumeSlotsParam[]',
+              name: '_consumeSlotsParams',
+              type: 'tuple[]',
+            },
+          ],
+          name: 'consumeSlots',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [
+          thirdParty1[0],
+          [
+            [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
+            [qty2, dummyBytes32, sig2.r, sig2.s, sig2.v],
+            [qty3, dummyBytes32, sig3.r, sig3.s, sig3.v],
+          ],
+        ]
+      )
+
+      const { logs } = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(logs.length).to.be.equal(4)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      const assertLogs = (log, qty) => {
+        expect(log.event).to.be.equal('ItemSlotsConsumed')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._qty).to.be.eq.BN(qty)
+        expect(log.args._signer).to.be.equal(manager)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLogs(logs[1], qty1)
+      assertLogs(logs[2], qty2)
+      assertLogs(logs[3], qty3)
+
+      expect(tp.consumedSlots).to.be.eq.BN(total)
+    })
+
+    it('reverts when the only consume slots param qty is 0', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty1[0],
+          [[0, dummyBytes32, dummyBytes32, dummyBytes32, 0]],
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: INVALID_QTY'
+      )
+    })
+
+    it('reverts when the third party is not registered', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty2[0],
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+
+    it('reverts when the third party has no slots available', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty1[0],
+          [[10, dummyBytes32, dummyBytes32, dummyBytes32, 0]],
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE'
+      )
+    })
+
+    it('reverts when the caller is not a committee member', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(thirdParty1[0], [], fromUser),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+      )
+    })
+
+    it('reverts when the message was already processed', async function () {
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        slotsToAddOrBuy * 2,
+        fromThirdPartyAgregator
+      )
+
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdParty1[0],
+        slotsToAddOrBuy,
+        dummyBytes32,
+        manager,
+        domain,
+        version
+      )
+
+      thirdPartyRegistryContract.consumeSlots(
+        thirdParty1[0],
+        [[slotsToAddOrBuy, dummyBytes32, r, s, v]],
+        fromCommitteeMember
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty1[0],
+          [[slotsToAddOrBuy, dummyBytes32, r, s, v]],
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED'
+      )
+    })
+
+    it('reverts when the signer is not a manager', async function () {
+      await thirdPartyRegistryContract.addItemSlots(
+        thirdParty1[0],
+        slotsToAddOrBuy,
+        fromThirdPartyAgregator
+      )
+
+      const { r, s, v } = await getSignature(
+        thirdPartyRegistryContract,
+        thirdParty1[0],
+        slotsToAddOrBuy,
+        dummyBytes32,
+        user,
+        domain,
+        version
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.consumeSlots(
+          thirdParty1[0],
+          [[slotsToAddOrBuy, dummyBytes32, r, s, v]],
+          fromCommitteeMember
+        ),
+        'TPR#_consumeSlots: INVALID_SIGNER'
+      )
+    })
+  })
+
+  describe('setRules', function () {
+    it('should update rules mapping of a third party', async function () {
+      const rule1 = 'a'
+      const rule2 = 'b'
+      const rule3 = 'c'
+
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      const getRuleValue = (rule) =>
+        thirdPartyRegistryContract.getRuleValue(thirdParty1[0], rule)
+
+      let rule1Val = await getRuleValue(rule1)
+      let rule2Val = await getRuleValue(rule2)
+      let rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(false)
+      expect(rule3Val).to.be.equal(false)
+
+      let response = await thirdPartyRegistryContract.setRules(
+        thirdParty1[0],
+        [rule1, rule2, rule3],
+        [true, true, true],
+        fromCommitteeMember
+      )
+
+      let logs = response.logs
+
+      expect(logs.length).to.be.equal(3)
+
+      const assertLog = (log, rule, value) => {
+        expect(log.event).to.be.equal('ThirdPartyRuleAdded')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._rule).to.be.equal(rule)
+        expect(log.args._value).to.be.equal(value)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLog(logs[0], rule1, true)
+      assertLog(logs[1], rule2, true)
+      assertLog(logs[2], rule3, true)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(true)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(true)
+
+      response = await thirdPartyRegistryContract.setRules(
+        thirdParty1[0],
+        [rule1, rule2, rule3],
+        [false, true, false],
+        fromCommitteeMember
+      )
+
+      logs = response.logs
+
+      assertLog(logs[0], rule1, false)
+      assertLog(logs[1], rule2, true)
+      assertLog(logs[2], rule3, false)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(false)
+    })
+
+    it('should update rules mapping of a third party :: Relayed EIP721', async function () {
+      const rule1 = 'a'
+      const rule2 = 'b'
+      const rule3 = 'c'
+
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      const getRuleValue = (rule) =>
+        thirdPartyRegistryContract.getRuleValue(thirdParty1[0], rule)
+
+      let rule1Val = await getRuleValue(rule1)
+      let rule2Val = await getRuleValue(rule2)
+      let rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(false)
+      expect(rule3Val).to.be.equal(false)
+
+      let functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'string[]',
+              name: '_rules',
+              type: 'string[]',
+            },
+            {
+              internalType: 'bool[]',
+              name: '_values',
+              type: 'bool[]',
+            },
+          ],
+          name: 'setRules',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], [rule1, rule2, rule3], [true, true, true]]
+      )
+
+      let response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      let logs = response.logs
+
+      expect(logs.length).to.be.equal(4)
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      const assertLog = (log, rule, value) => {
+        expect(log.event).to.be.equal('ThirdPartyRuleAdded')
+        expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
+        expect(log.args._rule).to.be.equal(rule)
+        expect(log.args._value).to.be.equal(value)
+        expect(log.args._sender).to.be.equal(committeeMember)
+      }
+
+      assertLog(logs[1], rule1, true)
+      assertLog(logs[2], rule2, true)
+      assertLog(logs[3], rule3, true)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(true)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(true)
+
+      functionSignature = web3.eth.abi.encodeFunctionCall(
+        {
+          inputs: [
+            {
+              internalType: 'string',
+              name: '_thirdPartyId',
+              type: 'string',
+            },
+            {
+              internalType: 'string[]',
+              name: '_rules',
+              type: 'string[]',
+            },
+            {
+              internalType: 'bool[]',
+              name: '_values',
+              type: 'bool[]',
+            },
+          ],
+          name: 'setRules',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        [thirdParty1[0], [rule1, rule2, rule3], [false, true, false]]
+      )
+
+      response = await sendMetaTx(
+        thirdPartyRegistryContract,
+        functionSignature,
+        committeeMember,
+        relayer,
+        null,
+        domain,
+        version
+      )
+
+      logs = response.logs
+
+      expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
+      expect(logs[0].args.userAddress).to.be.equal(committeeMember)
+      expect(logs[0].args.relayerAddress).to.be.equal(relayer)
+      expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
+
+      assertLog(logs[1], rule1, false)
+      assertLog(logs[2], rule2, true)
+      assertLog(logs[3], rule3, false)
+
+      rule1Val = await getRuleValue(rule1)
+      rule2Val = await getRuleValue(rule2)
+      rule3Val = await getRuleValue(rule3)
+
+      expect(rule1Val).to.be.equal(false)
+      expect(rule2Val).to.be.equal(true)
+      expect(rule3Val).to.be.equal(false)
+    })
+
+    it('reverts if rules length is different from values length', async function () {
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
+
+      await assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          [],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#setRules: LENGTH_MISMATCH'
+      )
+    })
+
+    it('reverts if the third party is not registered', async function () {
+      assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [true, false, true],
+          fromCommitteeMember
+        ),
+        'TPR#_checkThirdParty: INVALID_THIRD_PARTY'
+      )
+    })
+
+    it('reverts when the sender is not a committee member', async function () {
+      assertRevert(
+        thirdPartyRegistryContract.setRules(
+          thirdParty1[0],
+          ['a', 'b', 'c'],
+          [true, false, true],
+          fromUser
+        ),
+        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
   })

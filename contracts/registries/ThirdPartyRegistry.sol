@@ -15,6 +15,24 @@ import "../libs/String.sol";
 contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     using SafeMath for uint256;
 
+    bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
+        bytes("ConsumeSlots(string thirdPartyId,uint256 qty,bytes32 salt)")
+    );
+
+    struct ConsumeSlots {
+        string thirdPartyId;
+        uint256 qty;
+        bytes32 salt;
+    }
+
+    struct ConsumeSlotsParam {
+        uint256 qty;
+        bytes32 salt;
+        bytes32 sigR;
+        bytes32 sigS;
+        uint8 sigV;
+    }
+
     struct ThirdPartyParam {
         string id;
         string metadata;
@@ -49,14 +67,18 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     }
 
     struct ThirdParty {
+        bool isApproved;
+        bytes32 root;
+        uint256 maxItems;
+        uint256 consumedSlots;
+        uint256 registered;
         string metadata;
         string resolver;
-        uint256 maxItems;
-        bool isApproved;
+        string[] itemIds;
+        mapping(bytes32 => uint256) receipts;
         mapping(address => bool) managers;
         mapping(string => Item) items;
-        string[] itemIds;
-        uint256 registered;
+        mapping(string => bool) rules;
     }
 
     mapping(string => ThirdParty) public thirdParties;
@@ -77,10 +99,13 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
     event ThirdPartyItemSlotsAdded(string _thirdPartyId, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
+    event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
+    event ThirdPartyRuleAdded(string _thirdPartyId, string _rule, bool _value, address _sender);
 
     event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
     event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
     event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
+    event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, address indexed _sender);
 
     event ThirdPartyAgregatorSet(address indexed _oldThirdPartyAgregator, address indexed _newThirdPartyAgregator);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
@@ -203,7 +228,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     */
     function setItemSlotPrice(uint256 _newItemSlotPrice) onlyOwner public {
         emit ItemSlotPriceSet(itemSlotPrice, _newItemSlotPrice);
-        
+
         itemSlotPrice = _newItemSlotPrice;
     }
 
@@ -319,7 +344,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
 
     /**
     * @notice Buy item slots
-    * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to 
+    * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to
     * prevent minimum rate slippage
     * @param _thirdPartyId - third party id
     * @param _qty - qty of item slots to be bought
@@ -392,6 +417,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             item.registered = 1;
 
             thirdParty.itemIds.push(itemParam.id);
+            thirdParty.consumedSlots = thirdParty.consumedSlots.add(1);
 
             emit ItemAdded(
                 _thirdPartyId,
@@ -476,6 +502,83 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         }
     }
 
+     /**
+     * @notice Review third parties with Merkle Root
+     * @dev The amount of slots should be the same as the amount of items in the merkle tree 
+     * @param _thirdPartyId - third party id
+     * @param _root - Merkle tree root
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
+     */
+    function reviewThirdPartyWithRoot(
+        string calldata _thirdPartyId,
+        bytes32 _root,
+        ConsumeSlotsParam[] calldata _consumeSlotsParams
+    ) onlyCommittee external {
+        address sender = _msgSender();
+
+        require(_root != bytes32(0), "TPR#reviewThirdPartyWithRoot: INVALID_ROOT");
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
+
+        thirdParty.isApproved = true;
+        thirdParty.root = _root;
+
+        emit ThirdPartyReviewedWithRoot(_thirdPartyId, _root, thirdParty.isApproved, sender);
+    }
+
+    /**
+     * @notice Consume third party slots
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
+     */
+    function consumeSlots(string calldata _thirdPartyId, ConsumeSlotsParam[] calldata _consumeSlotsParams) onlyCommittee external {
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        _consumeSlots(_thirdPartyId, _consumeSlotsParams);
+    }
+
+    /**
+     * @notice Set rules
+     * @param _thirdPartyId - Third party id
+     * @param _rules - Rules to be updated
+     * @param _values - Values for the rules to be updated
+     */
+    function setRules(string memory _thirdPartyId, string[] memory _rules, bool[] memory _values) onlyCommittee external {
+        address sender = _msgSender();
+
+        require(_rules.length == _values.length, "TPR#setRules: LENGTH_MISMATCH");
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        _checkThirdParty(thirdParty);
+
+        for (uint256 i = 0; i < _rules.length; i++) {
+            string memory rule = _rules[i];
+            bool value = _values[i];
+
+            require(bytes(rule).length > 0, "TPR#setRules: INVALID_RULE");
+
+            thirdParty.rules[rule] = value;
+
+            emit ThirdPartyRuleAdded(_thirdPartyId, rule, value, sender);
+        }
+    }
+
+    /**
+     * @notice Get the value of a given rule in a third party
+     * @param _thirdPartyId - Id of the third party
+     * @param _rule - Rule for which the value is to be obtained
+     * @return Boolean representing the value of the rule
+     */
+    function getRuleValue(string calldata _thirdPartyId, string calldata _rule) external view returns (bool){
+        return thirdParties[_thirdPartyId].rules[_rule];
+    }
+
     /**
     * @notice Returns the count of third parties
     * @return Count of third parties
@@ -514,6 +617,41 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     */
     function itemsById(string memory _thirdPartyId, string memory _itemId) external view returns (Item memory) {
         return thirdParties[_thirdPartyId].items[_itemId];
+    }
+
+    /**
+     * @notice Consume third party slots
+     * @param _consumeSlotsParams - Data to consume slots mutilple times in a single transaction
+     */
+    function _consumeSlots(string calldata _thirdPartyId, ConsumeSlotsParam[] calldata _consumeSlotsParams) internal {
+        address sender = _msgSender();
+
+        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+        for (uint256 i = 0; i < _consumeSlotsParams.length; i++) {
+            ConsumeSlotsParam memory consumeSlotParam = _consumeSlotsParams[i];
+
+            require(consumeSlotParam.qty > 0, "TPR#_consumeSlots: INVALID_QTY");
+
+            uint256 newConsumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
+
+            require(thirdParty.maxItems >= newConsumedSlots, 'TPR#_consumeSlots: NO_ITEM_SLOTS_AVAILABLE');
+
+            bytes32 messageHash = toTypedMessageHash(
+                keccak256(abi.encode(CONSUME_SLOTS_TYPEHASH, keccak256(bytes(_thirdPartyId)), consumeSlotParam.qty, consumeSlotParam.salt))
+            );
+
+            require(thirdParty.receipts[messageHash] == 0, 'TPR#_consumeSlots: MESSAGE_ALREADY_PROCESSED');
+
+            address signer = ecrecover(messageHash, consumeSlotParam.sigV, consumeSlotParam.sigR, consumeSlotParam.sigS);
+
+            require(thirdParty.managers[signer], 'TPR#_consumeSlots: INVALID_SIGNER');
+
+            thirdParty.receipts[messageHash] = consumeSlotParam.qty;
+            thirdParty.consumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
+
+            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, sender);
+        }
     }
 
     /**
