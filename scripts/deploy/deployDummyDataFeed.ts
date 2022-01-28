@@ -4,7 +4,7 @@ import { ethers } from 'hardhat'
  * @dev This contracts purpose is to function as a mock for when there is no
  * data feed on test chains
  * Steps:
- * Deploy the Dummy Oracle smart contract
+ * Deploy the DummyDataFeed smart contract
  */
 async function main() {
   const account = ethers.provider.getSigner()
