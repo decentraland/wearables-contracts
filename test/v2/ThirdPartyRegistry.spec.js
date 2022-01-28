@@ -11,9 +11,7 @@ const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
 const InvalidOracle = artifacts.require('DummyInvalidOracle')
-const DummyAggregatorV3Interface = artifacts.require(
-  'DummyAggregatorV3Interface'
-)
+const DummyDataFeed = artifacts.require('DummyDataFeed')
 
 const BN = web3.utils.BN
 const toBN = web3.utils.toBN
@@ -125,10 +123,7 @@ describe('ThirdPartyRegistry', function () {
     const dataFeedDecimals = 8
     const dataFeedAnswer = 2 * 10 ** dataFeedDecimals // 200000000
 
-    dataFeedContract = await DummyAggregatorV3Interface.new(
-      dataFeedDecimals,
-      dataFeedAnswer
-    )
+    dataFeedContract = await DummyDataFeed.new(dataFeedDecimals, dataFeedAnswer)
 
     chainlinkOracleContract = await ChainlinkOracle.new(
       dataFeedContract.address,

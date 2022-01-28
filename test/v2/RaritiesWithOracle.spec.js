@@ -10,7 +10,7 @@ import { sendMetaTx } from '../helpers/metaTx'
 const RaritiesWithOracle = artifacts.require('RaritiesWithOracle')
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
 const InvalidOracle = artifacts.require('DummyInvalidOracle')
-const AggregatorV3Interface = artifacts.require('DummyAggregatorV3Interface')
+const DummyDataFeed = artifacts.require('DummyDataFeed')
 
 const { BN, toBN } = web3.utils
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -41,7 +41,7 @@ describe('RaritiesWithOracle', function () {
   let fromRelayer
 
   // Contracts
-  let aggregatorV3interfaceContract
+  let dataFeedContract
   let chainlinkOracleContract
   let raritiesContract
 
@@ -57,14 +57,14 @@ describe('RaritiesWithOracle', function () {
     fromRelayer = { from: relayer }
     fromDeployer = { from: deployer }
 
-    aggregatorV3interfaceContract = await AggregatorV3Interface.new(
+    dataFeedContract = await DummyDataFeed.new(
       8,
       conversionRate * 10 ** 8,
       fromDeployer
     )
 
     chainlinkOracleContract = await ChainlinkOracle.new(
-      aggregatorV3interfaceContract.address,
+      dataFeedContract.address,
       18,
       fromDeployer
     )

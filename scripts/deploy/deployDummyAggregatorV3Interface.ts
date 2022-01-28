@@ -10,17 +10,17 @@ async function main() {
   const account = ethers.provider.getSigner()
   const accountAddress = await account.getAddress()
 
-  const DummyAggregatorV3Interface = await ethers.getContractFactory(
-    'DummyAggregatorV3Interface'
+  const DummyDataFeed = await ethers.getContractFactory(
+    'DummyDataFeed'
   )
 
   const decimals = 8
   const answer = 10 ** decimals // 100000000
 
-  const dataFeed = await DummyAggregatorV3Interface.deploy(decimals, answer)
+  const dataFeed = await DummyDataFeed.deploy(decimals, answer)
 
   console.log(`Contract deployed by: ${accountAddress}`)
-  console.log('DummyAggregatorV3Interface:', dataFeed.address)
+  console.log('DummyDataFeed:', dataFeed.address)
 }
 
 main()

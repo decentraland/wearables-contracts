@@ -3,12 +3,12 @@
 pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
-import '../../interfaces/chainlink/AggregatorV3Interface.sol';
+import '../interfaces/IDataFeed.sol';
 
 /**
  * @dev Dummy to be used to mock a chainlink data feed
  */
-contract DummyAggregatorV3Interface is AggregatorV3Interface {
+contract DummyDataFeed is IDataFeed {
     uint8 stateDecimals;
     int256 answer;
 
