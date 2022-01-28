@@ -48,8 +48,8 @@ contract RaritiesWithOracle is OwnableInitializable, NativeMetaTransaction {
         _initializeEIP712('Decentraland Rarities', '1');
         // Ownable init
         _initOwnable();
-        transferOwnership(_owner);
         setOracle(_oracle);
+        transferOwnership(_owner);
 
         for (uint256 i = 0; i < _rarities.length; i++) {
             _addRarity(_rarities[i]);

@@ -80,13 +80,14 @@ describe('RaritiesWithOracle', function () {
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
       const contract = await RaritiesWithOracle.new(
-        deployer,
+        user,
         getInitialRarities(),
-        chainlinkOracleContract.address
+        chainlinkOracleContract.address,
+        fromDeployer
       )
 
       const owner = await contract.owner()
-      expect(owner).to.be.equal(deployer)
+      expect(owner).to.be.equal(user)
 
       const raritiesCount = await contract.raritiesCount()
       expect(raritiesCount).to.be.eq.BN(7)
