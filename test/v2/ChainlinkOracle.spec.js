@@ -1,9 +1,7 @@
 import assertRevert from '../helpers/assertRevert'
 
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
-const DummyAggregatorV3Interface = artifacts.require(
-  'DummyAggregatorV3Interface'
-)
+const DummyDataFeed = artifacts.require('DummyDataFeed')
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -15,7 +13,7 @@ const feedContractAnswer = 10 ** feedContractDecimals
 let dataFeedContract
 
 beforeEach(async function () {
-  dataFeedContract = await DummyAggregatorV3Interface.new(
+  dataFeedContract = await DummyDataFeed.new(
     feedContractDecimals,
     feedContractAnswer
   )
@@ -50,7 +48,7 @@ describe('ChainlinkOracle', function () {
     })
 
     it('reverts when the data feed answer is negative', async function () {
-      const dataFeedContract = await DummyAggregatorV3Interface.new(
+      const dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer * -1
       )
@@ -66,10 +64,7 @@ describe('ChainlinkOracle', function () {
     })
 
     it('reverts when the data feed answer is 0', async function () {
-      const dataFeedContract = await DummyAggregatorV3Interface.new(
-        feedContractDecimals,
-        0
-      )
+      const dataFeedContract = await DummyDataFeed.new(feedContractDecimals, 0)
 
       const chainlinkOracleContract = await ChainlinkOracle.new(
         dataFeedContract.address,

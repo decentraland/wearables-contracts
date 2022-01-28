@@ -4,12 +4,12 @@ pragma solidity ^0.7.6;
 pragma experimental ABIEncoderV2;
 
 /**
- * @notice Reduced interface used by Chainlink Data Feeds
- * @dev Obtained from https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
- *      Not using chainlink/contracts lib because of the amount of unnecessary stuff it installs while only this interface is required
- *      Only required functions are defined
+ * @notice Chainlink Data Feed interface
+ * @dev This is a renamed copy of https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
+ * containing only the required functions required by our contracts.
+ * We could have imported the chainlink/contracts package but decided not to due to the large amount of things imported we would not need.
  */
-interface AggregatorV3Interface {
+interface IDataFeed {
     /**
      * @notice Get the number of decimals present in the response value
      * @return The number of decimals

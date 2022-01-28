@@ -6,12 +6,12 @@ pragma experimental ABIEncoderV2;
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
 import '../interfaces/IOracle.sol';
-import '../interfaces/chainlink/AggregatorV3Interface.sol';
+import '../interfaces/IDataFeed.sol';
 
 contract ChainlinkOracle is IOracle {
     using SafeMath for uint256;
 
-    AggregatorV3Interface public immutable dataFeed;
+    IDataFeed public immutable dataFeed;
     uint256 public immutable decimals;
 
     /**
@@ -19,7 +19,7 @@ contract ChainlinkOracle is IOracle {
      * @param _dataFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
      * @param _decimals - amount of decimals the rate should be returned with
      */
-    constructor(AggregatorV3Interface _dataFeed, uint256 _decimals) {
+    constructor(IDataFeed _dataFeed, uint256 _decimals) {
         dataFeed = _dataFeed;
         decimals = _decimals;
     }
