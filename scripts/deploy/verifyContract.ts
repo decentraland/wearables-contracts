@@ -1,7 +1,10 @@
 import hr from 'hardhat'
 
 async function main() {
-  await hr.run('verify:verify', {})
+  await hr.run('verify:verify', {
+    address: '0x...',
+    constructorArguments: [],
+  })
 }
 
 main()
