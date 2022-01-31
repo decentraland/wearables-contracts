@@ -95,8 +95,8 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _maxItems, address _caller);
-    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _addedSlots, address _caller);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _caller);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _caller);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
     event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
