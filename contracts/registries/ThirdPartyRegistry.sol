@@ -600,7 +600,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @return Count of third party's items
     */
     function itemsCount(string memory _thirdPartyId) external view returns (uint256) {
-        return thirdParties[_thirdPartyId].itemIds.length;
+        return thirdParties[_thirdPartyId].consumedSlots;
     }
 
     /**
