@@ -39,6 +39,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         string resolver;
         address[] managers;
         bool[] managerValues;
+        uint256 slots;
     }
 
     struct ItemParam {
@@ -94,10 +95,9 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, address _caller);
-    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, address _caller);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _caller);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _caller);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
-    event ThirdPartyItemSlotsAdded(string _thirdPartyId, uint256 _value, address _caller);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
     event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
     event ThirdPartyRuleAdded(string _thirdPartyId, string _rule, bool _value, address _sender);
@@ -270,6 +270,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
             thirdParty.isApproved = initialThirdPartyValue;
+            thirdParty.maxItems = thirdPartyParam.slots;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
                 thirdParty.managers[thirdPartyParam.managers[m]] = true;
@@ -283,6 +284,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
                 thirdParty.resolver,
                 thirdParty.isApproved,
                 thirdPartyParam.managers,
+                thirdParty.maxItems,
                 _msgSender()
             );
         }
@@ -331,12 +333,21 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
                 thirdParty.managers[manager] = value;
             }
 
+            uint256 slots = thirdPartyParam.slots;
+
+            if (slots > 0) {
+                require(thirdPartyAgregator == sender, "TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGREGATOR");
+
+                thirdParty.maxItems = thirdParty.maxItems.add(slots);
+            }
+
             emit ThirdPartyUpdated(
                 thirdPartyParam.id,
                 thirdParty.metadata,
                 thirdParty.resolver,
                 thirdPartyParam.managers,
                 thirdPartyParam.managerValues,
+                thirdPartyParam.slots,
                 sender
             );
         }
@@ -373,23 +384,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         }
 
         emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
-    }
-
-    /**
-    * @notice Add item slots
-    * @param _thirdPartyId - third party id
-    * @param _qty - qty of items to be added
-    */
-    function addItemSlots(string calldata _thirdPartyId, uint256 _qty)  external onlyThirdPartyAgregator {
-        address sender = _msgSender();
-
-        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-
-        _checkThirdParty(thirdParty);
-
-        thirdParty.maxItems = thirdParty.maxItems.add(_qty);
-
-        emit ThirdPartyItemSlotsAdded(_thirdPartyId, _qty, sender);
     }
 
      /**
@@ -600,7 +594,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @return Count of third party's items
     */
     function itemsCount(string memory _thirdPartyId) external view returns (uint256) {
-        return thirdParties[_thirdPartyId].itemIds.length;
+        return thirdParties[_thirdPartyId].consumedSlots;
     }
 
     /**
