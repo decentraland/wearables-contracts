@@ -4919,8 +4919,12 @@ describe('ThirdPartyRegistry', function () {
       )
 
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
-
       expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(0)
 
       const _getSignature = (qty) =>
         getSignature(
@@ -4937,7 +4941,7 @@ describe('ThirdPartyRegistry', function () {
       const sig2 = await _getSignature(qty2)
       const sig3 = await _getSignature(qty3)
 
-      const { logs, receipt } = await thirdPartyRegistryContract.consumeSlots(
+      const { logs } = await thirdPartyRegistryContract.consumeSlots(
         thirdParty1[0],
         [
           [qty1, dummyBytes32, sig1.r, sig1.s, sig1.v],
@@ -4946,10 +4950,6 @@ describe('ThirdPartyRegistry', function () {
         ],
         fromCommitteeMember
       )
-
-      console.log(receipt.gasUsed)
-
-      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
       expect(logs.length).to.be.equal(3)
 
@@ -4965,7 +4965,11 @@ describe('ThirdPartyRegistry', function () {
       assertLogs(logs[1], qty2)
       assertLogs(logs[2], qty3)
 
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
       expect(tp.consumedSlots).to.be.eq.BN(total)
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(total)
     })
 
     it('should update the third party and log events for each consume slots params :: Relayed EIP721', async function () {
@@ -4982,8 +4986,12 @@ describe('ThirdPartyRegistry', function () {
       )
 
       let tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
-
       expect(tp.consumedSlots).to.be.eq.BN(0)
+
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(0)
 
       const _getSignature = (qty) =>
         getSignature(
@@ -5066,8 +5074,6 @@ describe('ThirdPartyRegistry', function () {
         version
       )
 
-      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
-
       expect(logs.length).to.be.equal(4)
 
       expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
@@ -5087,7 +5093,11 @@ describe('ThirdPartyRegistry', function () {
       assertLogs(logs[2], qty2)
       assertLogs(logs[3], qty3)
 
+      tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
       expect(tp.consumedSlots).to.be.eq.BN(total)
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
+      expect(itemsCount).to.be.eq.BN(total)
     })
 
     it('reverts when the only consume slots param qty is 0', async function () {
