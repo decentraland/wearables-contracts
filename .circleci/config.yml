@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       # specify the version you desire here
-      - image: circleci/node:10.19-stretch
+      - image: cimg/node:14.18.0
 
     working_directory: ~/repo
 
@@ -33,7 +33,7 @@ jobs:
   release:
     docker:
       # specify the version you desire here
-      - image: circleci/node:10.19-stretch
+      - image: cimg/node:14.18.0
 
     working_directory: ~/repo
 
