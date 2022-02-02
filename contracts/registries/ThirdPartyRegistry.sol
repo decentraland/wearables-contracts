@@ -642,7 +642,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
             require(thirdParty.managers[signer], 'TPR#_consumeSlots: INVALID_SIGNER');
 
             thirdParty.receipts[messageHash] = consumeSlotParam.qty;
-            thirdParty.consumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
+            thirdParty.consumedSlots = newConsumedSlots;
 
             emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, sender);
         }
