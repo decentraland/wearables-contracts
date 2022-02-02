@@ -4,6 +4,7 @@ pragma solidity  ^0.7.3;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import "../commons/OwnableInitializable.sol";
 import "../commons/NativeMetaTransaction.sol";
@@ -12,7 +13,7 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
-contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
+contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Initializable {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
@@ -117,7 +118,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
 
    /**
-    * @notice Create the contract
+    * @notice Initialize the contract
     * @param _owner - owner of the contract
     * @param _thirdPartyAgregator - third party agregator
     * @param _feesCollector - fees collector
@@ -126,7 +127,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
     * @param _oracle - oracle smart contract
     * @param _itemSlotPrice - item price in USD dollar. 18 decimals
     */
-    constructor(
+    function initialize(
         address _owner,
         address _thirdPartyAgregator,
         address _feesCollector,
@@ -134,7 +135,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction {
         IERC20 _acceptedToken,
         IOracle _oracle,
         uint256 _itemSlotPrice
-    ) {
+    ) public initializer {
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
 

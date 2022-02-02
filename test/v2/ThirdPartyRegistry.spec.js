@@ -130,15 +130,16 @@ describe('ThirdPartyRegistry', function () {
       18
     )
 
-    thirdPartyRegistryContract = await ThirdPartyRegistry.new(
+    thirdPartyRegistryContract = await ThirdPartyRegistry.new(fromDeployer)
+
+    await thirdPartyRegistryContract.initialize(
       owner,
       thirdPartyAgregator,
       collector,
       committeeContract.address,
       manaContract.address,
       chainlinkOracleContract.address,
-      oneEther,
-      fromDeployer
+      oneEther
     )
 
     thirdParty1 = [
@@ -164,15 +165,16 @@ describe('ThirdPartyRegistry', function () {
 
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
-      const contract = await ThirdPartyRegistry.new(
+      const contract = await ThirdPartyRegistry.new(fromDeployer)
+
+      await contract.initialize(
         owner,
         thirdPartyAgregator,
         collector,
         committeeContract.address,
         manaContract.address,
         chainlinkOracleContract.address,
-        oneEther,
-        fromDeployer
+        oneEther
       )
 
       const contractOwner = await contract.owner()
@@ -1696,9 +1698,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._itemSlots).to.be.eq.BN(slotsToAddOrBuy)
       expect(logs[0].args._caller).to.be.eql(thirdPartyAgregator)
 
-      thirdParty = await thirdPartyRegistryContract.thirdParties(
-        thirdParty1[0]
-      )
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
       expect(thirdParty.metadata).to.be.eql(updatedThirdParty1[1])
       expect(thirdParty.resolver).to.be.eql(updatedThirdParty1[2])
@@ -2289,15 +2289,16 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when oracle.getRate attempts to change the state', async function () {
       const oracleContract = await InvalidOracle.new()
 
-      thirdPartyRegistryContract = await ThirdPartyRegistry.new(
+      thirdPartyRegistryContract = await ThirdPartyRegistry.new(fromDeployer)
+
+      await thirdPartyRegistryContract.initialize(
         owner,
         thirdPartyAgregator,
         collector,
         committeeContract.address,
         manaContract.address,
         oracleContract.address,
-        oneEther,
-        fromDeployer
+        oneEther
       )
 
       await thirdPartyRegistryContract.addThirdParties(
@@ -5366,15 +5367,16 @@ describe('ThirdPartyRegistry', function () {
     }
 
     it('should deploy the TPR contract', async function () {
-      tprContract = await ThirdPartyRegistry.new(
+      tprContract = await ThirdPartyRegistry.new(fromDeployer)
+
+      await tprContract.initialize(
         owner,
         thirdPartyAgregator,
         collector,
         committeeContract.address,
         manaContract.address,
         chainlinkOracleContract.address,
-        oneEther,
-        fromDeployer
+        oneEther
       )
 
       await mana.setInitialBalances()
