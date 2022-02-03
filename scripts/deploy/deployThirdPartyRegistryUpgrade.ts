@@ -21,7 +21,6 @@ enum TPR_PROXY_ADDRESS {
  * Deploy the Third Party Registry smart contract
  */
 async function main() {
-
   const account = ethers.provider.getSigner()
   const accountAddress = await account.getAddress()
 
