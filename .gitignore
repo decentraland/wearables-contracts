@@ -10,4 +10,9 @@ artifacts
 cache
 tests
 .env
-.openzeppelin
+
+# Ignore local deployment files
+.openzeppelin/unknown-*.json
+
+# Don't ignore deployments made to mumbai
+!.openzeppelin/unknown-80001.json
