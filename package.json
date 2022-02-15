@@ -57,6 +57,7 @@
     "fx-portal-contracts": "^0.7.0",
     "ganache-cli": "^6.9.1",
     "hardhat": "^2.3.0",
+    "hardhat-dependency-compiler": "^1.1.2",
     "hardhat-gas-reporter": "^1.0.4",
     "husky": "^4.2.5",
     "mocha": "^6.0.2",

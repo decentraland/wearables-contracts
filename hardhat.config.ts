@@ -8,6 +8,7 @@ import '@nomiclabs/hardhat-etherscan'
 import 'hardhat-gas-reporter'
 import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
 import '@openzeppelin/hardhat-upgrades'
+import 'hardhat-dependency-compiler'
 
 import { getDeployParams } from './scripts/deploy/utils'
 
@@ -69,6 +70,11 @@ module.exports = {
           },
         },
       },
+    ],
+  },
+  dependencyCompiler: {
+    paths: [
+      '@openzeppelin/contracts/proxy/ProxyAdmin.sol',
     ],
   },
   networks: {

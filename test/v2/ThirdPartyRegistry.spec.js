@@ -1,5 +1,7 @@
 import hr from 'hardhat'
 import { Mana } from 'decentraland-contract-plugins'
+import path from 'path'
+import fs from 'fs'
 
 import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
@@ -8,7 +10,11 @@ import { sendMetaTx } from '../helpers/metaTx'
 import { getSignature } from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
+const ProxyAdmin = artifacts.require('ProxyAdmin')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
+const DummyThirdPartyRegistryUpgrade = artifacts.require(
+  'DummyThirdPartyRegistryUpgrade'
+)
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
 const InvalidOracle = artifacts.require('DummyInvalidOracle')
 const DummyDataFeed = artifacts.require('DummyDataFeed')
@@ -40,6 +46,11 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
+
+const openZeppelinProxyFilePath = path.resolve(
+  __dirname,
+  '../../.openzeppelin/unknown-31337.json'
+)
 
 describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
@@ -90,6 +101,15 @@ describe('ThirdPartyRegistry', function () {
   }
 
   beforeEach(async function () {
+    // Delete OZ proxy deployment/upgrade file for local network
+    // Required so all tests have a clean file for each instead of aggregating each new
+    // proxy to the same file.
+    try {
+      fs.rmSync(openZeppelinProxyFilePath)
+    } catch (e) {
+      // File not found
+    }
+
     // Create Listing environment
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
@@ -192,7 +212,73 @@ describe('ThirdPartyRegistry', function () {
           .registered
       ).to.be.eq.BN(1)
 
-      // Upgrade the contract
+      // Deploy upgraded implementation
+      let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
+
+      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
+      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+      const transparentProxyAddress = ozJson.proxies[0].address
+
+      // Upgrade to new implementation
+      const proxyAdmin = await ProxyAdmin.at(ozJson.admin.address)
+
+      await proxyAdmin.upgrade(
+        transparentProxyAddress,
+        upgradedImplementation.address
+      )
+
+      // Check the implementation has been updated in the proxy
+      expect(
+        await proxyAdmin.getProxyImplementation(transparentProxyAddress)
+      ).to.be.equal(upgradedImplementation.address)
+
+      // Check that the third party is still in the upgraded contract
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        1
+      )
+      expect(await thirdPartyRegistryContract.thirdPartyIds(0)).to.be.eql(
+        thirdParty1[0]
+      )
+      expect(
+        (await thirdPartyRegistryContract.thirdParties(thirdParty1[0]))
+          .registered
+      ).to.be.eq.BN(1)
+
+      // Make sure that the contract has been upgraded by calling the updated function
+      await assertRevert(
+        thirdPartyRegistryContract.addThirdParties(
+          [thirdParty1],
+          fromThirdPartyAgregator
+        ),
+        'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
+      )
+    })
+
+    it('should upgrade the contract :: hardhat-upgrades', async () => {
+      // Check that there are no third parties
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        0
+      )
+
+      // Add a third party
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      // Check that the third party was added
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        1
+      )
+      expect(await thirdPartyRegistryContract.thirdPartyIds(0)).to.be.eql(
+        thirdParty1[0]
+      )
+      expect(
+        (await thirdPartyRegistryContract.thirdParties(thirdParty1[0]))
+          .registered
+      ).to.be.eq.BN(1)
+
+      // Upgrade the contract with hardhat plugin
       const DummyThirdPartyRegistryUpgrade = await ethers.getContractFactory(
         'DummyThirdPartyRegistryUpgrade'
       )
@@ -227,6 +313,48 @@ describe('ThirdPartyRegistry', function () {
     })
 
     it('should revert if the upgrader is not the proxy admin (deployer)', async () => {
+      // Deploy upgraded implementation
+      let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
+
+      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
+      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+      const transparentProxyAddress = ozJson.proxies[0].address
+
+      const proxyAdmin = await ProxyAdmin.at(ozJson.admin.address)
+
+      // Try to upgrade to new implementation without being the proxy owner
+      await assertRevert(
+        proxyAdmin.upgrade(
+          transparentProxyAddress,
+          upgradedImplementation.address,
+          fromUser
+        ),
+        'Ownable: caller is not the owner'
+      )
+
+      // Transfering ownership of the proxy should fail when the caller is not the current owner
+      await assertRevert(
+        proxyAdmin.transferOwnership(user, fromUser),
+        'Ownable: caller is not the owner'
+      )
+
+      // Change proxy admin to user
+      await proxyAdmin.transferOwnership(user, fromDeployer)
+
+      // Now user can upgrade the implementation
+      await proxyAdmin.upgrade(
+        transparentProxyAddress,
+        upgradedImplementation.address,
+        fromUser
+      )
+
+      // Check the implementation has been updated in the proxy
+      expect(
+        await proxyAdmin.getProxyImplementation(transparentProxyAddress)
+      ).to.be.equal(upgradedImplementation.address)
+    })
+
+    it('should revert if the upgrader is not the proxy admin (deployer) :: hardhat-upgrades', async () => {
       // Transfer ownership from deployer to user
       await upgrades.admin.transferProxyAdminOwnership(user)
 
