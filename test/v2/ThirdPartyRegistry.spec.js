@@ -171,6 +171,67 @@ describe('ThirdPartyRegistry', function () {
     THIRD_PARTIES = [thirdParty1, thirdParty2]
   })
 
+  describe('contract upgrade', () => {
+    it('should upgrade the contract', async () => {
+      // Check that there are no third parties
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        0
+      )
+
+      // Add a third party
+      await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        fromThirdPartyAgregator
+      )
+
+      // Check that the third party was added
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        1
+      )
+      expect(await thirdPartyRegistryContract.thirdPartyIds(0)).to.be.eql(
+        thirdParty1[0]
+      )
+      expect(
+        (await thirdPartyRegistryContract.thirdParties(thirdParty1[0]))
+          .registered
+      ).to.be.eq.BN(1)
+
+      // Upgrade the contract
+      const DummyThirdPartyRegistryUpgrade = await ethers.getContractFactory(
+        'DummyThirdPartyRegistryUpgrade'
+      )
+
+      const upgraded = await upgrades.upgradeProxy(
+        thirdPartyRegistryContract.address,
+        DummyThirdPartyRegistryUpgrade,
+        fromDeployer
+      )
+
+      thirdPartyRegistryContract = await ThirdPartyRegistry.at(upgraded.address)
+
+      // Check that the third party is still in the upgraded contract
+      expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
+        1
+      )
+      expect(await thirdPartyRegistryContract.thirdPartyIds(0)).to.be.eql(
+        thirdParty1[0]
+      )
+      expect(
+        (await thirdPartyRegistryContract.thirdParties(thirdParty1[0]))
+          .registered
+      ).to.be.eq.BN(1)
+
+      // Make sure that the contract has been upgraded by calling the updated function
+      await assertRevert(
+        thirdPartyRegistryContract.addThirdParties(
+          [thirdParty1],
+          fromThirdPartyAgregator
+        ),
+        'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
+      )
+    })
+  })
+
   describe('initialize', function () {
     it('should be initialized with correct values', async function () {
       const contractOwner = await thirdPartyRegistryContract.owner()
