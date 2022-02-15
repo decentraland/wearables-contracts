@@ -134,19 +134,15 @@ describe('ThirdPartyRegistry', function () {
       'ThirdPartyRegistry'
     )
 
-    const proxy = await upgrades.deployProxy(
-      ThirdPartyRegistryFactory,
-      [
-        owner,
-        thirdPartyAgregator,
-        collector,
-        committeeContract.address,
-        manaContract.address,
-        chainlinkOracleContract.address,
-        oneEther.toString(),
-      ],
-      fromDeployer
-    )
+    const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
+      owner,
+      thirdPartyAgregator,
+      collector,
+      committeeContract.address,
+      manaContract.address,
+      chainlinkOracleContract.address,
+      oneEther.toString(),
+    ])
 
     thirdPartyRegistryContract = await ThirdPartyRegistry.at(proxy.address)
 
@@ -203,8 +199,7 @@ describe('ThirdPartyRegistry', function () {
 
       const upgraded = await upgrades.upgradeProxy(
         thirdPartyRegistryContract.address,
-        DummyThirdPartyRegistryUpgrade,
-        fromDeployer
+        DummyThirdPartyRegistryUpgrade
       )
 
       thirdPartyRegistryContract = await ThirdPartyRegistry.at(upgraded.address)
@@ -229,6 +224,23 @@ describe('ThirdPartyRegistry', function () {
         ),
         'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
       )
+    })
+
+    it('should revert if the upgrader is not the proxy admin (deployer)', async () => {
+      // Transfer ownership from deployer to user
+      await upgrades.admin.transferProxyAdminOwnership(user)
+
+      // Try to upgrade the contract as deployer
+      const DummyThirdPartyRegistryUpgrade = await ethers.getContractFactory(
+        'DummyThirdPartyRegistryUpgrade'
+      )
+      const upgradePromise = upgrades.upgradeProxy(
+        thirdPartyRegistryContract.address,
+        DummyThirdPartyRegistryUpgrade
+      )
+
+      // Should fail because deployer is no longer owner
+      await assertRevert(upgradePromise, 'Ownable: caller is not the owner')
     })
   })
 
@@ -2354,19 +2366,15 @@ describe('ThirdPartyRegistry', function () {
         'ThirdPartyRegistry'
       )
 
-      const proxy = await upgrades.deployProxy(
-        ThirdPartyRegistryFactory,
-        [
-          owner,
-          thirdPartyAgregator,
-          collector,
-          committeeContract.address,
-          manaContract.address,
-          oracleContract.address,
-          oneEther.toString(),
-        ],
-        fromDeployer
-      )
+      const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        oracleContract.address,
+        oneEther.toString(),
+      ])
 
       thirdPartyRegistryContract = await ThirdPartyRegistry.at(proxy.address)
 
@@ -5440,19 +5448,15 @@ describe('ThirdPartyRegistry', function () {
         'ThirdPartyRegistry'
       )
 
-      const proxy = await upgrades.deployProxy(
-        ThirdPartyRegistryFactory,
-        [
-          owner,
-          thirdPartyAgregator,
-          collector,
-          committeeContract.address,
-          manaContract.address,
-          chainlinkOracleContract.address,
-          oneEther.toString(),
-        ],
-        fromDeployer
-      )
+      const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        chainlinkOracleContract.address,
+        oneEther.toString(),
+      ])
 
       tprContract = await ThirdPartyRegistry.at(proxy.address)
 
