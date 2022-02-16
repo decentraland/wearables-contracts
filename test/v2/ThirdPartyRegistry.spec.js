@@ -7,7 +7,11 @@ import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
-import { getSignature, ProxyAdminABI } from '../helpers/thirdPartyRegistry'
+import {
+  getSignature,
+  ProxyAdminABI,
+  TransparentUpgradeableProxyABI,
+} from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
@@ -216,7 +220,6 @@ describe('ThirdPartyRegistry', function () {
 
       // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
       const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
-      const transparentProxyAddress = ozJson.proxies[0].address
 
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdminABI,
@@ -225,13 +228,16 @@ describe('ThirdPartyRegistry', function () {
 
       // Upgrade to new implementation
       await proxyAdmin.methods
-        .upgrade(transparentProxyAddress, upgradedImplementation.address)
+        .upgrade(
+          thirdPartyRegistryContract.address,
+          upgradedImplementation.address
+        )
         .send(fromDeployer)
 
       // Check the implementation has been updated in the proxy
       expect(
         await proxyAdmin.methods
-          .getProxyImplementation(transparentProxyAddress)
+          .getProxyImplementation(thirdPartyRegistryContract.address)
           .call()
       ).to.be.equal(upgradedImplementation.address)
 
@@ -321,7 +327,6 @@ describe('ThirdPartyRegistry', function () {
 
       // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
       const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
-      const transparentProxyAddress = ozJson.proxies[0].address
 
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdminABI,
@@ -331,7 +336,10 @@ describe('ThirdPartyRegistry', function () {
       // Try to upgrade to new implementation without being the proxy owner
       await assertRevert(
         proxyAdmin.methods
-          .upgrade(transparentProxyAddress, upgradedImplementation.address)
+          .upgrade(
+            thirdPartyRegistryContract.address,
+            upgradedImplementation.address
+          )
           .send(fromUser),
         'Ownable: caller is not the owner'
       )
@@ -347,13 +355,16 @@ describe('ThirdPartyRegistry', function () {
 
       // Now user can upgrade the implementation
       await proxyAdmin.methods
-        .upgrade(transparentProxyAddress, upgradedImplementation.address)
+        .upgrade(
+          thirdPartyRegistryContract.address,
+          upgradedImplementation.address
+        )
         .send(fromUser)
 
       // Check the implementation has been updated in the proxy
       expect(
         await proxyAdmin.methods
-          .getProxyImplementation(transparentProxyAddress)
+          .getProxyImplementation(thirdPartyRegistryContract.address)
           .call()
       ).to.be.equal(upgradedImplementation.address)
     })
@@ -373,6 +384,105 @@ describe('ThirdPartyRegistry', function () {
 
       // Should fail because deployer is no longer owner
       await assertRevert(upgradePromise, 'Ownable: caller is not the owner')
+    })
+
+    it('reverts when calling only owner ProxyAdmin functions as not owner', async function () {
+      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
+      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+      const randomAddress = web3.utils.randomHex(20)
+
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdminABI,
+        ozJson.admin.address
+      )
+
+      // changeProxyAdmin fails
+      await assertRevert(
+        proxyAdmin.methods
+          .changeProxyAdmin(thirdPartyRegistryContract.address, randomAddress)
+          .send(fromUser),
+        'Ownable: caller is not the owner'
+      )
+
+      // upgrade fails
+      await assertRevert(
+        proxyAdmin.methods
+          .upgrade(thirdPartyRegistryContract.address, randomAddress)
+          .send(fromUser),
+        'Ownable: caller is not the owner'
+      )
+
+      const randomBytes = randomAddress
+
+      // upgradeAndCall fails
+      await assertRevert(
+        proxyAdmin.methods
+          .upgradeAndCall(
+            thirdPartyRegistryContract.address,
+            randomAddress,
+            randomBytes
+          )
+          .send(fromUser),
+        'Ownable: caller is not the owner'
+      )
+    })
+
+    it('reverts when calling only admin TransparentUpgradeableProxy functions as not admin', async function () {
+      const randomAddress = web3.utils.randomHex(20)
+
+      const transparentProxy = new web3.eth.Contract(
+        TransparentUpgradeableProxyABI,
+        thirdPartyRegistryContract.address
+      )
+
+      // These functions have the following modifier, so if the caller is not the admin,
+      // they will fallback to the implementation. As the implementation does not have these
+      // methods, it will revert with function selector not recognized.
+      //
+      // modifier ifAdmin() {
+      //     if (msg.sender == _getAdmin()) {
+      //         _;
+      //     } else {
+      //         _fallback();
+      //     }
+      // }
+      //
+      // As the admin is the ProxyAdmin contract any other caller will falback into
+      // unexisting selectors.
+
+      // admin fails
+      await assertRevert(
+        transparentProxy.methods.admin().send(fromUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+
+      // implementation fails
+      await assertRevert(
+        transparentProxy.methods.implementation().send(fromUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+
+      // changeAdmin fails
+      await assertRevert(
+        transparentProxy.methods.changeAdmin(randomAddress).send(fromUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+
+      // upgradeTo fails
+      await assertRevert(
+        transparentProxy.methods.upgradeTo(randomAddress).send(fromUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+
+      const randomBytes = randomAddress
+
+      // upgradeToAndCall fails
+      await assertRevert(
+        transparentProxy.methods
+          .upgradeToAndCall(randomAddress, randomBytes)
+          .send(fromUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
     })
   })
 
