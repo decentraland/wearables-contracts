@@ -7,10 +7,9 @@ import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
-import { getSignature } from '../helpers/thirdPartyRegistry'
+import { getSignature, ProxyAdminABI } from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
-const ProxyAdmin = artifacts.require('ProxyAdmin')
 const ThirdPartyRegistry = artifacts.require('ThirdPartyRegistry')
 const DummyThirdPartyRegistryUpgrade = artifacts.require(
   'DummyThirdPartyRegistryUpgrade'
@@ -220,16 +219,20 @@ describe('ThirdPartyRegistry', function () {
       const transparentProxyAddress = ozJson.proxies[0].address
 
       // Upgrade to new implementation
-      const proxyAdmin = await ProxyAdmin.at(ozJson.admin.address)
-
-      await proxyAdmin.upgrade(
-        transparentProxyAddress,
-        upgradedImplementation.address
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdminABI,
+        ozJson.admin.address
       )
+
+      await proxyAdmin.methods
+        .upgrade(transparentProxyAddress, upgradedImplementation.address)
+        .send(fromDeployer)
 
       // Check the implementation has been updated in the proxy
       expect(
-        await proxyAdmin.getProxyImplementation(transparentProxyAddress)
+        await proxyAdmin.methods
+          .getProxyImplementation(transparentProxyAddress)
+          .call()
       ).to.be.equal(upgradedImplementation.address)
 
       // Check that the third party is still in the upgraded contract
@@ -320,37 +323,38 @@ describe('ThirdPartyRegistry', function () {
       const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
       const transparentProxyAddress = ozJson.proxies[0].address
 
-      const proxyAdmin = await ProxyAdmin.at(ozJson.admin.address)
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdminABI,
+        ozJson.admin.address
+      )
 
       // Try to upgrade to new implementation without being the proxy owner
       await assertRevert(
-        proxyAdmin.upgrade(
-          transparentProxyAddress,
-          upgradedImplementation.address,
-          fromUser
-        ),
+        proxyAdmin.methods
+          .upgrade(transparentProxyAddress, upgradedImplementation.address)
+          .send(fromUser),
         'Ownable: caller is not the owner'
       )
 
       // Transfering ownership of the proxy should fail when the caller is not the current owner
       await assertRevert(
-        proxyAdmin.transferOwnership(user, fromUser),
+        proxyAdmin.methods.transferOwnership(user).send(fromUser),
         'Ownable: caller is not the owner'
       )
 
       // Change proxy admin to user
-      await proxyAdmin.transferOwnership(user, fromDeployer)
+      await proxyAdmin.methods.transferOwnership(user).send(fromDeployer)
 
       // Now user can upgrade the implementation
-      await proxyAdmin.upgrade(
-        transparentProxyAddress,
-        upgradedImplementation.address,
-        fromUser
-      )
+      await proxyAdmin.methods
+        .upgrade(transparentProxyAddress, upgradedImplementation.address)
+        .send(fromUser)
 
       // Check the implementation has been updated in the proxy
       expect(
-        await proxyAdmin.getProxyImplementation(transparentProxyAddress)
+        await proxyAdmin.methods
+          .getProxyImplementation(transparentProxyAddress)
+          .call()
       ).to.be.equal(upgradedImplementation.address)
     })
 
