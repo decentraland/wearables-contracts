@@ -386,7 +386,116 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(upgradePromise, 'Ownable: caller is not the owner')
     })
 
-    it('reverts when calling only owner ProxyAdmin functions as not owner', async function () {
+    it('should call owner ProxyAdmin functions when the caller is the owner', async function () {
+      const anotherUser = hacker
+      const fromAnotherUser = fromHacker
+
+      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
+      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdminABI,
+        ozJson.admin.address
+      )
+
+      // Set user as the owner
+      await proxyAdmin.methods.transferOwnership(user).send(fromDeployer)
+
+      // Deploy upgraded implementation
+      const upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
+
+      // Can call upgrade as user which is the new admin
+      await proxyAdmin.methods
+        .upgrade(
+          thirdPartyRegistryContract.address,
+          upgradedImplementation.address
+        )
+        .send(fromUser)
+
+      expect(
+        await proxyAdmin.methods
+          .getProxyImplementation(thirdPartyRegistryContract.address)
+          .call(fromUser)
+      ).to.be.equal(upgradedImplementation.address)
+
+      // Calling getProxyAdmin before changing the admin as it will revert afterwards
+      // because, as it is not the admin anymore of the transparent proxy, the call will just go to the fallback and
+      // try to call changeAdmin in the implementation (which does not exist).
+      expect(
+        await proxyAdmin.methods
+          .getProxyAdmin(thirdPartyRegistryContract.address)
+          .call(fromUser)
+      ).to.be.equal(ozJson.admin.address)
+
+      // Can call changeProxyAdmin as user
+      await proxyAdmin.methods
+        .changeProxyAdmin(thirdPartyRegistryContract.address, anotherUser)
+        .send(fromUser)
+
+      // As said previously, as the ProxyAdmin is no longer the admin of the transparent proxy,
+      // the getProxyAdmin will just fallback to the implementation unless the new admin calls it.
+      await assertRevert(
+        proxyAdmin.methods
+          .getProxyAdmin(thirdPartyRegistryContract.address)
+          .call(fromAnotherUser),
+        "Transaction reverted: function selector was not recognized and there's no fallback function"
+      )
+    })
+
+    it('should call admin TransparentUpgradeableProxy functions when the caller is the admin', async function () {
+      const anotherUser = hacker
+      const fromAnotherUser = fromHacker
+
+      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
+      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdminABI,
+        ozJson.admin.address
+      )
+
+      const transparentProxy = new web3.eth.Contract(
+        TransparentUpgradeableProxyABI,
+        thirdPartyRegistryContract.address
+      )
+
+      // Change the proxy admin to user to make calls as user
+      // The deployer is the owner of the ProxyAdmin so only it can call this function.
+      await proxyAdmin.methods
+        .changeProxyAdmin(thirdPartyRegistryContract.address, user)
+        .send(fromDeployer)
+
+      // Can call admin
+      expect(await transparentProxy.methods.admin().call(fromUser)).to.be.equal(
+        user
+      )
+
+      // Can call implementation
+      expect(
+        await transparentProxy.methods.implementation().call(fromUser)
+      ).to.be.equal(Object.values(ozJson.impls)[0].address)
+
+      // Can call changeAdmin
+      await transparentProxy.methods.changeAdmin(anotherUser).send(fromUser)
+
+      expect(
+        await transparentProxy.methods.admin().call(fromAnotherUser)
+      ).to.be.equal(anotherUser)
+
+      // Deploy upgraded implementation
+      const upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
+
+      // Can call upgradeTo
+      await transparentProxy.methods
+        .upgradeTo(upgradedImplementation.address)
+        .send(fromAnotherUser)
+
+      expect(
+        await transparentProxy.methods.implementation().call(fromAnotherUser)
+      ).to.be.equal(upgradedImplementation.address)
+    })
+
+    it('reverts when calling owner ProxyAdmin functions as not owner', async function () {
       // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
       const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
       const randomAddress = web3.utils.randomHex(20)
@@ -452,13 +561,13 @@ describe('ThirdPartyRegistry', function () {
 
       // admin fails
       await assertRevert(
-        transparentProxy.methods.admin().send(fromUser),
+        transparentProxy.methods.admin().call(fromUser),
         "Transaction reverted: function selector was not recognized and there's no fallback function"
       )
 
       // implementation fails
       await assertRevert(
-        transparentProxy.methods.implementation().send(fromUser),
+        transparentProxy.methods.implementation().call(fromUser),
         "Transaction reverted: function selector was not recognized and there's no fallback function"
       )
 
