@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat'
+import { ethers, upgrades } from 'hardhat'
 
 enum NETWORKS {
   'MUMBAI' = 'MUMBAI',
@@ -72,15 +72,18 @@ async function main() {
   const ThirdPartyRegistry = await ethers.getContractFactory(
     'ThirdPartyRegistry'
   )
-  const tpr = await ThirdPartyRegistry.deploy(
+
+  const tpr = await upgrades.deployProxy(ThirdPartyRegistry, [
     owner,
     THIRD_PARTY_AGREGATOR[network],
     COLLECTOR[network],
     COMMITTEE[network],
     MANA[network],
     ORACLE[network],
-    itemSlotPrice
-  )
+    itemSlotPrice,
+  ])
+
+  await tpr.deployed()
 
   console.log(`Contract deployed by: ${accountAddress}`)
   console.log('TPR:', tpr.address)
