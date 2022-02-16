@@ -186,7 +186,7 @@ describe('ThirdPartyRegistry', function () {
     THIRD_PARTIES = [thirdParty1, thirdParty2]
   })
 
-  describe('contract upgrade', () => {
+  describe('proxy', () => {
     it('should upgrade the contract', async () => {
       // Check that there are no third parties
       expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
@@ -218,12 +218,12 @@ describe('ThirdPartyRegistry', function () {
       const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
       const transparentProxyAddress = ozJson.proxies[0].address
 
-      // Upgrade to new implementation
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdminABI,
         ozJson.admin.address
       )
 
+      // Upgrade to new implementation
       await proxyAdmin.methods
         .upgrade(transparentProxyAddress, upgradedImplementation.address)
         .send(fromDeployer)
@@ -315,7 +315,7 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    it('should revert if the upgrader is not the proxy admin (deployer)', async () => {
+    it('reverts if the upgrader is not the proxy admin (deployer)', async () => {
       // Deploy upgraded implementation
       let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
 
@@ -358,7 +358,7 @@ describe('ThirdPartyRegistry', function () {
       ).to.be.equal(upgradedImplementation.address)
     })
 
-    it('should revert if the upgrader is not the proxy admin (deployer) :: hardhat-upgrades', async () => {
+    it('reverts if the upgrader is not the proxy admin (deployer) :: hardhat-upgrades', async () => {
       // Transfer ownership from deployer to user
       await upgrades.admin.transferProxyAdminOwnership(user)
 
