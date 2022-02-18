@@ -1,7 +1,5 @@
 import hr from 'hardhat'
 import { Mana } from 'decentraland-contract-plugins'
-import path from 'path'
-import fs from 'fs'
 
 import assertRevert from '../helpers/assertRevert'
 import { balanceSnap } from '../helpers/balanceSnap'
@@ -9,8 +7,8 @@ import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import {
   getSignature,
-  ProxyAdminABI,
-  TransparentUpgradeableProxyABI,
+  ProxyAdmin,
+  TransparentUpgradeableProxy,
 } from '../helpers/thirdPartyRegistry'
 
 const Committee = artifacts.require('Committee')
@@ -50,11 +48,6 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-const openZeppelinProxyFilePath = path.resolve(
-  __dirname,
-  '../../.openzeppelin/unknown-31337.json'
-)
-
 describe('ThirdPartyRegistry', function () {
   this.timeout(100000)
   // mana
@@ -85,6 +78,12 @@ describe('ThirdPartyRegistry', function () {
   // Contracts
   let committeeContract
   let manaContract
+  let proxyAdminContract
+  let transparentUpgradeableProxyContract
+  // As per the transparent proxy pattern, this var will store the logic/implementation
+  let thirdPartyRegistryImplementationContract
+  // While this variable will store the TransparentUpgradeableProxy contract
+  // which will be used as it it were a normal ThirdPartyRegistry contract
   let thirdPartyRegistryContract
   let chainlinkOracleContract
   let dataFeedContract
@@ -104,15 +103,6 @@ describe('ThirdPartyRegistry', function () {
   }
 
   beforeEach(async function () {
-    // Delete OZ proxy deployment/upgrade file for local network
-    // Required so all tests have a clean file for each instead of aggregating each new
-    // proxy to the same file.
-    try {
-      fs.rmSync(openZeppelinProxyFilePath)
-    } catch (e) {
-      // File not found
-    }
-
     // Create Listing environment
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
@@ -153,21 +143,54 @@ describe('ThirdPartyRegistry', function () {
       18
     )
 
+    // Start - Deploy TPR contract and required proxy contracts
+
     const ThirdPartyRegistryFactory = await ethers.getContractFactory(
       'ThirdPartyRegistry'
     )
+    const ProxyAdminFactory = await ethers.getContractFactory(
+      ProxyAdmin.abi,
+      ProxyAdmin.bytecode
+    )
+    const TransparentUpgradeableProxyFactory = await ethers.getContractFactory(
+      TransparentUpgradeableProxy.abi,
+      TransparentUpgradeableProxy.bytecode
+    )
 
-    const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
-      owner,
-      thirdPartyAgregator,
-      collector,
-      committeeContract.address,
-      manaContract.address,
-      chainlinkOracleContract.address,
-      oneEther.toString(),
-    ])
+    thirdPartyRegistryImplementationContract =
+      await ThirdPartyRegistryFactory.deploy()
+    proxyAdminContract = await ProxyAdminFactory.deploy()
 
-    thirdPartyRegistryContract = await ThirdPartyRegistry.at(proxy.address)
+    // Encode TPR initialize function data, which is used by the Proxy to
+    // call the initialize function.
+    const tprFactoryInterface = ThirdPartyRegistryFactory.interface
+    const fragment = tprFactoryInterface.getFunction('initialize')
+    const encodedFunctionData = tprFactoryInterface.encodeFunctionData(
+      fragment,
+      [
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        chainlinkOracleContract.address,
+        oneEther.toString(),
+      ]
+    )
+
+    transparentUpgradeableProxyContract =
+      await TransparentUpgradeableProxyFactory.deploy(
+        thirdPartyRegistryImplementationContract.address,
+        proxyAdminContract.address,
+        encodedFunctionData
+      )
+
+    // The proxy will be the one receiving calls intended to the TPR implementation
+    thirdPartyRegistryContract = await ThirdPartyRegistry.at(
+      transparentUpgradeableProxyContract.address
+    )
+
+    // End - Deploy TPR contract and required proxy contracts
 
     thirdParty1 = [
       'urn:decentraland:matic:ext-thirdparty1',
@@ -216,20 +239,17 @@ describe('ThirdPartyRegistry', function () {
       ).to.be.eq.BN(1)
 
       // Deploy upgraded implementation
-      let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
-
-      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
-      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
+      const upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
 
       const proxyAdmin = new web3.eth.Contract(
-        ProxyAdminABI,
-        ozJson.admin.address
+        ProxyAdmin.abi,
+        proxyAdminContract.address
       )
 
       // Upgrade to new implementation
       await proxyAdmin.methods
         .upgrade(
-          thirdPartyRegistryContract.address,
+          transparentUpgradeableProxyContract.address,
           upgradedImplementation.address
         )
         .send(fromDeployer)
@@ -237,7 +257,7 @@ describe('ThirdPartyRegistry', function () {
       // Check the implementation has been updated in the proxy
       expect(
         await proxyAdmin.methods
-          .getProxyImplementation(thirdPartyRegistryContract.address)
+          .getProxyImplementation(transparentUpgradeableProxyContract.address)
           .call()
       ).to.be.equal(upgradedImplementation.address)
 
@@ -263,7 +283,23 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    it('should upgrade the contract :: hardhat-upgrades', async () => {
+    it('should deploy and upgrade the contract :: hardhat-upgrades', async () => {
+      const ThirdPartyRegistryFactory = await ethers.getContractFactory(
+        'ThirdPartyRegistry'
+      )
+
+      const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        chainlinkOracleContract.address,
+        oneEther.toString(),
+      ])
+
+      thirdPartyRegistryContract = await ThirdPartyRegistry.at(proxy.address)
+
       // Check that there are no third parties
       expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
         0
@@ -292,12 +328,10 @@ describe('ThirdPartyRegistry', function () {
         'DummyThirdPartyRegistryUpgrade'
       )
 
-      const upgraded = await upgrades.upgradeProxy(
+      await upgrades.upgradeProxy(
         thirdPartyRegistryContract.address,
         DummyThirdPartyRegistryUpgrade
       )
-
-      thirdPartyRegistryContract = await ThirdPartyRegistry.at(upgraded.address)
 
       // Check that the third party is still in the upgraded contract
       expect(await thirdPartyRegistryContract.thirdPartiesCount()).to.be.eq.BN(
@@ -321,81 +355,13 @@ describe('ThirdPartyRegistry', function () {
       )
     })
 
-    it('reverts if the upgrader is not the proxy admin (deployer)', async () => {
-      // Deploy upgraded implementation
-      let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
-
-      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
-      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
-
-      const proxyAdmin = new web3.eth.Contract(
-        ProxyAdminABI,
-        ozJson.admin.address
-      )
-
-      // Try to upgrade to new implementation without being the proxy owner
-      await assertRevert(
-        proxyAdmin.methods
-          .upgrade(
-            thirdPartyRegistryContract.address,
-            upgradedImplementation.address
-          )
-          .send(fromUser),
-        'Ownable: caller is not the owner'
-      )
-
-      // Transfering ownership of the proxy should fail when the caller is not the current owner
-      await assertRevert(
-        proxyAdmin.methods.transferOwnership(user).send(fromUser),
-        'Ownable: caller is not the owner'
-      )
-
-      // Change proxy admin to user
-      await proxyAdmin.methods.transferOwnership(user).send(fromDeployer)
-
-      // Now user can upgrade the implementation
-      await proxyAdmin.methods
-        .upgrade(
-          thirdPartyRegistryContract.address,
-          upgradedImplementation.address
-        )
-        .send(fromUser)
-
-      // Check the implementation has been updated in the proxy
-      expect(
-        await proxyAdmin.methods
-          .getProxyImplementation(thirdPartyRegistryContract.address)
-          .call()
-      ).to.be.equal(upgradedImplementation.address)
-    })
-
-    it('reverts if the upgrader is not the proxy admin (deployer) :: hardhat-upgrades', async () => {
-      // Transfer ownership from deployer to user
-      await upgrades.admin.transferProxyAdminOwnership(user)
-
-      // Try to upgrade the contract as deployer
-      const DummyThirdPartyRegistryUpgrade = await ethers.getContractFactory(
-        'DummyThirdPartyRegistryUpgrade'
-      )
-      const upgradePromise = upgrades.upgradeProxy(
-        thirdPartyRegistryContract.address,
-        DummyThirdPartyRegistryUpgrade
-      )
-
-      // Should fail because deployer is no longer owner
-      await assertRevert(upgradePromise, 'Ownable: caller is not the owner')
-    })
-
     it('should call owner ProxyAdmin functions when the caller is the owner', async function () {
       const anotherUser = hacker
       const fromAnotherUser = fromHacker
 
-      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
-      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
-
       const proxyAdmin = new web3.eth.Contract(
-        ProxyAdminABI,
-        ozJson.admin.address
+        ProxyAdmin.abi,
+        proxyAdminContract.address
       )
 
       // Set user as the owner
@@ -407,14 +373,14 @@ describe('ThirdPartyRegistry', function () {
       // Can call upgrade as user which is the new admin
       await proxyAdmin.methods
         .upgrade(
-          thirdPartyRegistryContract.address,
+          transparentUpgradeableProxyContract.address,
           upgradedImplementation.address
         )
         .send(fromUser)
 
       expect(
         await proxyAdmin.methods
-          .getProxyImplementation(thirdPartyRegistryContract.address)
+          .getProxyImplementation(transparentUpgradeableProxyContract.address)
           .call(fromUser)
       ).to.be.equal(upgradedImplementation.address)
 
@@ -423,20 +389,20 @@ describe('ThirdPartyRegistry', function () {
       // try to call changeAdmin in the implementation (which does not exist).
       expect(
         await proxyAdmin.methods
-          .getProxyAdmin(thirdPartyRegistryContract.address)
+          .getProxyAdmin(transparentUpgradeableProxyContract.address)
           .call(fromUser)
-      ).to.be.equal(ozJson.admin.address)
+      ).to.be.equal(proxyAdminContract.address)
 
       // Can call changeProxyAdmin as user
       await proxyAdmin.methods
-        .changeProxyAdmin(thirdPartyRegistryContract.address, anotherUser)
+        .changeProxyAdmin(transparentUpgradeableProxyContract.address, anotherUser)
         .send(fromUser)
 
       // As said previously, as the ProxyAdmin is no longer the admin of the transparent proxy,
       // the getProxyAdmin will just fallback to the implementation unless the new admin calls it.
       await assertRevert(
         proxyAdmin.methods
-          .getProxyAdmin(thirdPartyRegistryContract.address)
+          .getProxyAdmin(transparentUpgradeableProxyContract.address)
           .call(fromAnotherUser),
         "Transaction reverted: function selector was not recognized and there's no fallback function"
       )
@@ -446,23 +412,20 @@ describe('ThirdPartyRegistry', function () {
       const anotherUser = hacker
       const fromAnotherUser = fromHacker
 
-      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
-      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
-
       const proxyAdmin = new web3.eth.Contract(
-        ProxyAdminABI,
-        ozJson.admin.address
+        ProxyAdmin.abi,
+        proxyAdminContract.address
       )
 
       const transparentProxy = new web3.eth.Contract(
-        TransparentUpgradeableProxyABI,
-        thirdPartyRegistryContract.address
+        TransparentUpgradeableProxy.abi,
+        transparentUpgradeableProxyContract.address
       )
 
       // Change the proxy admin to user to make calls as user
       // The deployer is the owner of the ProxyAdmin so only it can call this function.
       await proxyAdmin.methods
-        .changeProxyAdmin(thirdPartyRegistryContract.address, user)
+        .changeProxyAdmin(transparentUpgradeableProxyContract.address, user)
         .send(fromDeployer)
 
       // Can call admin
@@ -473,7 +436,7 @@ describe('ThirdPartyRegistry', function () {
       // Can call implementation
       expect(
         await transparentProxy.methods.implementation().call(fromUser)
-      ).to.be.equal(Object.values(ozJson.impls)[0].address)
+      ).to.be.equal(thirdPartyRegistryImplementationContract.address)
 
       // Can call changeAdmin
       await transparentProxy.methods.changeAdmin(anotherUser).send(fromUser)
@@ -495,20 +458,99 @@ describe('ThirdPartyRegistry', function () {
       ).to.be.equal(upgradedImplementation.address)
     })
 
+    it('reverts if the upgrader is not the proxy admin (deployer)', async () => {
+      // Deploy upgraded implementation
+      let upgradedImplementation = await DummyThirdPartyRegistryUpgrade.new()
+
+      const proxyAdmin = new web3.eth.Contract(
+        ProxyAdmin.abi,
+        proxyAdminContract.address
+      )
+
+      // Try to upgrade to new implementation without being the proxy owner
+      await assertRevert(
+        proxyAdmin.methods
+          .upgrade(
+            transparentUpgradeableProxyContract.address,
+            upgradedImplementation.address
+          )
+          .send(fromUser),
+        'Ownable: caller is not the owner'
+      )
+
+      // Transfering ownership of the proxy should fail when the caller is not the current owner
+      await assertRevert(
+        proxyAdmin.methods.transferOwnership(user).send(fromUser),
+        'Ownable: caller is not the owner'
+      )
+
+      // Change proxy admin to user
+      await proxyAdmin.methods.transferOwnership(user).send(fromDeployer)
+
+      // Now user can upgrade the implementation
+      await proxyAdmin.methods
+        .upgrade(
+          transparentUpgradeableProxyContract.address,
+          upgradedImplementation.address
+        )
+        .send(fromUser)
+
+      // Check the implementation has been updated in the proxy
+      expect(
+        await proxyAdmin.methods
+          .getProxyImplementation(transparentUpgradeableProxyContract.address)
+          .call()
+      ).to.be.equal(upgradedImplementation.address)
+    })
+
+    it('reverts if the upgrader is not the proxy admin (deployer) :: hardhat-upgrades', async () => {
+      const ThirdPartyRegistryFactory = await ethers.getContractFactory(
+        'ThirdPartyRegistry'
+      )
+
+      const proxy = await upgrades.deployProxy(ThirdPartyRegistryFactory, [
+        owner,
+        thirdPartyAgregator,
+        collector,
+        committeeContract.address,
+        manaContract.address,
+        chainlinkOracleContract.address,
+        oneEther.toString(),
+      ])
+
+      thirdPartyRegistryContract = await ThirdPartyRegistry.at(proxy.address)
+
+      // Transfer ownership from deployer to user
+      await upgrades.admin.transferProxyAdminOwnership(user)
+
+      // Try to upgrade the contract as deployer
+      const DummyThirdPartyRegistryUpgrade = await ethers.getContractFactory(
+        'DummyThirdPartyRegistryUpgrade'
+      )
+      const upgradePromise = upgrades.upgradeProxy(
+        thirdPartyRegistryContract.address,
+        DummyThirdPartyRegistryUpgrade
+      )
+
+      // Should fail because deployer is no longer owner
+      await assertRevert(upgradePromise, 'Ownable: caller is not the owner')
+    })
+
     it('reverts when calling owner ProxyAdmin functions as not owner', async function () {
-      // Get the proxy address from OpenZeppelin config file generated with upgrades.deployProxy
-      const ozJson = JSON.parse(fs.readFileSync(openZeppelinProxyFilePath))
       const randomAddress = web3.utils.randomHex(20)
 
       const proxyAdmin = new web3.eth.Contract(
-        ProxyAdminABI,
-        ozJson.admin.address
+        ProxyAdmin.abi,
+        proxyAdminContract.address
       )
 
       // changeProxyAdmin fails
       await assertRevert(
         proxyAdmin.methods
-          .changeProxyAdmin(thirdPartyRegistryContract.address, randomAddress)
+          .changeProxyAdmin(
+            transparentUpgradeableProxyContract.address,
+            randomAddress
+          )
           .send(fromUser),
         'Ownable: caller is not the owner'
       )
@@ -516,7 +558,7 @@ describe('ThirdPartyRegistry', function () {
       // upgrade fails
       await assertRevert(
         proxyAdmin.methods
-          .upgrade(thirdPartyRegistryContract.address, randomAddress)
+          .upgrade(transparentUpgradeableProxyContract.address, randomAddress)
           .send(fromUser),
         'Ownable: caller is not the owner'
       )
@@ -527,7 +569,7 @@ describe('ThirdPartyRegistry', function () {
       await assertRevert(
         proxyAdmin.methods
           .upgradeAndCall(
-            thirdPartyRegistryContract.address,
+            transparentUpgradeableProxyContract.address,
             randomAddress,
             randomBytes
           )
@@ -540,8 +582,8 @@ describe('ThirdPartyRegistry', function () {
       const randomAddress = web3.utils.randomHex(20)
 
       const transparentProxy = new web3.eth.Contract(
-        TransparentUpgradeableProxyABI,
-        thirdPartyRegistryContract.address
+        TransparentUpgradeableProxy.abi,
+        transparentUpgradeableProxyContract.address
       )
 
       // These functions have the following modifier, so if the caller is not the admin,
