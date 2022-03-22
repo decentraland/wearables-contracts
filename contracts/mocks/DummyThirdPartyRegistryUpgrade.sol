@@ -89,7 +89,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     mapping(string => ThirdParty) public thirdParties;
     string[] public thirdPartyIds;
 
-    address public thirdPartyAgregator;
+    address public thirdPartyAggregator;
     address public feesCollector;
     ICommittee public committee;
     IERC20  public acceptedToken;
@@ -111,7 +111,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
     event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, address indexed _sender);
 
-    event ThirdPartyAgregatorSet(address indexed _oldThirdPartyAgregator, address indexed _newThirdPartyAgregator);
+    event ThirdPartyAggregatorSet(address indexed _oldThirdPartyAggregator, address indexed _newThirdPartyAggregator);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
     event CommitteeSet(ICommittee indexed _oldCommittee, ICommittee indexed _newCommittee);
     event AcceptedTokenSet(IERC20 indexed _oldAcceptedToken, IERC20 indexed _newAcceptedToken);
@@ -123,7 +123,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
    /**
     * @notice Initialize the contract
     * @param _owner - owner of the contract
-    * @param _thirdPartyAgregator - third party agregator
+    * @param _thirdPartyAggregator - third party aggregator
     * @param _feesCollector - fees collector
     * @param _committee - committee smart contract
     * @param _acceptedToken - accepted token
@@ -132,7 +132,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     */
     function initialize(
         address _owner,
-        address _thirdPartyAgregator,
+        address _thirdPartyAggregator,
         address _feesCollector,
         ICommittee _committee,
         IERC20 _acceptedToken,
@@ -142,7 +142,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
         _initializeEIP712("Decentraland Third Party Registry", "1");
         _initOwnable();
 
-        setThirdPartyAgregator(_thirdPartyAgregator);
+        setThirdPartyAggregator(_thirdPartyAggregator);
         setFeesCollector(_feesCollector);
         setCommittee(_committee);
         setAcceptedToken(_acceptedToken);
@@ -162,23 +162,23 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
         _;
     }
 
-    modifier onlyThirdPartyAgregator() {
+    modifier onlyThirdPartyAggregator() {
         require(
-            thirdPartyAgregator == _msgSender(),
-            "TPR#onlyThirdPartyAgregator: CALLER_IS_NOT_THE_PARTY_AGREGATOR"
+            thirdPartyAggregator == _msgSender(),
+            "TPR#onlyThirdPartyAggregator: CALLER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
     }
 
     /**
-    * @notice Set the third party agregator
-    * @param _newThirdPartyAgregator - third party agregator
+    * @notice Set the third party aggregator
+    * @param _newThirdPartyAggregator - third party aggregator
     */
-    function setThirdPartyAgregator(address _newThirdPartyAgregator) onlyOwner public {
-        require(_newThirdPartyAgregator != address(0), "TPR#setThirdPartyAgregator: INVALID_THIRD_PARTY_AGREGATOR");
+    function setThirdPartyAggregator(address _newThirdPartyAggregator) onlyOwner public {
+        require(_newThirdPartyAggregator != address(0), "TPR#setThirdPartyAggregator: INVALID_THIRD_PARTY_AGGREGATOR");
 
-        emit ThirdPartyAgregatorSet(thirdPartyAgregator, _newThirdPartyAgregator);
-        thirdPartyAgregator = _newThirdPartyAgregator;
+        emit ThirdPartyAggregatorSet(thirdPartyAggregator, _newThirdPartyAggregator);
+        thirdPartyAggregator = _newThirdPartyAggregator;
     }
 
 
@@ -258,7 +258,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyThirdPartyAgregator external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyThirdPartyAggregator external {
         revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
     }
 
@@ -276,8 +276,8 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
 
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(
-                thirdParty.managers[sender] || thirdPartyAgregator == sender,
-                "TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGREGATOR"
+                thirdParty.managers[sender] || thirdPartyAggregator == sender,
+                "TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR"
             );
 
             _checkThirdParty(thirdParty);
@@ -308,7 +308,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
             uint256 slots = thirdPartyParam.slots;
 
             if (slots > 0) {
-                require(thirdPartyAgregator == sender, "TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGREGATOR");
+                require(thirdPartyAggregator == sender, "TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGGREGATOR");
 
                 thirdParty.maxItems = thirdParty.maxItems.add(slots);
             }
