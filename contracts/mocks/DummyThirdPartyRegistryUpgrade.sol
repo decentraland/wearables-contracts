@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity  ^0.7.3;
+pragma solidity  0.7.6;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -99,17 +99,17 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _caller);
-    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _caller);
-    event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
-    event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
+    event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
+    event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _sender);
     event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
     event ThirdPartyRuleAdded(string _thirdPartyId, string _rule, bool _value, address _sender);
 
-    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
-    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
-    event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
-    event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, address indexed _sender);
+    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _sender);
+    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _sender);
+    event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _sender);
+    event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, bytes32 _messageHash, address indexed _sender);
 
     event ThirdPartyAggregatorSet(address indexed _oldThirdPartyAggregator, address indexed _newThirdPartyAggregator);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
@@ -157,7 +157,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     modifier onlyCommittee() {
         require(
             committee.members(_msgSender()),
-            "TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER"
+            "TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER"
         );
         _;
     }
@@ -165,7 +165,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
     modifier onlyThirdPartyAggregator() {
         require(
             thirdPartyAggregator == _msgSender(),
-            "TPR#onlyThirdPartyAggregator: CALLER_IS_NOT_THE_PARTY_AGGREGATOR"
+            "TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
     }
@@ -277,7 +277,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(
                 thirdParty.managers[sender] || thirdPartyAggregator == sender,
-                "TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR"
+                "TPR#updateThirdParties: SENDER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR"
             );
 
             _checkThirdParty(thirdParty);
@@ -308,7 +308,7 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
             uint256 slots = thirdPartyParam.slots;
 
             if (slots > 0) {
-                require(thirdPartyAggregator == sender, "TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGGREGATOR");
+                require(thirdPartyAggregator == sender, "TPR#updateThirdParties: SENDER_IS_NOT_THIRD_PARTY_AGGREGATOR");
 
                 thirdParty.maxItems = thirdParty.maxItems.add(slots);
             }
@@ -614,9 +614,9 @@ contract DummyThirdPartyRegistryUpgrade is OwnableInitializable, NativeMetaTrans
             require(thirdParty.managers[signer], 'TPR#_consumeSlots: INVALID_SIGNER');
 
             thirdParty.receipts[messageHash] = consumeSlotParam.qty;
-            thirdParty.consumedSlots = thirdParty.consumedSlots.add(consumeSlotParam.qty);
+            thirdParty.consumedSlots = newConsumedSlots;
 
-            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, sender);
+            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, messageHash, sender);
         }
     }
 
