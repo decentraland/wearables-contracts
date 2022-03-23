@@ -1021,7 +1021,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[0].args._managers).to.be.eql(thirdParty1[3])
       expect(logs[0].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       expect(logs[1].event).to.be.equal('ThirdPartyAdded')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -1030,7 +1030,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
       expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
-      expect(logs[1].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1170,7 +1170,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[1].args._managers).to.be.eql(thirdParty1[3])
       expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
-      expect(logs[1].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
 
       expect(logs[2].event).to.be.equal('ThirdPartyAdded')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -1179,7 +1179,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._isApproved).to.be.eql(initialValueForThirdParties)
       expect(logs[2].args._managers).to.be.eql(thirdParty2[3])
       expect(logs[2].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
-      expect(logs[2].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[2].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1557,7 +1557,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(manager)
+      expect(logs[0].args._sender).to.be.eql(manager)
 
       expect(logs[1].event).to.be.equal('ThirdPartyUpdated')
       expect(logs[1].args._thirdPartyId).to.be.eql(updatedThirdParty2[0])
@@ -1566,7 +1566,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._managers).to.be.eql(updatedThirdParty2[3])
       expect(logs[1].args._managerValues).to.be.eql(updatedThirdParty2[4])
       expect(logs[1].args._itemSlots).to.be.eq.BN(updatedThirdParty2[5])
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1649,7 +1649,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       expect(logs[1].event).to.be.equal('ThirdPartyUpdated')
       expect(logs[1].args._thirdPartyId).to.be.eql(updatedThirdParty2[0])
@@ -1658,7 +1658,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._managers).to.be.eql(updatedThirdParty2[3])
       expect(logs[1].args._managerValues).to.be.eql(updatedThirdParty2[4])
       expect(logs[1].args._itemSlots).to.be.eq.BN(updatedThirdParty2[5])
-      expect(logs[1].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1800,7 +1800,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[1].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[1].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       expect(logs[2].event).to.be.equal('ThirdPartyUpdated')
       expect(logs[2].args._thirdPartyId).to.be.eql(updatedThirdParty2[0])
@@ -1809,7 +1809,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._managers).to.be.eql(updatedThirdParty2[3])
       expect(logs[2].args._managerValues).to.be.eql(updatedThirdParty2[4])
       expect(logs[2].args._itemSlots).to.be.eq.BN(updatedThirdParty2[5])
-      expect(logs[2].args._caller).to.be.eql(manager)
+      expect(logs[2].args._sender).to.be.eql(manager)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1901,7 +1901,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1966,7 +1966,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -2024,7 +2024,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -2082,7 +2082,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(updatedThirdParty1[5])
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -2138,7 +2138,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       let thirdParty = await thirdPartyRegistryContract.thirdParties(
         thirdParty1[0]
@@ -2166,7 +2166,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._managers).to.be.eql(updatedThirdParty1[3])
       expect(logs[0].args._managerValues).to.be.eql(updatedThirdParty1[4])
       expect(logs[0].args._itemSlots).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[0].args._caller).to.be.eql(thirdPartyAggregator)
+      expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
 
@@ -2370,7 +2370,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._price).to.be.eq.BN(priceOfSlotsToBuy)
       expect(logs[0].args._value).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[0].args._caller).to.be.eql(user)
+      expect(logs[0].args._sender).to.be.eql(user)
 
       totalManaPaid = priceOfSlotsToBuy
 
@@ -2424,7 +2424,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._price).to.be.eq.BN(priceOfSlotsToBuy)
       expect(logs[0].args._value).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[0].args._caller).to.be.eql(user)
+      expect(logs[0].args._sender).to.be.eql(user)
 
       totalManaPaid = totalManaPaid.add(priceOfSlotsToBuy)
 
@@ -2537,7 +2537,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._price).to.be.eq.BN(priceOfSlotsToBuy)
       expect(logs[1].args._value).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[1].args._caller).to.be.eql(user)
+      expect(logs[1].args._sender).to.be.eql(user)
 
       totalManaPaid = priceOfSlotsToBuy
 
@@ -2626,7 +2626,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._price).to.be.eq.BN(priceOfSlotsToBuy)
       expect(logs[1].args._value).to.be.eq.BN(slotsToAddOrBuy)
-      expect(logs[1].args._caller).to.be.eql(user)
+      expect(logs[1].args._sender).to.be.eql(user)
 
       totalManaPaid = totalManaPaid.add(priceOfSlotsToBuy)
 
@@ -2848,14 +2848,14 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._itemId).to.be.eq.BN(THIRD_PARTY_ITEMS[0][0])
       expect(logs[0].args._metadata).to.be.eq.BN(THIRD_PARTY_ITEMS[0][1])
       expect(logs[0].args._value).to.be.eql(initialValueForItems)
-      expect(logs[0].args._caller).to.be.eql(manager)
+      expect(logs[0].args._sender).to.be.eql(manager)
 
       expect(logs[1].event).to.be.equal('ItemAdded')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._itemId).to.be.eq.BN(THIRD_PARTY_ITEMS[1][0])
       expect(logs[1].args._metadata).to.be.eq.BN(THIRD_PARTY_ITEMS[1][1])
       expect(logs[1].args._value).to.be.eql(initialValueForItems)
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -2971,14 +2971,14 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._itemId).to.be.eq.BN(THIRD_PARTY_ITEMS[0][0])
       expect(logs[1].args._metadata).to.be.eq.BN(THIRD_PARTY_ITEMS[0][1])
       expect(logs[1].args._value).to.be.eql(initialValueForItems)
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       expect(logs[2].event).to.be.equal('ItemAdded')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[2].args._itemId).to.be.eq.BN(THIRD_PARTY_ITEMS[1][0])
       expect(logs[2].args._metadata).to.be.eq.BN(THIRD_PARTY_ITEMS[1][1])
       expect(logs[2].args._value).to.be.eql(initialValueForItems)
-      expect(logs[2].args._caller).to.be.eql(manager)
+      expect(logs[2].args._sender).to.be.eql(manager)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -3277,7 +3277,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._metadata).to.be.eq.BN(
         UPDATED_THIRD_PARTY_ITEMS[0][1]
       )
-      expect(logs[0].args._caller).to.be.eql(manager)
+      expect(logs[0].args._sender).to.be.eql(manager)
 
       expect(logs[1].event).to.be.equal('ItemUpdated')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -3285,7 +3285,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._metadata).to.be.eq.BN(
         UPDATED_THIRD_PARTY_ITEMS[1][1]
       )
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
       expect(itemsCount).to.be.eq.BN(2)
@@ -3389,7 +3389,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._metadata).to.be.eq.BN(
         UPDATED_THIRD_PARTY_ITEMS[0][1]
       )
-      expect(logs[1].args._caller).to.be.eql(manager)
+      expect(logs[1].args._sender).to.be.eql(manager)
 
       expect(logs[2].event).to.be.equal('ItemUpdated')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -3397,7 +3397,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._metadata).to.be.eq.BN(
         UPDATED_THIRD_PARTY_ITEMS[1][1]
       )
-      expect(logs[2].args._caller).to.be.eql(manager)
+      expect(logs[2].args._sender).to.be.eql(manager)
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty1[0])
       expect(itemsCount).to.be.eq.BN(2)
@@ -3632,12 +3632,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._value).to.be.eql(false)
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._sender).to.be.eql(committeeMember)
 
       expect(logs[1].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[1].args._value).to.be.eql(false)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -3846,12 +3846,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._value).to.be.eql(false)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       expect(logs[2].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[2].args._value).to.be.eql(false)
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -4005,7 +4005,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._value).to.be.eql(true)
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._sender).to.be.eql(committeeMember)
 
       expect(logs[1].event).to.be.equal('ItemReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4013,7 +4013,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[0][1])
       expect(logs[1].args._contentHash).to.be.eql(contentHashes[0])
       expect(logs[1].args._value).to.be.eql(true)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       expect(logs[2].event).to.be.equal('ItemReviewed')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4021,12 +4021,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[1][1])
       expect(logs[2].args._contentHash).to.be.eql(contentHashes[1])
       expect(logs[2].args._value).to.be.eql(true)
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._sender).to.be.eql(committeeMember)
 
       expect(logs[3].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[3].args._value).to.be.eql(true)
-      expect(logs[3].args._caller).to.be.eql(committeeMember)
+      expect(logs[3].args._sender).to.be.eql(committeeMember)
 
       expect(logs[4].event).to.be.equal('ItemReviewed')
       expect(logs[4].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -4034,7 +4034,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[4].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
       expect(logs[4].args._contentHash).to.be.eql(contentHashes[2])
       expect(logs[4].args._value).to.be.eql(true)
-      expect(logs[4].args._caller).to.be.eql(committeeMember)
+      expect(logs[4].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -4258,7 +4258,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._value).to.be.eql(true)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       expect(logs[2].event).to.be.equal('ItemReviewed')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4266,7 +4266,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._metadata).to.be.eql(UPDATED_THIRD_PARTY_ITEMS[0][1])
       expect(logs[2].args._contentHash).to.be.eql(contentHashes[0])
       expect(logs[2].args._value).to.be.eql(true)
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._sender).to.be.eql(committeeMember)
 
       expect(logs[3].event).to.be.equal('ItemReviewed')
       expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4274,12 +4274,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[3].args._metadata).to.be.eql(UPDATED_THIRD_PARTY_ITEMS[1][1])
       expect(logs[3].args._contentHash).to.be.eql(contentHashes[1])
       expect(logs[3].args._value).to.be.eql(true)
-      expect(logs[3].args._caller).to.be.eql(committeeMember)
+      expect(logs[3].args._sender).to.be.eql(committeeMember)
 
       expect(logs[4].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[4].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[4].args._value).to.be.eql(true)
-      expect(logs[4].args._caller).to.be.eql(committeeMember)
+      expect(logs[4].args._sender).to.be.eql(committeeMember)
 
       expect(logs[5].event).to.be.equal('ItemReviewed')
       expect(logs[5].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -4287,7 +4287,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[5].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
       expect(logs[5].args._contentHash).to.be.eql(contentHashes[2])
       expect(logs[5].args._value).to.be.eql(true)
-      expect(logs[5].args._caller).to.be.eql(committeeMember)
+      expect(logs[5].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -4443,7 +4443,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[0].args._value).to.be.eql(false)
-      expect(logs[0].args._caller).to.be.eql(committeeMember)
+      expect(logs[0].args._sender).to.be.eql(committeeMember)
 
       expect(logs[1].event).to.be.equal('ItemReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4451,7 +4451,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[0][1])
       expect(logs[1].args._contentHash).to.be.eql(contentHashes[0])
       expect(logs[1].args._value).to.be.eql(true)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       expect(logs[2].event).to.be.equal('ItemReviewed')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4459,12 +4459,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[1][1])
       expect(logs[2].args._contentHash).to.be.eql(contentHashes[1])
       expect(logs[2].args._value).to.be.eql(true)
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._sender).to.be.eql(committeeMember)
 
       expect(logs[3].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[3].args._value).to.be.eql(false)
-      expect(logs[3].args._caller).to.be.eql(committeeMember)
+      expect(logs[3].args._sender).to.be.eql(committeeMember)
 
       expect(logs[4].event).to.be.equal('ItemReviewed')
       expect(logs[4].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -4472,7 +4472,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[4].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
       expect(logs[4].args._contentHash).to.be.eql(contentHashes[2])
       expect(logs[4].args._value).to.be.eql(true)
-      expect(logs[4].args._caller).to.be.eql(committeeMember)
+      expect(logs[4].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
@@ -4696,7 +4696,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[1].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
       expect(logs[1].args._value).to.be.eql(false)
-      expect(logs[1].args._caller).to.be.eql(committeeMember)
+      expect(logs[1].args._sender).to.be.eql(committeeMember)
 
       expect(logs[2].event).to.be.equal('ItemReviewed')
       expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4704,7 +4704,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[2].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[0][1])
       expect(logs[2].args._contentHash).to.be.eql(contentHashes[0])
       expect(logs[2].args._value).to.be.eql(true)
-      expect(logs[2].args._caller).to.be.eql(committeeMember)
+      expect(logs[2].args._sender).to.be.eql(committeeMember)
 
       expect(logs[3].event).to.be.equal('ItemReviewed')
       expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -4712,12 +4712,12 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[3].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[1][1])
       expect(logs[3].args._contentHash).to.be.eql(contentHashes[1])
       expect(logs[3].args._value).to.be.eql(true)
-      expect(logs[3].args._caller).to.be.eql(committeeMember)
+      expect(logs[3].args._sender).to.be.eql(committeeMember)
 
       expect(logs[4].event).to.be.equal('ThirdPartyReviewed')
       expect(logs[4].args._thirdPartyId).to.be.eql(thirdParty2[0])
       expect(logs[4].args._value).to.be.eql(false)
-      expect(logs[4].args._caller).to.be.eql(committeeMember)
+      expect(logs[4].args._sender).to.be.eql(committeeMember)
 
       expect(logs[5].event).to.be.equal('ItemReviewed')
       expect(logs[5].args._thirdPartyId).to.be.eql(thirdParty2[0])
@@ -4725,7 +4725,7 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[5].args._metadata).to.be.eql(THIRD_PARTY_ITEMS[2][1])
       expect(logs[5].args._contentHash).to.be.eql(contentHashes[2])
       expect(logs[5].args._value).to.be.eql(true)
-      expect(logs[5].args._caller).to.be.eql(committeeMember)
+      expect(logs[5].args._sender).to.be.eql(committeeMember)
 
       // Third Party 1
       thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)

@@ -96,16 +96,16 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _caller);
-    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _caller);
-    event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _caller);
-    event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _caller);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
+    event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
+    event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
+    event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _sender);
     event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
     event ThirdPartyRuleAdded(string _thirdPartyId, string _rule, bool _value, address _sender);
 
-    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
-    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
-    event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
+    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _sender);
+    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _sender);
+    event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _sender);
     event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, bytes32 _messageHash, address indexed _sender);
 
     event ThirdPartyAggregatorSet(address indexed _oldThirdPartyAggregator, address indexed _newThirdPartyAggregator);
