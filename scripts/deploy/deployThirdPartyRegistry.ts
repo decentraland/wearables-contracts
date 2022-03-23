@@ -16,8 +16,8 @@ enum MANA {
   'BSC_TESTNET' = '0x00cca1b48a7b41c57821492efd0e872984db5baa',
 }
 
-enum THIRD_PARTY_AGREGATOR {
-  'MUMBAI' = '0xc002A074c59DD45dDb52334f2ef8fb743A579c89',
+enum THIRD_PARTY_AGGREGATOR {
+  'MUMBAI' = '0x24e5F44999c151f08609F8e27b2238c773C4D020',
   'MATIC' = '',
   'GOERLI' = '',
   'LOCALHOST' = '',
@@ -48,6 +48,14 @@ enum ORACLE {
   'BSC_TESTNET' = '',
 }
 
+enum ITEM_SLOT_PRICE {
+  'MUMBAI' = '1000000000000000000',
+  'MATIC' = '',
+  'GOERLI' = '',
+  'LOCALHOST' = '',
+  'BSC_TESTNET' = '',
+}
+
 /**
  * @dev Steps:
  * Deploy the Third Party Registry smart contract
@@ -63,11 +71,6 @@ async function main() {
     throw 'Invalid network'
   }
 
-  const itemSlotPrice = process.env['ITEM_SLOT_PRICE']
-  if (!itemSlotPrice) {
-    throw 'Invalid item slot price'
-  }
-
   // Deploy the TPR contract
   const ThirdPartyRegistry = await ethers.getContractFactory(
     'ThirdPartyRegistry'
@@ -75,12 +78,12 @@ async function main() {
 
   const tpr = await upgrades.deployProxy(ThirdPartyRegistry, [
     owner,
-    THIRD_PARTY_AGREGATOR[network],
+    THIRD_PARTY_AGGREGATOR[network],
     COLLECTOR[network],
     COMMITTEE[network],
     MANA[network],
     ORACLE[network],
-    itemSlotPrice,
+    ITEM_SLOT_PRICE[network],
   ])
 
   await tpr.deployed()
