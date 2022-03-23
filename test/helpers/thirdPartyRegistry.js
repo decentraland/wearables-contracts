@@ -2,6 +2,7 @@
 // @openzeppelin/hardhat-upgrades/src/utils/factories.ts
 import ProxyAdmin from '@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol/ProxyAdmin.json'
 import TransparentUpgradeableProxy from '@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol/TransparentUpgradeableProxy.json'
+import { web3 } from 'hardhat'
 
 export { ProxyAdmin, TransparentUpgradeableProxy }
 
@@ -80,4 +81,44 @@ export async function getSignature(
     s,
     v,
   }
+}
+
+export async function getMessageHash(
+  name,
+  version,
+  thirdPartyId,
+  qty,
+  salt,
+  contract
+) {
+  const dataHash = web3.utils.keccak256(
+    web3.eth.abi.encodeParameters(
+      ['bytes32', 'bytes32', 'uint256', 'bytes32'],
+      [
+        web3.utils.keccak256(
+          'ConsumeSlots(string thirdPartyId,uint256 qty,bytes32 salt)'
+        ),
+        web3.utils.keccak256(thirdPartyId),
+        qty,
+        salt,
+      ]
+    )
+  )
+
+  const domainHash = web3.utils.keccak256(
+    web3.eth.abi.encodeParameters(
+      ['bytes32', 'bytes32', 'bytes32', 'address', 'bytes32'],
+      [
+        web3.utils.keccak256(
+          'EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)'
+        ),
+        web3.utils.keccak256(name),
+        web3.utils.keccak256(version),
+        contract.address,
+        web3.utils.padLeft(web3.utils.toHex(await contract.getChainId()), 64),
+      ]
+    )
+  )
+
+  return web3.utils.soliditySha3('\x19\x01', domainHash, dataHash)
 }

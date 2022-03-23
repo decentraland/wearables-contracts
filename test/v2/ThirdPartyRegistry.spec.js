@@ -6,6 +6,7 @@ import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import {
+  getMessageHash,
   getSignature,
   ProxyAdmin,
   TransparentUpgradeableProxy,
@@ -395,7 +396,10 @@ describe('ThirdPartyRegistry', function () {
 
       // Can call changeProxyAdmin as user
       await proxyAdmin.methods
-        .changeProxyAdmin(transparentUpgradeableProxyContract.address, anotherUser)
+        .changeProxyAdmin(
+          transparentUpgradeableProxyContract.address,
+          anotherUser
+        )
         .send(fromUser)
 
       // As said previously, as the ProxyAdmin is no longer the admin of the transparent proxy,
@@ -4987,6 +4991,16 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args._qty).to.be.eq.BN(qty)
       expect(logs[0].args._signer).to.be.equal(manager)
       expect(logs[0].args._sender).to.be.equal(committeeMember)
+      expect(logs[0].args._messageHash).to.be.equal(
+        await getMessageHash(
+          domain,
+          version,
+          thirdParty1[0],
+          qty,
+          dummyBytes32,
+          thirdPartyRegistryContract
+        )
+      )
 
       expect(logs[1].event).to.be.equal('ThirdPartyReviewedWithRoot')
       expect(logs[1].args._thirdPartyId).to.be.equal(thirdParty1[0])
@@ -5048,17 +5062,27 @@ describe('ThirdPartyRegistry', function () {
 
       expect(logs.length).to.be.equal(4)
 
-      const assertConsumeLog = (log, qty) => {
+      const assertConsumeLog = async (log, qty) => {
         expect(log.event).to.be.equal('ItemSlotsConsumed')
         expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
         expect(log.args._qty).to.be.eq.BN(qty)
         expect(log.args._signer).to.be.equal(manager)
         expect(log.args._sender).to.be.equal(committeeMember)
+        expect(log.args._messageHash).to.be.equal(
+          await getMessageHash(
+            domain,
+            version,
+            thirdParty1[0],
+            qty,
+            dummyBytes32,
+            thirdPartyRegistryContract
+          )
+        )
       }
 
-      assertConsumeLog(logs[0], qty1)
-      assertConsumeLog(logs[1], qty2)
-      assertConsumeLog(logs[2], qty3)
+      await assertConsumeLog(logs[0], qty1)
+      await assertConsumeLog(logs[1], qty2)
+      await assertConsumeLog(logs[2], qty3)
 
       expect(logs[3].event).to.be.equal('ThirdPartyReviewedWithRoot')
       expect(logs[3].args._thirdPartyId).to.be.equal(thirdParty1[0])
@@ -5185,17 +5209,27 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args.relayerAddress).to.be.equal(relayer)
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-      const assertConsumeLog = (log, qty) => {
+      const assertConsumeLog = async (log, qty) => {
         expect(log.event).to.be.equal('ItemSlotsConsumed')
         expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
         expect(log.args._qty).to.be.eq.BN(qty)
         expect(log.args._signer).to.be.equal(manager)
         expect(log.args._sender).to.be.equal(committeeMember)
+        expect(log.args._messageHash).to.be.equal(
+          await getMessageHash(
+            domain,
+            version,
+            thirdParty1[0],
+            qty,
+            dummyBytes32,
+            thirdPartyRegistryContract
+          )
+        )
       }
 
-      assertConsumeLog(logs[1], qty1)
-      assertConsumeLog(logs[2], qty2)
-      assertConsumeLog(logs[3], qty3)
+      await assertConsumeLog(logs[1], qty1)
+      await assertConsumeLog(logs[2], qty2)
+      await assertConsumeLog(logs[3], qty3)
 
       expect(logs[4].event).to.be.equal('ThirdPartyReviewedWithRoot')
       expect(logs[4].args._thirdPartyId).to.be.equal(thirdParty1[0])
@@ -5313,17 +5347,27 @@ describe('ThirdPartyRegistry', function () {
 
       expect(logs.length).to.be.equal(3)
 
-      const assertLogs = (log, qty) => {
+      const assertLogs = async (log, qty) => {
         expect(log.event).to.be.equal('ItemSlotsConsumed')
         expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
         expect(log.args._qty).to.be.eq.BN(qty)
         expect(log.args._signer).to.be.equal(manager)
         expect(log.args._sender).to.be.equal(committeeMember)
+        expect(log.args._messageHash).to.be.equal(
+          await getMessageHash(
+            domain,
+            version,
+            thirdParty1[0],
+            qty,
+            dummyBytes32,
+            thirdPartyRegistryContract
+          )
+        )
       }
 
-      assertLogs(logs[0], qty1)
-      assertLogs(logs[1], qty2)
-      assertLogs(logs[2], qty3)
+      await assertLogs(logs[0], qty1)
+      await assertLogs(logs[1], qty2)
+      await assertLogs(logs[2], qty3)
 
       tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
       expect(tp.consumedSlots).to.be.eq.BN(total)
@@ -5440,17 +5484,27 @@ describe('ThirdPartyRegistry', function () {
       expect(logs[0].args.relayerAddress).to.be.equal(relayer)
       expect(logs[0].args.functionSignature).to.be.equal(functionSignature)
 
-      const assertLogs = (log, qty) => {
+      const assertLogs = async (log, qty) => {
         expect(log.event).to.be.equal('ItemSlotsConsumed')
         expect(log.args._thirdPartyId).to.be.equal(thirdParty1[0])
         expect(log.args._qty).to.be.eq.BN(qty)
         expect(log.args._signer).to.be.equal(manager)
         expect(log.args._sender).to.be.equal(committeeMember)
+        expect(log.args._messageHash).to.be.equal(
+          await getMessageHash(
+            domain,
+            version,
+            thirdParty1[0],
+            qty,
+            dummyBytes32,
+            thirdPartyRegistryContract
+          )
+        )
       }
 
-      assertLogs(logs[1], qty1)
-      assertLogs(logs[2], qty2)
-      assertLogs(logs[3], qty3)
+      await assertLogs(logs[1], qty1)
+      await assertLogs(logs[2], qty2)
+      await assertLogs(logs[3], qty3)
 
       tp = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
       expect(tp.consumedSlots).to.be.eq.BN(total)
