@@ -154,7 +154,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     modifier onlyCommittee() {
         require(
             committee.members(_msgSender()),
-            "TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER"
+            "TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER"
         );
         _;
     }
@@ -162,7 +162,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     modifier onlyThirdPartyAggregator() {
         require(
             thirdPartyAggregator == _msgSender(),
-            "TPR#onlyThirdPartyAggregator: CALLER_IS_NOT_THE_PARTY_AGGREGATOR"
+            "TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
     }
@@ -306,7 +306,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(
                 thirdParty.managers[sender] || thirdPartyAggregator == sender,
-                "TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR"
+                "TPR#updateThirdParties: SENDER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR"
             );
 
             _checkThirdParty(thirdParty);
@@ -337,7 +337,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
             uint256 slots = thirdPartyParam.slots;
 
             if (slots > 0) {
-                require(thirdPartyAggregator == sender, "TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGGREGATOR");
+                require(thirdPartyAggregator == sender, "TPR#updateThirdParties: SENDER_IS_NOT_THIRD_PARTY_AGGREGATOR");
 
                 thirdParty.maxItems = thirdParty.maxItems.add(slots);
             }

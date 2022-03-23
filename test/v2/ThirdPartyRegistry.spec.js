@@ -1347,7 +1347,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when trying to add a third party by hacker', async function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties([thirdParty1], fromHacker),
-        'TPR#onlyThirdPartyAggregator: CALLER_IS_NOT_THE_PARTY_AGGREGATOR'
+        'TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR'
       )
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -2240,7 +2240,7 @@ describe('ThirdPartyRegistry', function () {
           [updatedThirdParty1],
           fromHacker
         ),
-        'TPR#updateThirdParties: CALLER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR'
+        'TPR#updateThirdParties: SENDER_IS_NOT_MANAGER_OR_THIRD_PARTY_AGGREGATOR'
       )
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
@@ -2314,7 +2314,7 @@ describe('ThirdPartyRegistry', function () {
           [updatedThirdParty1],
           fromManager
         ),
-        'TPR#updateThirdParties: CALLER_IS_NOT_THIRD_PARTY_AGGREGATOR'
+        'TPR#updateThirdParties: SENDER_IS_NOT_THIRD_PARTY_AGGREGATOR'
       )
     })
   })
@@ -4845,7 +4845,7 @@ describe('ThirdPartyRegistry', function () {
           ],
           fromManager
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
 
       await assertRevert(
@@ -4859,7 +4859,7 @@ describe('ThirdPartyRegistry', function () {
           ],
           fromHacker
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
 
@@ -5258,7 +5258,7 @@ describe('ThirdPartyRegistry', function () {
           [],
           fromUser
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
 
@@ -5549,7 +5549,7 @@ describe('ThirdPartyRegistry', function () {
     it('reverts when the caller is not a committee member', async function () {
       await assertRevert(
         thirdPartyRegistryContract.consumeSlots(thirdParty1[0], [], fromUser),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
 
@@ -5873,7 +5873,7 @@ describe('ThirdPartyRegistry', function () {
           [true, false, true],
           fromUser
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
   })
@@ -6204,7 +6204,7 @@ describe('ThirdPartyRegistry', function () {
           [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
           fromManager
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
 
       await assertRevert(
@@ -6212,7 +6212,7 @@ describe('ThirdPartyRegistry', function () {
           [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
           fromHacker
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
 
       await assertRevert(
@@ -6220,7 +6220,7 @@ describe('ThirdPartyRegistry', function () {
           [[THIRD_PARTIES[0][0], true, reviewedThirdPartyItems]],
           fromUser
         ),
-        'TPR#onlyCommittee: CALLER_IS_NOT_A_COMMITTEE_MEMBER'
+        'TPR#onlyCommittee: SENDER_IS_NOT_A_COMMITTEE_MEMBER'
       )
     })
 
