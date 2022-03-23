@@ -106,7 +106,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _caller);
     event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _caller);
     event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _caller);
-    event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, address indexed _sender, bytes32 _messageHash);
+    event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, bytes32 _messageHash, address indexed _sender);
 
     event ThirdPartyAggregatorSet(address indexed _oldThirdPartyAggregator, address indexed _newThirdPartyAggregator);
     event FeesCollectorSet(address indexed _oldFeesCollector, address indexed _newFeesCollector);
@@ -645,7 +645,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
             thirdParty.receipts[messageHash] = consumeSlotParam.qty;
             thirdParty.consumedSlots = newConsumedSlots;
 
-            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, sender, messageHash);
+            emit ItemSlotsConsumed(_thirdPartyId, consumeSlotParam.qty, signer, messageHash, sender);
         }
     }
 
