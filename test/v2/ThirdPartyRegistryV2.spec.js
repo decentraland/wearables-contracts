@@ -6,6 +6,7 @@ import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import {
+  deleteOZUpgradeFile,
   getMessageHash,
   getSignature,
   ProxyAdmin,
@@ -104,6 +105,8 @@ describe('ThirdPartyRegistryV2', function () {
   }
 
   beforeEach(async function () {
+    deleteOZUpgradeFile()
+
     // Create Listing environment
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
@@ -240,7 +243,8 @@ describe('ThirdPartyRegistryV2', function () {
       ).to.be.eq.BN(1)
 
       // Deploy upgraded implementation
-      const upgradedImplementation = await DummyThirdPartyRegistryV2Upgrade.new()
+      const upgradedImplementation =
+        await DummyThirdPartyRegistryV2Upgrade.new()
 
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdmin.abi,
@@ -369,7 +373,8 @@ describe('ThirdPartyRegistryV2', function () {
       await proxyAdmin.methods.transferOwnership(user).send(fromDeployer)
 
       // Deploy upgraded implementation
-      const upgradedImplementation = await DummyThirdPartyRegistryV2Upgrade.new()
+      const upgradedImplementation =
+        await DummyThirdPartyRegistryV2Upgrade.new()
 
       // Can call upgrade as user which is the new admin
       await proxyAdmin.methods
@@ -450,7 +455,8 @@ describe('ThirdPartyRegistryV2', function () {
       ).to.be.equal(anotherUser)
 
       // Deploy upgraded implementation
-      const upgradedImplementation = await DummyThirdPartyRegistryV2Upgrade.new()
+      const upgradedImplementation =
+        await DummyThirdPartyRegistryV2Upgrade.new()
 
       // Can call upgradeTo
       await transparentProxy.methods
@@ -2970,7 +2976,8 @@ describe('ThirdPartyRegistryV2', function () {
                   type: 'tuple[]',
                 },
               ],
-              internalType: 'struct ThirdPartyRegistryV2.ThirdPartyReviewParam[]',
+              internalType:
+                'struct ThirdPartyRegistryV2.ThirdPartyReviewParam[]',
               name: '_thirdParties',
               type: 'tuple[]',
             },

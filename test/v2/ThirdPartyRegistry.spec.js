@@ -6,6 +6,7 @@ import { balanceSnap } from '../helpers/balanceSnap'
 import { THIRD_PARTY_ITEMS, ZERO_ADDRESS } from '../helpers/collectionV2'
 import { sendMetaTx } from '../helpers/metaTx'
 import {
+  deleteOZUpgradeFile,
   getMessageHash,
   getSignature,
   ProxyAdmin,
@@ -104,6 +105,8 @@ describe('ThirdPartyRegistry', function () {
   }
 
   beforeEach(async function () {
+    deleteOZUpgradeFile()
+
     // Create Listing environment
     accounts = await web3.eth.getAccounts()
     deployer = accounts[0]
