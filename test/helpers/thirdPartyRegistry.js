@@ -3,6 +3,8 @@
 import ProxyAdmin from '@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol/ProxyAdmin.json'
 import TransparentUpgradeableProxy from '@openzeppelin/upgrades-core/artifacts/@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol/TransparentUpgradeableProxy.json'
 import { web3 } from 'hardhat'
+import fs from 'fs'
+import path from 'path'
 
 export { ProxyAdmin, TransparentUpgradeableProxy }
 
@@ -121,4 +123,13 @@ export async function getMessageHash(
   )
 
   return web3.utils.soliditySha3('\x19\x01', domainHash, dataHash)
+}
+
+// Need to delete this file on different contract tests that use upgrades so the configuration
+// is not preserved between them. This caused upgrade tests to fail.
+export const deleteOZUpgradeFile = () => {
+  const file = path.resolve(__dirname, '../../.openzeppelin/unknown-31337.json')
+  if (fs.existsSync(file)) {
+    fs.rmSync(file)
+  }
 }
