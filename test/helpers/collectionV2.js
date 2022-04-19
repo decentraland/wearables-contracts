@@ -16,6 +16,7 @@ export const MAX_UINT256 = web3.utils.toBN(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
 export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
+export const SECONDARY_RARITY_PRICE = web3.utils.toWei('200')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 export const MAX_TOKENS_PER_TX = 20
@@ -31,6 +32,21 @@ export const RARITIES = {
   mythic: { name: 'mythic', index: 5, value: 10 },
   unique: { name: 'unique', index: 6, value: 1 },
 }
+
+export const THIRD_PARTY_ITEMS = [
+  [
+    'collection1:item1',
+    'tpi:1:third party collection 1 item: third party collection 1 item desc:hat:BaseMale,BaseFemale',
+  ],
+  [
+    'collection1:item2',
+    'tpi:1:third party collection 1 item: third party collection 1 item desc:hat:BaseMale,BaseFemale',
+  ],
+  [
+    'collection2:item1',
+    'tpi:1:third party collection 2 item: third party collection 2 item desc:hair:BaseMale,BaseFemale',
+  ],
+]
 
 export const ITEMS = [
   [

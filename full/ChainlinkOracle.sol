@@ -218,159 +218,96 @@ library SafeMath {
 }
 
 
-// File @openzeppelin/contracts/math/Math.sol@v3.4.1
+// File contracts/interfaces/IOracle.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
+
+interface IOracle {
+    function getRate() external view returns (uint256);
+}
+
+
+// File contracts/interfaces/IDataFeed.sol
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.7.6;
+pragma experimental ABIEncoderV2;
 
 /**
- * @dev Standard math utilities missing in the Solidity language.
+ * @notice Chainlink Data Feed interface
+ * @dev This is a renamed copy of https://github.com/smartcontractkit/chainlink/blob/develop/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol
+ * containing only the required functions required by our contracts.
+ * We could have imported the chainlink/contracts package but decided not to due to the large amount of things imported we would not need.
  */
-library Math {
+interface IDataFeed {
     /**
-     * @dev Returns the largest of two numbers.
+     * @notice Get the number of decimals present in the response value
+     * @return The number of decimals
      */
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a >= b ? a : b;
-    }
+    function decimals() external view returns (uint8);
 
     /**
-     * @dev Returns the smallest of two numbers.
+     * @notice Get the price from the latest round
+     * @return roundId - The round ID
+     * @return answer - The price 
+     * @return startedAt - Timestamp of when the round started
+     * @return updatedAt - Timestamp of when the round was updated
+     * @return answeredInRound - The round ID of the round in which the answer was computed
      */
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-
-    /**
-     * @dev Returns the average of two numbers. The result is rounded towards
-     * zero.
-     */
-    function average(uint256 a, uint256 b) internal pure returns (uint256) {
-        // (a + b) / 2 can overflow, so we distribute
-        return (a / 2) + (b / 2) + ((a % 2 + b % 2) / 2);
-    }
+    function latestRoundData()
+        external
+        view
+        returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        );
 }
 
 
-// File contracts/markets/Donation.sol
+// File contracts/oracles/ChainlinkOracle.sol
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.3;
+pragma experimental ABIEncoderV2;
 
 
-interface IERC721Collection {
-    function issueToken(address _beneficiary, string calldata _wearableId) external;
-    function getWearableKey(string calldata _wearableId) external view returns (bytes32);
-    function issued(bytes32 _wearableKey) external view returns (uint256);
-    function maxIssuance(bytes32 _wearableKey) external view returns (uint256);
-    function issueTokens(address[] calldata _beneficiaries, bytes32[] calldata _wearableIds) external;
-}
-
-contract Donation {
+contract ChainlinkOracle is IOracle {
     using SafeMath for uint256;
 
-    IERC721Collection public erc721Collection;
-
-    address payable public fundsRecipient;
-
-    uint256 public price;
-    uint256 public maxNFTsPerCall;
-    uint256 public donations;
-
-    event DonatedForNFT(
-        address indexed _caller,
-        uint256 indexed _value,
-        uint256 _issued,
-        string _wearable
-    );
-
-    event Donated(address indexed _caller, uint256 indexed _value);
+    IDataFeed public immutable dataFeed;
+    uint256 public immutable decimals;
 
     /**
-     * @dev Constructor of the contract.
-     * @param _fundsRecipient - Address of the recipient of the funds
-     * @param _erc721Collection - Address of the collection
-     * @param _price - minimum acceptable donation in WEI in exchange for an NFT (1e18 = 1eth)
-     * @param _maxNFTsPerCall - maximum of NFTs issued per call
+     * @notice Create the contract
+     * @param _dataFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
+     * @param _decimals - amount of decimals the rate should be returned with
      */
-    constructor(
-        address payable _fundsRecipient,
-        IERC721Collection _erc721Collection,
-        uint256 _price,
-        uint256 _maxNFTsPerCall
-      )
-      public {
-        fundsRecipient = _fundsRecipient;
-        erc721Collection = _erc721Collection;
-        price = _price;
-        maxNFTsPerCall = _maxNFTsPerCall;
+    constructor(IDataFeed _dataFeed, uint256 _decimals) {
+        dataFeed = _dataFeed;
+        decimals = _decimals;
     }
 
     /**
-     * @dev Donate for the cause.
+     * @notice Get rate
+     * @return rate in the expected token decimals
      */
-    function donate() external payable {
-        require(msg.value > 0, "The donation should be higher than 0");
+    function getRate() external view override returns (uint256) {
+        uint256 feedDecimals = uint256(dataFeed.decimals());
 
-        fundsRecipient.transfer(msg.value);
+        (, int256 rate, , , ) = dataFeed.latestRoundData();
 
-        donations += msg.value;
-
-        emit Donated(msg.sender, msg.value);
-    }
-
-     /**
-     * @dev Donate in exchange for NFTs.
-     * @notice that there is a maximum amount of NFTs that can be issued per call.
-     * If the donation greater than `price * maxNFTsPerCall`, all the donation will be used and
-     * a maximum of `maxNFTsPerCall` will be issued.
-     * @param _wearableId - wearable id
-     */
-    function donateForNFT(string calldata _wearableId) external payable {
-        uint256 NFTsToIssued = Math.min(msg.value / price, maxNFTsPerCall);
-
-        require(NFTsToIssued > 0, "The donation should be higher or equal than the price");
-        require(
-            canMint(_wearableId, NFTsToIssued),
-            "The amount of wearables to issue is higher than its available supply"
-        );
-
-        fundsRecipient.transfer(msg.value);
-
-        donations += msg.value;
-
-        for (uint256 i = 0; i < NFTsToIssued; i++) {
-            erc721Collection.issueToken(msg.sender, _wearableId);
+        if (rate <= 0) {
+            revert('ChainlinkOracle#getRate: INVALID_RATE');
         }
 
-        emit DonatedForNFT(msg.sender, msg.value, NFTsToIssued, _wearableId);
-    }
-
-    /**
-    * @dev Returns whether the wearable can be minted.
-    * @param _wearableId - wearable id
-    * @return whether a wearable can be minted
-    */
-    function canMint(string memory _wearableId, uint256 _amount) public view returns (bool) {
-        uint256 balance = balanceOf(_wearableId);
-
-        return balance >= _amount;
-    }
-
-    /**
-     * @dev Returns a wearable's available supply .
-     * Throws if the option ID does not exist. May return 0.
-     * @param _wearableId - wearable id
-     * @return wearable's available supply
-     */
-    function balanceOf(string memory _wearableId) public view returns (uint256) {
-        bytes32 wearableKey = erc721Collection.getWearableKey(_wearableId);
-
-        uint256 issued = erc721Collection.issued(wearableKey);
-        uint256 maxIssuance = erc721Collection.maxIssuance(wearableKey);
-
-        return maxIssuance.sub(issued);
+        return uint256(rate).mul(10**(decimals.sub(feedDecimals)));
     }
 }
