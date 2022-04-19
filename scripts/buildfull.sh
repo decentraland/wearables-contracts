@@ -14,6 +14,10 @@ COMMITTEE=Committee.sol
 FORWARDER=Forwarder.sol
 COLLECTION_MANAGER=CollectionManager.sol
 RARITIES=Rarities.sol
+RARITIES_WITH_ORACLE=RaritiesWithOracle.sol
+
+THIRD_PARTY_REGISTRY=ThirdPartyRegistry.sol
+CHAINLINK_ORACLE=ChainlinkOracle.sol
 
 OUTPUT=full
 
@@ -29,7 +33,6 @@ node_modules/.bin/hardhat flatten contracts/commons/$FORWARDER > $OUTPUT/$FORWAR
 node_modules/.bin/hardhat flatten contracts/managers/$COMMITTEE > $OUTPUT/$COMMITTEE
 node_modules/.bin/hardhat flatten contracts/managers/$COLLECTION_MANAGER > $OUTPUT/$COLLECTION_MANAGER
 node_modules/.bin/hardhat flatten contracts/managers/$RARITIES > $OUTPUT/$RARITIES
-
-
-
-
+node_modules/.bin/hardhat flatten contracts/managers/$RARITIES_WITH_ORACLE > $OUTPUT/$RARITIES_WITH_ORACLE
+node_modules/.bin/hardhat flatten contracts/oracles/$CHAINLINK_ORACLE > $OUTPUT/$CHAINLINK_ORACLE
+node_modules/.bin/hardhat flatten contracts/registries/$THIRD_PARTY_REGISTRY > $OUTPUT/$THIRD_PARTY_REGISTRY

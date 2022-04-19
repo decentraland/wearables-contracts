@@ -7,6 +7,7 @@ import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-etherscan'
 import 'hardhat-gas-reporter'
 import 'decentraland-contract-plugins/dist/src/mana/tasks/load-mana'
+import '@openzeppelin/hardhat-upgrades'
 
 import { getDeployParams } from './scripts/deploy/utils'
 
@@ -74,7 +75,7 @@ module.exports = {
     hardhat: {
       blockGasLimit: 10000000,
       gas: 10000000,
-      initialBaseFeePerGas: 0
+      initialBaseFeePerGas: 0,
     },
     local: {
       url: 'http://127.0.0.1:8545',
@@ -82,15 +83,15 @@ module.exports = {
       gas: 10000000,
       network_id: '*', // eslint-disable-line camelcase
     },
-    deploy: getDeployParams()
+    deploy: getDeployParams(),
   },
   gasReporter: {
     enabled: !!process.env.REPORT_GAS === true,
     currency: 'USD',
     gasPrice: 21,
-    showTimeSpent: true
+    showTimeSpent: true,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
 }

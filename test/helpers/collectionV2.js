@@ -16,6 +16,7 @@ export const MAX_UINT256 = web3.utils.toBN(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
 export const DEFAULT_RARITY_PRICE = web3.utils.toWei('100')
+export const SECONDARY_RARITY_PRICE = web3.utils.toWei('200')
 
 export const GRACE_PERIOD = 60 * 60 * 24 * 7 // 7 days
 export const MAX_TOKENS_PER_TX = 20
@@ -31,13 +32,6 @@ export const RARITIES = {
   mythic: { name: 'mythic', index: 5, value: 10 },
   unique: { name: 'unique', index: 6, value: 1 },
 }
-export const TIERS = [
-  { price: web3.utils.toBN(web3.utils.toWei('1')), value: 10 },
-  { price: web3.utils.toBN(web3.utils.toWei('10')), value: 100 },
-  { price: web3.utils.toBN(web3.utils.toWei('20')), value: 1000 },
-  { price: web3.utils.toBN(web3.utils.toWei('30')), value: 10000 },
-  { price: web3.utils.toBN(web3.utils.toWei('0')), value: 1 },
-]
 
 export const THIRD_PARTY_ITEMS = [
   [
@@ -115,10 +109,6 @@ export function getInitialRarities() {
     RARITIES[key].value,
     DEFAULT_RARITY_PRICE,
   ])
-}
-
-export function getInitialTiers() {
-  return Object.keys(TIERS).map((key) => [TIERS[key].value, TIERS[key].price])
 }
 
 export function getRarityNames() {

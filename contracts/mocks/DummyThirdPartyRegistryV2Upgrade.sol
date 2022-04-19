@@ -13,7 +13,10 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
-contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Initializable {
+/**
+ * @dev Dummy contract to check if upgrades are working as expected
+ */
+contract DummyThirdPartyRegistryV2Upgrade is OwnableInitializable, NativeMetaTransaction, Initializable {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
@@ -103,8 +106,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     event ThirdPartyReviewedWithRoot(string _thirdPartyId, bytes32 _root, bool _isApproved, address _sender);
     event ThirdPartyRuleAdded(string _thirdPartyId, string _rule, bool _value, address _sender);
 
-    event ItemAdded(string _thirdPartyId, string _itemId, string _metadata, bool _value, address _sender);
-    event ItemUpdated(string _thirdPartyId, string _itemId, string _metadata, address _sender);
     event ItemReviewed(string _thirdPartyId, string _itemId, string _metadata, string _contentHash, bool _value, address _sender);
     event ItemSlotsConsumed(string _thirdPartyId, uint256 _qty, address indexed _signer, bytes32 _messageHash, address indexed _sender);
 
@@ -256,39 +257,7 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
     * @param _thirdParties - third parties to be added
     */
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyThirdPartyAggregator external {
-        for (uint256 i = 0; i < _thirdParties.length; i++) {
-            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
-
-            require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
-            require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
-            require(bytes(thirdPartyParam.resolver).length > 0, "TPR#addThirdParties: EMPTY_RESOLVER");
-            require(thirdPartyParam.managers.length > 0, "TPR#addThirdParties: EMPTY_MANAGERS");
-
-            ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
-            require(thirdParty.registered == 0, "TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED");
-
-            thirdParty.registered = 1;
-            thirdParty.metadata = thirdPartyParam.metadata;
-            thirdParty.resolver = thirdPartyParam.resolver;
-            thirdParty.isApproved = initialThirdPartyValue;
-            thirdParty.maxItems = thirdPartyParam.slots;
-
-            for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
-                thirdParty.managers[thirdPartyParam.managers[m]] = true;
-            }
-
-            thirdPartyIds.push(thirdPartyParam.id);
-
-            emit ThirdPartyAdded(
-                thirdPartyParam.id,
-                thirdParty.metadata,
-                thirdParty.resolver,
-                thirdParty.isApproved,
-                thirdPartyParam.managers,
-                thirdParty.maxItems,
-                _msgSender()
-            );
-        }
+        revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
     }
 
     /**
@@ -385,74 +354,6 @@ contract ThirdPartyRegistry is OwnableInitializable, NativeMetaTransaction, Init
         }
 
         emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
-    }
-
-     /**
-    * @notice Add items to a third party
-    * @param _thirdPartyId - third party id
-    * @param _items - items to be added
-    */
-    function addItems(string calldata _thirdPartyId, ItemParam[] calldata _items) external {
-        address sender = _msgSender();
-        bool initValue = initialItemValue;
-
-        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-        require(thirdParty.managers[sender], "TPR#addItems: INVALID_SENDER");
-        require(thirdParty.maxItems >= thirdParty.itemIds.length.add(_items.length), "TPR#addItems: NO_ITEM_SLOTS_AVAILABLE");
-
-        for (uint256 i = 0; i < _items.length; i++) {
-            ItemParam memory itemParam = _items[i];
-            _checkItemParam(itemParam);
-
-            Item storage item = thirdParty.items[itemParam.id];
-            require(item.registered == 0, "TPR#addItems: ITEM_ALREADY_ADDED");
-
-            item.metadata = itemParam.metadata;
-            item.isApproved = initValue;
-            item.registered = 1;
-
-            thirdParty.itemIds.push(itemParam.id);
-            thirdParty.consumedSlots = thirdParty.consumedSlots.add(1);
-
-            emit ItemAdded(
-                _thirdPartyId,
-                itemParam.id,
-                itemParam.metadata,
-                initValue,
-                sender
-            );
-        }
-    }
-
-    /**
-    * @notice Update items metadata
-    * @param _thirdPartyId - third party id
-    * @param _items - items to be updated
-    */
-    function updateItems(string calldata _thirdPartyId, ItemParam[] calldata _items) external {
-        address sender = _msgSender();
-
-        ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
-        require(thirdParty.managers[sender], "TPR#updateItems: INVALID_SENDER");
-
-        for (uint256 i = 0; i < _items.length; i++) {
-            ItemParam memory itemParam = _items[i];
-            _checkItemParam(itemParam);
-
-            Item storage item = thirdParty.items[itemParam.id];
-            _checkItem(item);
-
-            require(!item.isApproved, "TPR#updateItems: ITEM_IS_APPROVED");
-
-            item.metadata = itemParam.metadata;
-
-            emit ItemUpdated(
-                _thirdPartyId,
-                itemParam.id,
-                itemParam.metadata,
-                sender
-            );
-        }
     }
 
      /**
