@@ -9,6 +9,11 @@ import {
   ITEMS,
   getInitialRarities,
 } from '../helpers/collectionV2'
+import {
+  ProxyAdmin,
+  TransparentUpgradeableProxy,
+} from '../helpers/thirdPartyRegistry'
+import { ethers } from 'hardhat'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -17,10 +22,10 @@ const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Rarities = artifacts.require('Rarities')
 
-describe('Factory V2', function () {
-  let collectionImplementation
+describe.only('Factory V2', function () {
   let factoryContract
   let raritiesContract
+  let proxyAdminContract
 
   // Accounts
   let accounts
@@ -52,11 +57,58 @@ describe('Factory V2', function () {
       gasPrice: 21e9,
     }
 
-    collectionImplementation = await ERC721CollectionV2.new()
+    // const collectionProxy = await upgrades.deployProxy(
+    //   ERC721CollectionV2foo,
+    //   []
+    // )
+
+    // const ERC721CollectionV2foo = await ethers.getContractFactory(
+    //   'ERC721CollectionV2'
+    // )
+
+    const ProxyAdminFactory = await ethers.getContractFactory(
+      ProxyAdmin.abi,
+      ProxyAdmin.bytecode
+    )
+
+    const TransparentUpgradeableProxyFactory = await ethers.getContractFactory(
+      TransparentUpgradeableProxy.abi,
+      TransparentUpgradeableProxy.bytecode
+    )
+
+    const collectionImplementationContract = await ERC721CollectionV2.new()
+
+    proxyAdminContract = await ProxyAdminFactory.deploy()
+
+    // Encode TPR initialize function data, which is used by the Proxy to
+    // call the initialize function.
+    // const collectionFactoryInterface = ERC721CollectionV2.interface
+    // const fragment = collectionFactoryInterface.getFunction('initialize')
+    // const encodedFunctionData = collectionFactoryInterface.encodeFunctionData(
+    //   fragment,
+    //   [
+    //     owner,
+    //     thirdPartyAggregator,
+    //     collector,
+    //     committeeContract.address,
+    //     manaContract.address,
+    //     chainlinkOracleContract.address,
+    //     oneEther.toString(),
+    //   ]
+    // )
+
+    const transparentProxy =
+      await TransparentUpgradeableProxyFactory.deploy(
+        collectionImplementationContract.address,
+        proxyAdminContract.address,
+        []
+      )
+
+    // ------
 
     factoryContract = await ERC721CollectionFactoryV2.new(
       factoryOwner,
-      collectionImplementation.address
+      transparentProxy.address
     )
 
     raritiesContract = await Rarities.new(deployer, getInitialRarities())
@@ -178,9 +230,10 @@ describe('Factory V2', function () {
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
 
-      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
-        expectedAddress
-      )
+      console.log(await proxyAdminContract.getProxyAdmin(expectedAddress))
+
+      let isCollectionFromFactory =
+        await factoryContract.isCollectionFromFactory(expectedAddress)
       expect(isCollectionFromFactory).to.be.eq.BN(false)
 
       const { logs } = await factoryContract.createCollection(
@@ -189,30 +242,30 @@ describe('Factory V2', function () {
         fromFactoryOwner
       )
 
-      expect(logs.length).to.be.equal(3)
+      expect(logs.length).to.be.equal(1)
+
+      
 
       let log = logs[0]
       expect(log.event).to.be.equal('ProxyCreated')
       expect(log.args._address).to.be.equal(expectedAddress)
       expect(log.args._salt).to.be.equal(hexlify(salt))
 
-      log = logs[1]
-      expect(log.event).to.be.equal('OwnershipTransferred')
-      expect(log.args.previousOwner).to.be.equal(ZERO_ADDRESS)
-      expect(log.args.newOwner).to.be.equal(factoryContract.address)
-
-      log = logs[2]
-      expect(log.event).to.be.equal('OwnershipTransferred')
-      expect(log.args.previousOwner).to.be.equal(factoryContract.address)
-      expect(log.args.newOwner).to.be.equal(factoryOwner)
-
       collectionsSize = await factoryContract.collectionsSize()
+
       expect(collectionsSize).to.be.eq.BN(1)
 
       isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
         expectedAddress
       )
+
       expect(isCollectionFromFactory).to.be.eq.BN(true)
+
+      const collection = await ERC721CollectionV2.at(expectedAddress)
+
+      const owner_ = await collection.owner(fromUser)
+
+      expect(owner_).to.be.equal(factoryOwner)
     })
 
     it('should create a collection with items', async function () {
@@ -236,9 +289,8 @@ describe('Factory V2', function () {
       let collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(0)
 
-      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
-        expectedAddress
-      )
+      let isCollectionFromFactory =
+        await factoryContract.isCollectionFromFactory(expectedAddress)
       expect(isCollectionFromFactory).to.be.eq.BN(false)
 
       const { logs } = await factoryContract.createCollection(
@@ -247,22 +299,12 @@ describe('Factory V2', function () {
         fromFactoryOwner
       )
 
-      expect(logs.length).to.be.equal(3)
+      expect(logs.length).to.be.equal(1)
 
       let log = logs[0]
       expect(log.event).to.be.equal('ProxyCreated')
       expect(log.args._address).to.be.equal(expectedAddress)
       expect(log.args._salt).to.be.equal(hexlify(salt))
-
-      log = logs[1]
-      expect(log.event).to.be.equal('OwnershipTransferred')
-      expect(log.args.previousOwner).to.be.equal(ZERO_ADDRESS)
-      expect(log.args.newOwner).to.be.equal(factoryContract.address)
-
-      log = logs[2]
-      expect(log.event).to.be.equal('OwnershipTransferred')
-      expect(log.args.previousOwner).to.be.equal(factoryContract.address)
-      expect(log.args.newOwner).to.be.equal(factoryOwner)
 
       // Check collection data
       const collection = await ERC721CollectionV2.at(expectedAddress)
@@ -365,9 +407,8 @@ describe('Factory V2', function () {
       collectionsSize = await factoryContract.collectionsSize()
       expect(collectionsSize).to.be.eq.BN(2)
 
-      let isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
-        address1
-      )
+      let isCollectionFromFactory =
+        await factoryContract.isCollectionFromFactory(address1)
       expect(isCollectionFromFactory).to.be.eq.BN(true)
 
       isCollectionFromFactory = await factoryContract.isCollectionFromFactory(
