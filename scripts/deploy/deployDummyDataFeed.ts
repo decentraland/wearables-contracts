@@ -10,12 +10,10 @@ async function main() {
   const account = ethers.provider.getSigner()
   const accountAddress = await account.getAddress()
 
-  const DummyDataFeed = await ethers.getContractFactory(
-    'DummyDataFeed'
-  )
+  const DummyDataFeed = await ethers.getContractFactory('DummyDataFeed')
 
   const decimals = 8
-  const answer = 10 ** decimals // 100000000
+  const answer = 2.5 * 10 ** decimals // 250000000
 
   const dataFeed = await DummyDataFeed.deploy(decimals, answer)
 

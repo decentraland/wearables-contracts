@@ -9,7 +9,7 @@ enum NETWORKS {
 }
 
 enum DATA_FEED {
-  'MUMBAI' = '0x5fd3ed3aA8d3cE750eAF6D7ba53d0356F8b2200B',
+  'MUMBAI' = '0x25b6B4bac4aDB582a0ABd475439dA6730777Fbf7',
   'MATIC' = '0xA1CbF3Fe43BC3501e3Fc4b573e822c70e76A7512', // https://docs.chain.link/docs/matic-addresses/
   'GOERLI' = '',
   'LOCALHOST' = '',
