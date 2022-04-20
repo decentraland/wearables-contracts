@@ -81,9 +81,11 @@ Its implementation could be find [here](https://github.com/decentraland/wearable
 
 ### Collection
 
-A collection is a group of items. The contract implementation is followed by version and deployed by using the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). Once a collection contract proxy is deployed, the `initialized` method should be called to simulate the constructor.
+A collection is a group of items. The contract implementation is followed by version and deployed by using the [beacon proxy pattern](https://eips.ethereum.org/EIPS/eip-1967). Once a collection contract proxy is deployed, the `initialized` method should be called to simulate the constructor. By using the beacon proxy pattern, every collection uses the same implementation which is set in a upgradeable beacon contract. It means that the collection logic can be upgraded by changing the implementation in the upgradeable beacon contract.
 
 A collection can be created by anyone. The creators must pay an amount of MANA, which is the sum of reach item plus its rarity price, to deploy a collection. The collection will be valid only if it was deployed by the collection factory; This factory keeps a record of each deployed collection.
+
+Prior {date} and {block number}: the collections had been using the [minimal proxy pattern](https://eips.ethereum.org/EIPS/eip-1167). It means that those collections can't be upgraded.
 
 ### Items
 
