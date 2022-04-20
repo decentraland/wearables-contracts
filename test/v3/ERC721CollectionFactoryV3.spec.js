@@ -13,11 +13,14 @@ import {
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const ERC721CollectionFactoryV2 = artifacts.require('ERC721CollectionFactoryV2')
+const UpgradeableBeacon = artifacts.require('UpgradeableBeacon')
+const BeaconProxy = artifacts.require('BeaconProxy')
+const ERC721CollectionFactoryV3 = artifacts.require('ERC721CollectionFactoryV3')
 const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const Rarities = artifacts.require('Rarities')
 
-describe('Factory V2', function () {
+describe('Factory V3', function () {
+  let upgradeableBeaconContract
   let collectionImplementation
   let factoryContract
   let raritiesContract
@@ -54,9 +57,13 @@ describe('Factory V2', function () {
 
     collectionImplementation = await ERC721CollectionV2.new()
 
-    factoryContract = await ERC721CollectionFactoryV2.new(
-      factoryOwner,
+    upgradeableBeaconContract = await UpgradeableBeacon.new(
       collectionImplementation.address
+    )
+
+    factoryContract = await ERC721CollectionFactoryV3.new(
+      factoryOwner,
+      upgradeableBeaconContract.address
     )
 
     raritiesContract = await Rarities.new(deployer, getInitialRarities())
@@ -65,22 +72,23 @@ describe('Factory V2', function () {
   describe('create factory', async function () {
     it('deploy with correct values', async function () {
       const collectionImpl = await ERC721CollectionV2.new(creationParams)
-      const contract = await ERC721CollectionFactoryV2.new(
-        factoryOwner,
+      const upgradeableBeacon = await UpgradeableBeacon.new(
         collectionImpl.address
+      )
+      const contract = await ERC721CollectionFactoryV3.new(
+        factoryOwner,
+        upgradeableBeacon.address
       )
 
       const impl = await contract.implementation()
       const owner = await contract.owner()
       const code = await contract.code()
       const codeHash = await contract.codeHash()
+      const expectedCode = `${BeaconProxy._json.bytecode}${web3.eth.abi
+        .encodeParameters(['address', 'bytes'], [upgradeableBeacon.address, []])
+        .replace('0x', '')}`
 
-      const expectedCode = `0x3d602d80600a3d3981f3363d3d373d3d3d363d73${collectionImpl.address.replace(
-        '0x',
-        ''
-      )}5af43d82803e903d91602b57fd5bf3`
-
-      expect(impl).to.be.equal(collectionImpl.address)
+      expect(impl).to.be.equal(upgradeableBeacon.address)
       expect(owner).to.be.equal(factoryOwner)
       expect(expectedCode.toLowerCase()).to.be.equal(code.toLowerCase())
       expect(web3.utils.soliditySha3(expectedCode)).to.be.equal(codeHash)
@@ -390,7 +398,7 @@ describe('Factory V2', function () {
           }),
           fromFactoryOwner
         ),
-        'MinimalProxyFactory#createProxy: CALL_FAILED'
+        'BeaconProxyFactory#_createProxy: CALL_FAILED'
       )
     })
 
@@ -426,7 +434,7 @@ describe('Factory V2', function () {
           }),
           fromFactoryOwner
         ),
-        'MinimalProxyFactory#createProxy: CREATION_FAILED'
+        'BeaconProxyFactory#_createProxy: CREATION_FAILED'
       )
     })
 
