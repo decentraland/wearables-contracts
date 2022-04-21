@@ -20,6 +20,9 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const DummyERC721CollectionV2Upgrade = artifacts.require(
   'DummyERC721CollectionV2Upgrade'
 )
+const DummyERC721CollectionV2UpgradeInvalidStorage = artifacts.require(
+  'DummyERC721CollectionV2UpgradeInvalidStorage'
+)
 const Rarities = artifacts.require('Rarities')
 
 describe('Factory V3', function () {
@@ -480,6 +483,42 @@ describe('Factory V3', function () {
       expect(await collection1.globalManagers(manager)).to.be.equal(true)
       expect(await collection2.globalManagers(manager)).to.be.equal(true)
       expect(await collection3.globalManagers(manager)).to.be.equal(true)
+    })
+
+    it('should return invalid data when an upgrade with differently ordered state variables is deployed', async function () {
+      const salt = web3.utils.randomHex(32)
+
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
+
+      await factoryContract.createCollection(salt, data, fromFactoryOwner)
+
+      const collectionAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner,
+        data
+      )
+
+      const collectionUpgradeImplementation =
+        await DummyERC721CollectionV2UpgradeInvalidStorage.new()
+
+      await upgradeableBeaconContract.upgradeTo(
+        collectionUpgradeImplementation.address
+      )
+
+      const collection =
+        await DummyERC721CollectionV2UpgradeInvalidStorage.at(collectionAddress)
+
+      // Should be 0 on a proper upgrade, but as the new state variable was not placed last, things got bad.
+      expect(await collection.upgradeCount()).to.be.eq.BN("1258222091183498019947225577994668400935317599945")
     })
 
     it('reverts if initialize call failed', async function () {
