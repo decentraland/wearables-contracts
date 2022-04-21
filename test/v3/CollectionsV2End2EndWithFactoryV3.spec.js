@@ -26,7 +26,7 @@ const CollectionManager = artifacts.require('CollectionManager')
 const Forwarder = artifacts.require('Forwarder')
 const Rarities = artifacts.require('Rarities')
 
-describe('Collections V2 End 2 End with Factory V3: Approval Flow', function () {
+describe.only('Collections V2 End 2 End with Factory V3: Approval Flow', function () {
   const name = 'collectionName'
   const symbol = 'collectionSymbol'
   const baseURI = 'collectionBaseURI'
@@ -41,6 +41,10 @@ describe('Collections V2 End 2 End with Factory V3: Approval Flow', function () 
   let forwarderContract
   let collectionContract
   let raritiesContract
+
+  let collection1
+  let collection2
+  let collection3
 
   // Accounts
   let accounts
@@ -129,9 +133,273 @@ describe('Collections V2 End 2 End with Factory V3: Approval Flow', function () 
     )
   })
 
+  // Run the base set of tests before the upgrade
+  runTests()
+
+  describe('Create collections for upgrade', function () {
+    it('should create 3 unupgraded collections', async function () {
+      const collectionsSize = await factoryContract.collectionsSize()
+
+      const createCollection = async (id) => {
+        const salt = web3.utils.randomHex(32)
+
+        const { logs } = await collectionManagerContract.createCollection(
+          forwarderContract.address,
+          factoryContract.address,
+          salt,
+          name + id,
+          symbol + id,
+          baseURI + id,
+          user,
+          ITEMS,
+          fromUser
+        )
+
+        return ERC721CollectionV2.at(logs[0].address)
+      }
+
+      collection1 = await createCollection('-1')
+      collection2 = await createCollection('-2')
+      collection3 = await createCollection('-3')
+
+      expect(await factoryContract.collectionsSize()).to.be.eq.BN(
+        collectionsSize.add(new BN('3'))
+      )
+
+      const validateCollectionData = async (
+        collection,
+        name,
+        symbol,
+        baseURI
+      ) => {
+        const name_ = await collection.name()
+        const symbol_ = await collection.symbol()
+        const baseURI_ = await collection.baseURI()
+        const creator_ = await collection.creator()
+        const owner_ = await collection.owner()
+        const isApproved = await collection.isApproved()
+        const isCompleted = await collection.isCompleted()
+        const rarities = await collection.rarities()
+        const itemLength = await collection.itemsCount()
+
+        expect(name_).to.be.equal(name)
+        expect(symbol_).to.be.equal(symbol)
+        expect(baseURI_).to.be.equal(baseURI)
+        expect(creator_).to.be.equal(user)
+        expect(owner_).to.be.equal(forwarderContract.address)
+        expect(isApproved).to.be.equal(false)
+        expect(isCompleted).to.be.equal(true)
+        expect(rarities).to.be.equal(raritiesContract.address)
+        expect(ITEMS.length).to.be.eq.BN(itemLength)
+
+        for (let i = 0; i < ITEMS.length; i++) {
+          const {
+            rarity,
+            maxSupply,
+            totalSupply,
+            price,
+            beneficiary,
+            metadata,
+            contentHash,
+          } = await collection.items(i)
+
+          expect(rarity).to.be.eq.BN(ITEMS[i][0])
+          expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+          expect(totalSupply).to.be.eq.BN(0)
+          expect(price).to.be.eq.BN(ITEMS[i][1])
+          expect(beneficiary.toLowerCase()).to.be.equal(
+            ITEMS[i][2].toLowerCase()
+          )
+          expect(metadata).to.be.equal(ITEMS[i][3])
+          expect(contentHash).to.be.equal('')
+        }
+      }
+
+      await validateCollectionData(
+        collection1,
+        'collectionName-1',
+        'collectionSymbol-1',
+        'collectionBaseURI-1'
+      )
+
+      await validateCollectionData(
+        collection2,
+        'collectionName-2',
+        'collectionSymbol-2',
+        'collectionBaseURI-2'
+      )
+
+      await validateCollectionData(
+        collection3,
+        'collectionName-3',
+        'collectionSymbol-3',
+        'collectionBaseURI-3'
+      )
+    })
+  })
+
+  describe('Upgrade Collection implementation', function () {
+    before(async function () {
+      await upgradeableBeaconContract.upgradeTo(
+        collectionUpgradeContract.address
+      )
+    })
+
+    it('should set the collection upgrade address as implementation in the upgradable beacon contract', async function () {
+      expect(await upgradeableBeaconContract.implementation()).to.be.equal(
+        collectionUpgradeContract.address
+      )
+    })
+
+    it('should still have the previously created collection', async function () {
+      const name_ = await collectionContract.name()
+      expect(name_).to.be.equal(name)
+
+      const symbol_ = await collectionContract.symbol()
+      expect(symbol_).to.be.equal(symbol)
+
+      const baseURI_ = await collectionContract.baseURI()
+      expect(baseURI_).to.be.equal(baseURI)
+
+      const creator_ = await collectionContract.creator()
+      expect(creator_).to.be.equal(user)
+
+      const owner_ = await collectionContract.owner()
+      expect(owner_).to.be.equal(forwarderContract.address)
+
+      const isApproved = await collectionContract.isApproved()
+      expect(isApproved).to.be.equal(true)
+
+      const isCompleted = await collectionContract.isCompleted()
+      expect(isCompleted).to.be.equal(true)
+
+      const rarities = await collectionContract.rarities()
+      expect(rarities).to.be.equal(raritiesContract.address)
+
+      const itemLength = await collectionContract.itemsCount()
+
+      // Clone original ITEMS
+      const ITEMS_2 = JSON.parse(JSON.stringify(ITEMS)).map((item) => {
+        // Set content hash to empty string
+        item[4] = ''
+        return item
+      })
+
+      // Updated previously rescued items to match current state
+      ITEMS_2[0][3] = '1:crocodile_mask:earrings:female'
+      ITEMS_2[0][4] =
+        'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
+
+      ITEMS_2[1][3] = '1:whale_mask:earrings:female'
+      ITEMS_2[1][4] =
+        'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwc'
+
+      expect(ITEMS_2.length).to.be.eq.BN(itemLength)
+
+      for (let i = 0; i < ITEMS_2.length; i++) {
+        const {
+          rarity,
+          maxSupply,
+          totalSupply,
+          price,
+          beneficiary,
+          metadata,
+          contentHash,
+        } = await collectionContract.items(i)
+
+        expect(rarity).to.be.eq.BN(ITEMS_2[i][0])
+        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS_2[i][0]].value)
+        expect(totalSupply).to.be.eq.BN(0)
+        expect(price).to.be.eq.BN(ITEMS_2[i][1])
+        expect(beneficiary.toLowerCase()).to.be.equal(
+          ITEMS_2[i][2].toLowerCase()
+        )
+        expect(metadata).to.be.equal(ITEMS_2[i][3])
+        expect(contentHash).to.be.equal(ITEMS_2[i][4])
+      }
+    })
+
+    // Run the base set of tests after the upgrade
+    runTests()
+
+    describe('Checking the 3 created collections after upgrade', function () {
+      it('should have the same values as before upgrade', async function () {
+        const validateCollectionData = async (
+          collection,
+          name,
+          symbol,
+          baseURI
+        ) => {
+          const name_ = await collection.name()
+          const symbol_ = await collection.symbol()
+          const baseURI_ = await collection.baseURI()
+          const creator_ = await collection.creator()
+          const owner_ = await collection.owner()
+          const isApproved = await collection.isApproved()
+          const isCompleted = await collection.isCompleted()
+          const rarities = await collection.rarities()
+          const itemLength = await collection.itemsCount()
+
+          expect(name_).to.be.equal(name)
+          expect(symbol_).to.be.equal(symbol)
+          expect(baseURI_).to.be.equal(baseURI)
+          expect(creator_).to.be.equal(user)
+          expect(owner_).to.be.equal(forwarderContract.address)
+          expect(isApproved).to.be.equal(false)
+          expect(isCompleted).to.be.equal(true)
+          expect(rarities).to.be.equal(raritiesContract.address)
+          expect(ITEMS.length).to.be.eq.BN(itemLength)
+
+          for (let i = 0; i < ITEMS.length; i++) {
+            const {
+              rarity,
+              maxSupply,
+              totalSupply,
+              price,
+              beneficiary,
+              metadata,
+              contentHash,
+            } = await collection.items(i)
+
+            expect(rarity).to.be.eq.BN(ITEMS[i][0])
+            expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS[i][0]].value)
+            expect(totalSupply).to.be.eq.BN(0)
+            expect(price).to.be.eq.BN(ITEMS[i][1])
+            expect(beneficiary.toLowerCase()).to.be.equal(
+              ITEMS[i][2].toLowerCase()
+            )
+            expect(metadata).to.be.equal(ITEMS[i][3])
+            expect(contentHash).to.be.equal('')
+          }
+        }
+
+        await validateCollectionData(
+          collection1,
+          'collectionName-1',
+          'collectionSymbol-1',
+          'collectionBaseURI-1'
+        )
+
+        await validateCollectionData(
+          collection2,
+          'collectionName-2',
+          'collectionSymbol-2',
+          'collectionBaseURI-2'
+        )
+
+        await validateCollectionData(
+          collection3,
+          'collectionName-3',
+          'collectionSymbol-3',
+          'collectionBaseURI-3'
+        )
+      })
+    })
+  })
+
   // Wrapped the tests inside a function so they can be run before and after upgrading
   // the collection contract without rewriting the whole set of tests.
-  function tests() {
+  function runTests() {
     describe('User Tx', function () {
       describe('Deploy collection', async function () {
         it('should create a collection', async function () {
@@ -859,92 +1127,4 @@ describe('Collections V2 End 2 End with Factory V3: Approval Flow', function () 
       })
     })
   }
-
-  // Run the set of tests before the upgrade
-  tests()
-
-  describe('Upgrade Collection implementation', function () {
-    before(async function () {
-      await upgradeableBeaconContract.upgradeTo(
-        collectionUpgradeContract.address
-      )
-    })
-
-    it('should set the collection upgrade address as implementation in the upgradable beacon contract', async function () {
-      expect(await upgradeableBeaconContract.implementation()).to.be.equal(
-        collectionUpgradeContract.address
-      )
-    })
-
-    it('should still have the previously created collection', async function () {
-      const name_ = await collectionContract.name()
-      expect(name_).to.be.equal(name)
-
-      const symbol_ = await collectionContract.symbol()
-      expect(symbol_).to.be.equal(symbol)
-
-      const baseURI_ = await collectionContract.baseURI()
-      expect(baseURI_).to.be.equal(baseURI)
-
-      const creator_ = await collectionContract.creator()
-      expect(creator_).to.be.equal(user)
-
-      const owner_ = await collectionContract.owner()
-      expect(owner_).to.be.equal(forwarderContract.address)
-
-      const isApproved = await collectionContract.isApproved()
-      expect(isApproved).to.be.equal(true)
-
-      const isCompleted = await collectionContract.isCompleted()
-      expect(isCompleted).to.be.equal(true)
-
-      const rarities = await collectionContract.rarities()
-      expect(rarities).to.be.equal(raritiesContract.address)
-
-      const itemLength = await collectionContract.itemsCount()
-
-      // Clone original ITEMS
-      const ITEMS_2 = JSON.parse(JSON.stringify(ITEMS)).map((item) => {
-        // Set content hash to empty string
-        item[4] = ''
-        return item
-      })
-
-      // Updated previously rescued items to match current state
-      ITEMS_2[0][3] = '1:crocodile_mask:earrings:female'
-      ITEMS_2[0][4] =
-        'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq'
-
-      ITEMS_2[1][3] = '1:whale_mask:earrings:female'
-      ITEMS_2[1][4] =
-        'bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwc'
-
-      expect(ITEMS_2.length).to.be.eq.BN(itemLength)
-
-      for (let i = 0; i < ITEMS_2.length; i++) {
-        const {
-          rarity,
-          maxSupply,
-          totalSupply,
-          price,
-          beneficiary,
-          metadata,
-          contentHash,
-        } = await collectionContract.items(i)
-
-        expect(rarity).to.be.eq.BN(ITEMS_2[i][0])
-        expect(maxSupply).to.be.eq.BN(RARITIES[ITEMS_2[i][0]].value)
-        expect(totalSupply).to.be.eq.BN(0)
-        expect(price).to.be.eq.BN(ITEMS_2[i][1])
-        expect(beneficiary.toLowerCase()).to.be.equal(
-          ITEMS_2[i][2].toLowerCase()
-        )
-        expect(metadata).to.be.equal(ITEMS_2[i][3])
-        expect(contentHash).to.be.equal(ITEMS_2[i][4])
-      }
-    })
-
-    // Run the set of tests after the upgrade
-    tests()
-  })
 })
