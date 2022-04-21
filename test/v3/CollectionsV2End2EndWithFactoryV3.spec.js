@@ -136,8 +136,8 @@ describe.only('Collections V2 End 2 End with Factory V3: Approval Flow', functio
   // Run the base set of tests before the upgrade
   runTests()
 
-  describe('Create collections for upgrade', function () {
-    it('should create 3 unupgraded collections', async function () {
+  describe('Create 3 collections for upgrade', function () {
+    it('should create 3 collections with the provided values', async function () {
       const collectionsSize = await factoryContract.collectionsSize()
 
       const createCollection = async (id) => {
