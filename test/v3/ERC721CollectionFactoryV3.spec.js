@@ -518,7 +518,7 @@ describe('Factory V3', function () {
         await DummyERC721CollectionV2UpgradeInvalidStorage.at(collectionAddress)
 
       // Should be 0 on a proper upgrade, but as the new state variable was not placed last, things got bad.
-      expect(await collection.upgradeCount()).to.be.eq.BN("1258222091183498019947225577994668400935317599945")
+      expect(await collection.upgradeCount()).to.not.be.eq.BN(0)
     })
 
     it('reverts if initialize call failed', async function () {
