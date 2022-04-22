@@ -417,21 +417,27 @@ describe('Factory V3', function () {
 
       expect(await factoryContract.collectionsSize()).to.be.eq.BN(3)
 
+      const collection1 = await DummyERC721CollectionV2Upgrade.at(collectionAddress1)
+      const collection2 = await DummyERC721CollectionV2Upgrade.at(collectionAddress2)
+      const collection3 = await DummyERC721CollectionV2Upgrade.at(collectionAddress3)
+
+      let msg = "Transaction reverted: function selector was not recognized and there\'s no fallback function"
+
+      // Check that the collections don't have the upgraded functions before the upgrade
+
+      await assertRevert(collection1.addedFunction(), msg)
+      await assertRevert(collection2.addedFunction(), msg)
+      await assertRevert(collection3.addedFunction(), msg)
+
+      await assertRevert(collection1.upgradeCount(), msg)
+      await assertRevert(collection2.upgradeCount(), msg)
+      await assertRevert(collection3.upgradeCount(), msg)
+      
       const collectionUpgradeImplementation =
         await DummyERC721CollectionV2Upgrade.new()
 
       await upgradeableBeaconContract.upgradeTo(
         collectionUpgradeImplementation.address
-      )
-
-      const collection1 = await DummyERC721CollectionV2Upgrade.at(
-        collectionAddress1
-      )
-      const collection2 = await DummyERC721CollectionV2Upgrade.at(
-        collectionAddress2
-      )
-      const collection3 = await DummyERC721CollectionV2Upgrade.at(
-        collectionAddress3
       )
 
       expect(await collection1.name()).to.be.equal('collectionName-1')
@@ -446,7 +452,7 @@ describe('Factory V3', function () {
       expect(await collection2.baseURI()).to.be.equal('collectionBaseURI-2')
       expect(await collection3.baseURI()).to.be.equal('collectionBaseURI-3')
 
-      const msg = 'This is a function from the upgraded collection contract ;)'
+      msg = 'This is a function from the upgraded collection contract ;)'
 
       expect(await collection1.addedFunction()).to.be.equal(msg)
       expect(await collection2.addedFunction()).to.be.equal(msg)
@@ -514,8 +520,9 @@ describe('Factory V3', function () {
         collectionUpgradeImplementation.address
       )
 
-      const collection =
-        await DummyERC721CollectionV2UpgradeInvalidStorage.at(collectionAddress)
+      const collection = await DummyERC721CollectionV2UpgradeInvalidStorage.at(
+        collectionAddress
+      )
 
       // Should be 0 on a proper upgrade, but as the new state variable was not placed last, things got bad.
       expect(await collection.upgradeCount()).to.not.be.eq.BN(0)
