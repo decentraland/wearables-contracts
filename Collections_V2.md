@@ -61,7 +61,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 Every Collection contract is compliant with the [ERC721 Ethereum standard](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md), and implements the [ERC721Base interface](https://github.com/decentraland/erc721/blob/master/contracts/IERC721Base.sol), as well as the [ERC721Enumerable interface](https://github.com/decentraland/erc721/blob/master/contracts/IERC721Enumerable.sol).
 
-Its implementation could be find [here](https://github.com/decentraland/wearables-contracts/blob/master/full/ERC721BaseCollectionV2.sol).
+Its implementation could be find [here](https://github.com/decentraland/wearables-contracts/blob/master/full/ERC721CollectionV2.sol).
 
 ## Terminology
 

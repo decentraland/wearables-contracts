@@ -20,6 +20,9 @@ const ERC721CollectionV2 = artifacts.require('ERC721CollectionV2')
 const DummyERC721CollectionV2Upgrade = artifacts.require(
   'DummyERC721CollectionV2Upgrade'
 )
+const DummyERC721CollectionV2UpgradeInvalidStorage = artifacts.require(
+  'DummyERC721CollectionV2UpgradeInvalidStorage'
+)
 const Rarities = artifacts.require('Rarities')
 
 describe('Factory V3', function () {
@@ -32,6 +35,7 @@ describe('Factory V3', function () {
   let accounts
   let deployer
   let user
+  let manager
   let factoryOwner
   let hacker
   let fromUser
@@ -46,6 +50,7 @@ describe('Factory V3', function () {
     user = accounts[1]
     factoryOwner = accounts[3]
     hacker = accounts[4]
+    manager = accounts[5]
 
     fromUser = { from: user }
     fromHacker = { from: hacker }
@@ -447,17 +452,17 @@ describe('Factory V3', function () {
       expect(await collection2.addedFunction()).to.be.equal(msg)
       expect(await collection3.addedFunction()).to.be.equal(msg)
 
-      expect(await collection1.globalManagers(hacker)).to.be.equal(false)
-      expect(await collection2.globalManagers(hacker)).to.be.equal(false)
-      expect(await collection3.globalManagers(hacker)).to.be.equal(false)
+      expect(await collection1.globalManagers(manager)).to.be.equal(false)
+      expect(await collection2.globalManagers(manager)).to.be.equal(false)
+      expect(await collection3.globalManagers(manager)).to.be.equal(false)
 
-      expect(await collection1.upgradeCount()).to.be.eq.BN("0")
-      expect(await collection2.upgradeCount()).to.be.eq.BN("0")
-      expect(await collection3.upgradeCount()).to.be.eq.BN("0")
+      expect(await collection1.upgradeCount()).to.be.eq.BN('0')
+      expect(await collection2.upgradeCount()).to.be.eq.BN('0')
+      expect(await collection3.upgradeCount()).to.be.eq.BN('0')
 
-      const res1 = await collection1.setManagers([hacker], [true], fromUser)
-      const res2 = await collection2.setManagers([hacker], [true], fromUser)
-      const res3 = await collection3.setManagers([hacker], [true], fromUser)
+      const res1 = await collection1.setManagers([manager], [true], fromUser)
+      const res2 = await collection2.setManagers([manager], [true], fromUser)
+      const res3 = await collection3.setManagers([manager], [true], fromUser)
 
       expect(res1.logs[1].event).to.be.equal('UpgradeEvent')
       expect(res1.logs[1].args._caller).to.be.equal(user)
@@ -471,13 +476,49 @@ describe('Factory V3', function () {
       expect(res3.logs[1].args._caller).to.be.equal(user)
       expect(res3.logs[1].args._upgradeCount).to.be.eq.BN('1')
 
-      expect(await collection1.upgradeCount()).to.be.eq.BN("1")
-      expect(await collection2.upgradeCount()).to.be.eq.BN("1")
-      expect(await collection3.upgradeCount()).to.be.eq.BN("1")
+      expect(await collection1.upgradeCount()).to.be.eq.BN('1')
+      expect(await collection2.upgradeCount()).to.be.eq.BN('1')
+      expect(await collection3.upgradeCount()).to.be.eq.BN('1')
 
-      expect(await collection1.globalManagers(hacker)).to.be.equal(true)
-      expect(await collection2.globalManagers(hacker)).to.be.equal(true)
-      expect(await collection3.globalManagers(hacker)).to.be.equal(true)
+      expect(await collection1.globalManagers(manager)).to.be.equal(true)
+      expect(await collection2.globalManagers(manager)).to.be.equal(true)
+      expect(await collection3.globalManagers(manager)).to.be.equal(true)
+    })
+
+    it('should return invalid data when an upgrade with differently ordered state variables is deployed', async function () {
+      const salt = web3.utils.randomHex(32)
+
+      const data = getInitData({
+        name,
+        symbol,
+        baseURI,
+        creator: user,
+        shouldComplete: true,
+        isApproved: true,
+        items: ITEMS,
+        rarities: raritiesContract.address,
+      })
+
+      await factoryContract.createCollection(salt, data, fromFactoryOwner)
+
+      const collectionAddress = await factoryContract.getAddress(
+        salt,
+        factoryOwner,
+        data
+      )
+
+      const collectionUpgradeImplementation =
+        await DummyERC721CollectionV2UpgradeInvalidStorage.new()
+
+      await upgradeableBeaconContract.upgradeTo(
+        collectionUpgradeImplementation.address
+      )
+
+      const collection =
+        await DummyERC721CollectionV2UpgradeInvalidStorage.at(collectionAddress)
+
+      // Should be 0 on a proper upgrade, but as the new state variable was not placed last, things got bad.
+      expect(await collection.upgradeCount()).to.not.be.eq.BN(0)
     })
 
     it('reverts if initialize call failed', async function () {
