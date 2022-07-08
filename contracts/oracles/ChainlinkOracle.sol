@@ -19,7 +19,7 @@ contract ChainlinkOracle is IOracle {
      * @notice Create the contract
      * @param _dataFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
      * @param _decimals - amount of decimals the rate should be returned with
-     * @param _tolerance - time defining how much time back from the current block timestamp can the data feed's latestRoundData answer can be delayed.
+     * @param _tolerance - amount of time in seconds from getRate's call block timestamp that the rate can be accepted without receiving an update
      */
     constructor(IDataFeed _dataFeed, uint256 _decimals, uint256 _tolerance) {
         dataFeed = _dataFeed;
