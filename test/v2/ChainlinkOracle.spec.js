@@ -10,7 +10,7 @@ const oracleContractDecimals = 18
 const oracleContractTolerance = 0
 const feedContractDecimals = 8
 const feedContractAnswer = 10 ** feedContractDecimals
-const feedContractAnsweredAtOffset = 0
+const feedContractUpdatedAtOffset = 0
 const day = 86400
 const maxUint256 =
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -21,7 +21,7 @@ beforeEach(async function () {
   dataFeedContract = await DummyDataFeed.new(
     feedContractDecimals,
     feedContractAnswer,
-    feedContractAnsweredAtOffset
+    feedContractUpdatedAtOffset
   )
 })
 
@@ -55,7 +55,7 @@ describe('ChainlinkOracle', function () {
       expect(rate).to.eq.BN(expectedRate)
     })
 
-    it('should return the rate when tolerance is 0 and answeredAt is the same as the block timestamp', async function () {
+    it('should return the rate when tolerance is 0 and updatedAt is the same as the block timestamp', async function () {
       const chainlinkOracleContract = await ChainlinkOracle.new(
         dataFeedContract.address,
         oracleContractDecimals,
@@ -67,7 +67,7 @@ describe('ChainlinkOracle', function () {
       expect(rate).to.eq.BN(expectedRate)
     })
 
-    it('should return the rate when tolerance is 1 day and answeredAt is half a day behind the block timestamp', async function () {
+    it('should return the rate when tolerance is 1 day and updatedAt is half a day behind the block timestamp', async function () {
       const halfDay = day / 2
 
       dataFeedContract = await DummyDataFeed.new(
@@ -87,7 +87,7 @@ describe('ChainlinkOracle', function () {
       expect(rate).to.eq.BN(expectedRate)
     })
 
-    it('should return the rate when tolerance is 1 day and answeredAt is 1 day behind the block timestamp', async function () {
+    it('should return the rate when tolerance is 1 day and updatedAt is 1 day behind the block timestamp', async function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer,
@@ -109,7 +109,7 @@ describe('ChainlinkOracle', function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer * -1,
-        feedContractAnsweredAtOffset
+        feedContractUpdatedAtOffset
       )
 
       const chainlinkOracleContract = await ChainlinkOracle.new(
@@ -127,7 +127,7 @@ describe('ChainlinkOracle', function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         0,
-        feedContractAnsweredAtOffset
+        feedContractUpdatedAtOffset
       )
 
       const chainlinkOracleContract = await ChainlinkOracle.new(
@@ -141,7 +141,7 @@ describe('ChainlinkOracle', function () {
       await assertRevert(chainlinkOracleContract.getRate(), expectedError)
     })
 
-    it('reverts when tolerance is 0 and answeredAt is 1 second behind the block timestamp', async function () {
+    it('reverts when tolerance is 0 and updatedAt is 1 second behind the block timestamp', async function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer,
@@ -159,7 +159,7 @@ describe('ChainlinkOracle', function () {
       await assertRevert(chainlinkOracleContract.getRate(), expectedError)
     })
 
-    it('reverts when tolerance is 1 day and answeredAt is 1 day and 1 second behind the block timestamp', async function () {
+    it('reverts when tolerance is 1 day and updatedAt is 1 day and 1 second behind the block timestamp', async function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer,
@@ -181,7 +181,7 @@ describe('ChainlinkOracle', function () {
       dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer,
-        feedContractAnsweredAtOffset
+        feedContractUpdatedAtOffset
       )
 
       const chainlinkOracleContract = await ChainlinkOracle.new(

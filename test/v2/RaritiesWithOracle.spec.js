@@ -21,7 +21,7 @@ const conversionRate = 2
 
 const dummyFeedContractDecimals = 8
 const dummyFeedContractAnswer = conversionRate * 10 ** 8
-const dummyFeedContractAnsweredAtOffset = 0
+const dummyFeedContractUpdatedAtAtOffset = 0
 
 const chainLinkOracleContractDecimals = 18
 const chainLinkOracleContractTolerance = 0
@@ -67,7 +67,7 @@ describe('RaritiesWithOracle', function () {
     dataFeedContract = await DummyDataFeed.new(
       dummyFeedContractDecimals,
       dummyFeedContractAnswer,
-      dummyFeedContractAnsweredAtOffset,
+      dummyFeedContractUpdatedAtAtOffset,
       fromDeployer
     )
 
@@ -203,7 +203,7 @@ describe('RaritiesWithOracle', function () {
       dataFeedContract = await DummyDataFeed.new(
         dummyFeedContractDecimals,
         dummyFeedContractAnswer,
-        dummyFeedContractAnsweredAtOffset + 1,
+        dummyFeedContractUpdatedAtAtOffset + 1,
         fromDeployer
       )
 
