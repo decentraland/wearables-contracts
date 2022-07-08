@@ -13,15 +13,18 @@ contract ChainlinkOracle is IOracle {
 
     IDataFeed public immutable dataFeed;
     uint256 public immutable decimals;
+    uint256 public immutable tolerance;
 
     /**
      * @notice Create the contract
      * @param _dataFeed - chainlink's data feed address to obtain a rate. https://docs.chain.link/docs/get-the-latest-price/#solidity
      * @param _decimals - amount of decimals the rate should be returned with
+     * @param _tolerance - time defining how much time back from the current block timestamp can the data feed's latestRoundData answer can be delayed.
      */
-    constructor(IDataFeed _dataFeed, uint256 _decimals) {
+    constructor(IDataFeed _dataFeed, uint256 _decimals, uint256 _tolerance) {
         dataFeed = _dataFeed;
         decimals = _decimals;
+        tolerance = _tolerance;
     }
 
     /**
@@ -31,7 +34,9 @@ contract ChainlinkOracle is IOracle {
     function getRate() external view override returns (uint256) {
         uint256 feedDecimals = uint256(dataFeed.decimals());
 
-        (, int256 rate, , , ) = dataFeed.latestRoundData();
+        (, int256 rate, , uint256 updatedAt, ) = dataFeed.latestRoundData();
+        
+        require(updatedAt >= block.timestamp - tolerance, "ChainlinkOracle#getRate: STALE_RATE");
 
         if (rate <= 0) {
             revert('ChainlinkOracle#getRate: INVALID_RATE');
