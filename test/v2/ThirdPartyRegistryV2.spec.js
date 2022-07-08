@@ -144,7 +144,8 @@ describe('ThirdPartyRegistryV2', function () {
 
     chainlinkOracleContract = await ChainlinkOracle.new(
       dataFeedContract.address,
-      18
+      18,
+      0
     )
 
     // Start - Deploy TPR contract and required proxy contracts
