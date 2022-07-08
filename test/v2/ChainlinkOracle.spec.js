@@ -104,7 +104,7 @@ describe('ChainlinkOracle', function () {
     })
 
     it('reverts when the data feed answer is negative', async function () {
-      const dataFeedContract = await DummyDataFeed.new(
+      dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         feedContractAnswer * -1,
         feedContractAnsweredAtOffset
@@ -122,7 +122,7 @@ describe('ChainlinkOracle', function () {
     })
 
     it('reverts when the data feed answer is 0', async function () {
-      const dataFeedContract = await DummyDataFeed.new(
+      dataFeedContract = await DummyDataFeed.new(
         feedContractDecimals,
         0,
         feedContractAnsweredAtOffset
