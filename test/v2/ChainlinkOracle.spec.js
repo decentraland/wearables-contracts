@@ -12,6 +12,8 @@ const feedContractDecimals = 8
 const feedContractAnswer = 10 ** feedContractDecimals
 const feedContractAnsweredAtOffset = 0
 const day = 86400
+const maxUint256 =
+  '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
 let dataFeedContract
 
@@ -171,6 +173,24 @@ describe('ChainlinkOracle', function () {
       )
 
       const expectedError = 'ChainlinkOracle#getRate: STALE_RATE'
+
+      await assertRevert(chainlinkOracleContract.getRate(), expectedError)
+    })
+
+    it('reverts when tolerance is greater than the block timestamp', async function () {
+      dataFeedContract = await DummyDataFeed.new(
+        feedContractDecimals,
+        feedContractAnswer,
+        feedContractAnsweredAtOffset
+      )
+
+      const chainlinkOracleContract = await ChainlinkOracle.new(
+        dataFeedContract.address,
+        oracleContractDecimals,
+        maxUint256
+      )
+
+      const expectedError = 'SafeMath: subtraction overflow'
 
       await assertRevert(chainlinkOracleContract.getRate(), expectedError)
     })

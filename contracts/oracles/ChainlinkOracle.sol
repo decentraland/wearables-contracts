@@ -36,7 +36,7 @@ contract ChainlinkOracle is IOracle {
 
         (, int256 rate, , uint256 updatedAt, ) = dataFeed.latestRoundData();
         
-        require(updatedAt >= block.timestamp - tolerance, "ChainlinkOracle#getRate: STALE_RATE");
+        require(updatedAt >= block.timestamp.sub(tolerance), "ChainlinkOracle#getRate: STALE_RATE");
 
         if (rate <= 0) {
             revert('ChainlinkOracle#getRate: INVALID_RATE');
