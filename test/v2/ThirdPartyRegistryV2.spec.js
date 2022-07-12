@@ -140,11 +140,16 @@ describe('ThirdPartyRegistryV2', function () {
     const dataFeedDecimals = 8
     const dataFeedAnswer = 2 * 10 ** dataFeedDecimals // 200000000
 
-    dataFeedContract = await DummyDataFeed.new(dataFeedDecimals, dataFeedAnswer)
+    dataFeedContract = await DummyDataFeed.new(
+      dataFeedDecimals,
+      dataFeedAnswer,
+      0
+    )
 
     chainlinkOracleContract = await ChainlinkOracle.new(
       dataFeedContract.address,
-      18
+      18,
+      0
     )
 
     // Start - Deploy TPR contract and required proxy contracts

@@ -19,6 +19,13 @@ const version = '1'
 
 const conversionRate = 2
 
+const dummyFeedContractDecimals = 8
+const dummyFeedContractAnswer = conversionRate * 10 ** 8
+const dummyFeedContractUpdatedAtAtOffset = 0
+
+const chainLinkOracleContractDecimals = 18
+const chainLinkOracleContractTolerance = 0
+
 const getPriceAfterRate = (price) =>
   toBN(price).div(toBN(conversionRate.toString()))
 
@@ -58,14 +65,16 @@ describe('RaritiesWithOracle', function () {
     fromDeployer = { from: deployer }
 
     dataFeedContract = await DummyDataFeed.new(
-      8,
-      conversionRate * 10 ** 8,
+      dummyFeedContractDecimals,
+      dummyFeedContractAnswer,
+      dummyFeedContractUpdatedAtAtOffset,
       fromDeployer
     )
 
     chainlinkOracleContract = await ChainlinkOracle.new(
       dataFeedContract.address,
-      18,
+      chainLinkOracleContractDecimals,
+      chainLinkOracleContractTolerance,
       fromDeployer
     )
 
@@ -176,6 +185,34 @@ describe('RaritiesWithOracle', function () {
 
     it('reverts when the orale performs a state mutation on getRate', async function () {
       chainlinkOracleContract = await InvalidOracle.new()
+
+      raritiesContract = await RaritiesWithOracle.new(
+        deployer,
+        getInitialRarities(),
+        chainlinkOracleContract.address,
+        fromDeployer
+      )
+
+      await assertRevert(
+        raritiesContract.getRarityByName(RARITIES.common.name),
+        'Rarities#_getRateFromOracle: INVALID_RATE_FROM_ORACLE'
+      )
+    })
+
+    it('reverts when the orale returns a stale rate', async function () {
+      dataFeedContract = await DummyDataFeed.new(
+        dummyFeedContractDecimals,
+        dummyFeedContractAnswer,
+        dummyFeedContractUpdatedAtAtOffset + 1,
+        fromDeployer
+      )
+
+      chainlinkOracleContract = await ChainlinkOracle.new(
+        dataFeedContract.address,
+        chainLinkOracleContractDecimals,
+        chainLinkOracleContractTolerance,
+        fromDeployer
+      )
 
       raritiesContract = await RaritiesWithOracle.new(
         deployer,
