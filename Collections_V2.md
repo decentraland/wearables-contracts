@@ -261,7 +261,7 @@ SetItemMinter(uint256 indexed _itemId, address indexed _minter, bool _value);
 Emitted when a manager for a specific item is set or removed.
 
 ```solidity
-SetItemManager(uint256 indexed _itemId, address indexed _manager, _value);
+SetItemManager(uint256 indexed _itemId, address indexed _manager, bool _value);
 ```
 
 **AddItem**
@@ -306,7 +306,7 @@ UpdateItemData(uint256 indexed _itemId, uint256 _price, address _beneficiary);
 Emitted when the creator role is transferred.
 
 ```solidity
-CreatorshipTransferred(address indexed _previousCreator, address indexed _ newCreator);
+CreatorshipTransferred(address indexed _previousCreator, address indexed _newCreator);
 ```
 
 **Approve**
@@ -483,7 +483,7 @@ Set the collection as editable or not.
 function setEditable() external
 ```
 
--**isMintingAllowed**
+_**isMintingAllowed**_
 
 Check whether a collection can be minted or not
 
@@ -519,7 +519,7 @@ Transfer a batch of tokens to another address. Discourage method, please use `sa
 function batchTransferFrom(address _from, address _to, uint256[] calldata _tokenIds) external
 ```
 
-_**safeTransferFrom**_
+_**safeBatchTransferFrom**_
 
 Safe transfer a batch of tokens to another address with bytes.
 
