@@ -259,6 +259,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+            bool isProgrammatic = _areProgrammatic[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
@@ -278,6 +279,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             }
 
             thirdPartyIds.push(thirdPartyParam.id);
+            isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
 
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
