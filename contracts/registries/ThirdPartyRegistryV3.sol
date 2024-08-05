@@ -364,7 +364,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @param _qty - qty of item slots to be bought
     * @param _maxPrice - max price to paid
     */
-    function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
+    function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) public {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
