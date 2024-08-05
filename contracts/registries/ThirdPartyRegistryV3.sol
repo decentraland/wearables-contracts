@@ -290,6 +290,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdParty.maxItems = thirdPartyParam.slots;
                 // Tracks that the third party is programmatic.
                 // Useful for buying more slots for free in the future, in case the initial desired amount was not enough.
+                // As this is stored after the buyItemSlots call, the slots will be charged this first time as expected.
                 isThirdPartyProgrammatic[thirdPartyParam.id] = true;
             } else {
                 // Buys the desired slots for the third party in the case it is not programmatic.
