@@ -13,7 +13,7 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
-contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, Initializable {
+contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, Initializable {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
