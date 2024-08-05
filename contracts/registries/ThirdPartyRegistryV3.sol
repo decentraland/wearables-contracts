@@ -256,15 +256,17 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
-            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+            ThirdPartyParam calldata thirdPartyParam = _thirdParties[i];
             bool isProgrammatic = _areProgrammatic[i];
+            uint256 maxPrice = _maxPrices[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
             require(bytes(thirdPartyParam.resolver).length > 0, "TPR#addThirdParties: EMPTY_RESOLVER");
             require(thirdPartyParam.managers.length > 0, "TPR#addThirdParties: EMPTY_MANAGERS");
+            require(thirdPartyParam.slots > 0, "TPR#addThirdParties: ZERO_SLOTS");
 
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(thirdParty.registered == 0, "TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED");
@@ -272,7 +274,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             thirdParty.registered = 1;
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
-            thirdParty.maxItems = thirdPartyParam.slots;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
                 thirdParty.managers[thirdPartyParam.managers[m]] = true;
@@ -290,6 +291,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdParty.maxItems,
                 _msgSender()
             );
+
+            buyItemSlots(thirdPartyParam.id, thirdPartyParam.slots, maxPrice);
         }
     }
 
