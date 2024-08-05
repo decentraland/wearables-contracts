@@ -280,7 +280,21 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             }
 
             thirdPartyIds.push(thirdPartyParam.id);
-            isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
+
+            if (isProgrammatic) {
+                // If the third party is programmatic, we make the user pay for a determined amount of slots for it.
+                buyItemSlots(thirdPartyParam.id, 20, maxPrice);
+                // We override the maxItems with the amount of provided slots.
+                // This is because for this particular case, a fixed amount of slots are bought as fee for being programmatic.
+                // Programmatic third parties can have as many slots as desired, so we just override it here with the amount desired by the user.
+                thirdParty.maxItems = thirdPartyParam.slots;
+                // Tracks that the third party is programmatic.
+                // Useful for buying more slots for free in the future, in case the initial desired amount was not enough.
+                isThirdPartyProgrammatic[thirdPartyParam.id] = true;
+            } else {
+                // Buys the desired slots for the third party in the case it is not programmatic.
+                buyItemSlots(thirdPartyParam.id, thirdPartyParam.slots, maxPrice);
+            }
 
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
@@ -291,8 +305,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdParty.maxItems,
                 _msgSender()
             );
-
-            buyItemSlots(thirdPartyParam.id, thirdPartyParam.slots, maxPrice);
         }
     }
 
