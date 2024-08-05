@@ -271,7 +271,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             thirdParty.registered = 1;
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
-            thirdParty.isApproved = initialThirdPartyValue;
             thirdParty.maxItems = thirdPartyParam.slots;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
@@ -284,7 +283,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdPartyParam.id,
                 thirdParty.metadata,
                 thirdParty.resolver,
-                thirdParty.isApproved,
+                false,
                 thirdPartyParam.managers,
                 thirdParty.maxItems,
                 _msgSender()
