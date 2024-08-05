@@ -387,6 +387,16 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
         _checkThirdParty(thirdParty);
 
+        if (isThirdPartyProgrammatic[_thirdPartyId]) {
+            // Buy more slots for free in case the current amount is not enough.
+            thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+            // Emit the event with the final price as 0.
+            emit ThirdPartyItemSlotsBought(_thirdPartyId, 0, _qty, sender);
+
+            return;
+        }
+
         uint256 rate = _getRateFromOracle();
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
