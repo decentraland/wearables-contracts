@@ -46,6 +46,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         address[] managers;
         bool[] managerValues;
         uint256 slots;
+        bool isProgrammatic;
     }
 
     struct ItemParam {
@@ -270,13 +271,11 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * Anyone can create a new Third Party.
     * Creating a new Third Party has a cost determined by the amount of slots, or if it is programmatic.
     * @param _thirdParties - third parties to be added
-    * @param _areProgrammatic - determines if the third party in the same array index is programmatic.
     * @param _maxPrices - the maximum amount of `acceptedToken` the user is willing to pay when adding the third party in the same array index.
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, uint256[] calldata _maxPrices) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam calldata thirdPartyParam = _thirdParties[i];
-            bool isProgrammatic = _areProgrammatic[i];
             uint256 maxPrice = _maxPrices[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
@@ -298,7 +297,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             thirdPartyIds.push(thirdPartyParam.id);
 
-            if (isProgrammatic) {
+            if (thirdPartyParam.isProgrammatic) {
                 // If the third party is programmatic, we make the user pay for a determined amount of slots for it.
                 buyItemSlots(thirdPartyParam.id, PROGRAMMATIC_THIRD_PARTY_BOUGHT_SLOTS, maxPrice);
                 // We override the maxItems with the amount of provided slots.
@@ -321,7 +320,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 false,
                 thirdPartyParam.managers,
                 thirdParty.maxItems,
-                isProgrammatic,
+                thirdPartyParam.isProgrammatic,
                 _msgSender()
             );
         }
