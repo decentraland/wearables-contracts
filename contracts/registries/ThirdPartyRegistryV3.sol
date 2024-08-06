@@ -97,6 +97,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     bool public initialItemValue;
 
     /// @notice Tracks if a third party has been defined as programmatic when created.
+    /// Programmatic TPs are those third parties that have multiple items created using some sort of automated tool or script.
     mapping(string => bool) public isThirdPartyProgrammatic;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
