@@ -258,7 +258,11 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
     /**
     * @notice Add third parties
+    * Anyone can create a new Third Party.
+    * Creating a new Third Party has a cost determined by the amount of slots, or if it is programmatic.
     * @param _thirdParties - third parties to be added
+    * @param _areProgrammatic - determines if the third party in the same array index is programmatic.
+    * @param _maxPrices - the maximum amount of `acceptedToken` the user is willing to pay when adding the third party in the same array index.
     */
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
