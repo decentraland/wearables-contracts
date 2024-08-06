@@ -73,6 +73,10 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         uint256 registered;
     }
 
+    /**
+     * @param isProgrammatic - tracks if a third party has been defined as programmatic when created
+     * Programmatic TPs are those third parties that have multiple items created using some sort of automated tool or script.
+     */
     struct ThirdParty {
         bool isApproved;
         bytes32 root;
@@ -86,6 +90,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         mapping(address => bool) managers;
         mapping(string => Item) items;
         mapping(string => bool) rules;
+        bool isProgrammatic;
     }
 
     mapping(string => ThirdParty) public thirdParties;
@@ -100,12 +105,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
     bool public initialThirdPartyValue;
     bool public initialItemValue;
-
-    /**
-     * @notice Tracks if a third party has been defined as programmatic when created.
-     * Programmatic TPs are those third parties that have multiple items created using some sort of automated tool or script.
-     */
-    mapping(string => bool) public isThirdPartyProgrammatic;
 
     /**
      * @dev Event emitted when a new third party is added.
@@ -309,7 +308,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 // Tracks that the third party is programmatic.
                 // Useful for buying more slots for free in the future, in case the initial desired amount was not enough.
                 // As this is stored after the buyItemSlots call, the slots will be charged this first time as expected.
-                isThirdPartyProgrammatic[thirdPartyParam.id] = true;
+                thirdParty.isProgrammatic = true;
             } else {
                 // Buys the desired slots for the third party in the case it is not programmatic.
                 buyItemSlots(thirdPartyParam.id, thirdPartyParam.slots, maxPrice);
@@ -406,7 +405,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
         _checkThirdParty(thirdParty);
 
-        if (isThirdPartyProgrammatic[_thirdPartyId]) {
+        if (thirdParty.isProgrammatic) {
             // Buy more slots for free in case the current amount is not enough.
             thirdParty.maxItems = thirdParty.maxItems.add(_qty);
 
