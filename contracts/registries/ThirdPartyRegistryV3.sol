@@ -20,7 +20,9 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         bytes("ConsumeSlots(string thirdPartyId,uint256 qty,bytes32 salt)")
     );
 
-    /// @dev The amount of slots that will be used as reference of how much the user will pay when adding a new programmatic third party.
+    /**
+     * @dev The amount of slots that will be used as reference of how much the user will pay when adding a new programmatic third party.
+     */
     uint256 private constant PROGRAMMATIC_THIRD_PARTY_BOUGHT_SLOTS = 20;
 
     struct ConsumeSlots {
@@ -99,8 +101,10 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    /// @notice Tracks if a third party has been defined as programmatic when created.
-    /// Programmatic TPs are those third parties that have multiple items created using some sort of automated tool or script.
+    /**
+     * @notice Tracks if a third party has been defined as programmatic when created.
+     * Programmatic TPs are those third parties that have multiple items created using some sort of automated tool or script.
+     */
     mapping(string => bool) public isThirdPartyProgrammatic;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
