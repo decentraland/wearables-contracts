@@ -282,7 +282,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
             require(bytes(thirdPartyParam.resolver).length > 0, "TPR#addThirdParties: EMPTY_RESOLVER");
             require(thirdPartyParam.managers.length > 0, "TPR#addThirdParties: EMPTY_MANAGERS");
-            require(thirdPartyParam.slots > 0, "TPR#addThirdParties: ZERO_SLOTS");
 
             ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
             require(thirdParty.registered == 0, "TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED");
@@ -399,6 +398,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) public {
         address sender = _msgSender();
+
+        require(_qty > 0, "TPR#buyItemSlots: ZERO_SLOTS");
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
