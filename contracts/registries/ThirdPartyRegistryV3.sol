@@ -20,6 +20,9 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         bytes("ConsumeSlots(string thirdPartyId,uint256 qty,bytes32 salt)")
     );
 
+    /// @dev The amount of slots that will be used as reference of how much the user will pay when adding a new programmatic third party.
+    uint256 private constant PROGRAMMATIC_THIRD_PARTY_BOUGHT_SLOTS = 20;
+
     struct ConsumeSlots {
         string thirdPartyId;
         uint256 qty;
@@ -284,7 +287,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             if (isProgrammatic) {
                 // If the third party is programmatic, we make the user pay for a determined amount of slots for it.
-                buyItemSlots(thirdPartyParam.id, 20, maxPrice);
+                buyItemSlots(thirdPartyParam.id, PROGRAMMATIC_THIRD_PARTY_BOUGHT_SLOTS, maxPrice);
                 // We override the maxItems with the amount of provided slots.
                 // This is because for this particular case, a fixed amount of slots are bought as fee for being programmatic.
                 // Programmatic third parties can have as many slots as desired, so we just override it here with the amount desired by the user.
