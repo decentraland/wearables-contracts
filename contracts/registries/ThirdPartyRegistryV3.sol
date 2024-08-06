@@ -107,6 +107,12 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
      */
     mapping(string => bool) public isThirdPartyProgrammatic;
 
+    /**
+     * @dev Event emitted when a new third party is added.
+     * It has a difference with the event emitted in the previous version that it also emits if the collection is programmatic.
+     */
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, bool _isProgrammatic, address _sender);
+
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
@@ -316,6 +322,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 false,
                 thirdPartyParam.managers,
                 thirdParty.maxItems,
+                isProgrammatic,
                 _msgSender()
             );
         }
