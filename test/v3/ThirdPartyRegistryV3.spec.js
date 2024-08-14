@@ -207,8 +207,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       'https://api.thirdparty1.com/v1/',
       [manager],
       [],
-      0,
-      false
+      0
     ]
 
     thirdParty2 = [
@@ -217,8 +216,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       'https://api.thirdparty2.com/v1/',
       [manager, anotherManager],
       [],
-      0,
-      false
+      0
     ]
 
     THIRD_PARTIES = [thirdParty1, thirdParty2]
@@ -234,6 +232,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       // Add a third party
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
 
@@ -289,6 +288,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdParty1],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
@@ -320,6 +320,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       // Add a third party
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
 
@@ -361,6 +362,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdParty1],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
@@ -1021,7 +1023,8 @@ describe.only('ThirdPartyRegistryV3', function () {
       thirdParty2[5] = thirdParty2Slots
 
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1, thirdParty2],
+        [thirdParty1, thirdParty2], 
+        [false, false],
         fromThirdPartyAggregator
       )
 
@@ -1112,6 +1115,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
+        [false],
         fromUser
       )
 
@@ -1202,56 +1206,56 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       const functionSignature = web3.eth.abi.encodeFunctionCall(
         {
-          inputs: [
+          "inputs": [
             {
-              components: [
+              "components": [
                 {
-                  internalType: 'string',
-                  name: 'id',
-                  type: 'string',
+                  "internalType": "string",
+                  "name": "id",
+                  "type": "string"
                 },
                 {
-                  internalType: 'string',
-                  name: 'metadata',
-                  type: 'string',
+                  "internalType": "string",
+                  "name": "metadata",
+                  "type": "string"
                 },
                 {
-                  internalType: 'string',
-                  name: 'resolver',
-                  type: 'string',
+                  "internalType": "string",
+                  "name": "resolver",
+                  "type": "string"
                 },
                 {
-                  internalType: 'address[]',
-                  name: 'managers',
-                  type: 'address[]',
+                  "internalType": "address[]",
+                  "name": "managers",
+                  "type": "address[]"
                 },
                 {
-                  internalType: 'bool[]',
-                  name: 'managerValues',
-                  type: 'bool[]',
+                  "internalType": "bool[]",
+                  "name": "managerValues",
+                  "type": "bool[]"
                 },
                 {
-                  internalType: 'uint256',
-                  name: 'slots',
-                  type: 'uint256',
-                },
-                {
-                  internalType: 'bool',
-                  name: 'isProgrammatic',
-                  type: 'bool',
+                  "internalType": "uint256",
+                  "name": "slots",
+                  "type": "uint256"
                 }
               ],
-              internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
-              name: '_thirdParties',
-              type: 'tuple[]',
+              "internalType": "struct ThirdPartyRegistryV3.ThirdPartyParam[]",
+              "name": "_thirdParties",
+              "type": "tuple[]"
             },
+            {
+              "internalType": "bool[]",
+              "name": "_areProgrammatic",
+              "type": "bool[]"
+            }
           ],
-          name: 'addThirdParties',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
+          "name": "addThirdParties",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
         },
-        [[thirdParty1, thirdParty2]]
+        [[thirdParty1, thirdParty2], [false, false]]
       )
 
       const { logs } = await sendMetaTx(
@@ -1350,13 +1354,13 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_ID'
@@ -1370,13 +1374,13 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_METADATA'
@@ -1390,13 +1394,13 @@ describe.only('ThirdPartyRegistryV3', function () {
         '',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_RESOLVER'
@@ -1410,13 +1414,13 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [],
         [],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_MANAGERS'
@@ -1430,8 +1434,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       const thirdPartyToBeAdded2 = [
@@ -1440,18 +1443,19 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty2.com/v1/',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       await thirdPartyRegistryContract.addThirdParties(
         [thirdPartyToBeAdded1],
+        [false],
         fromThirdPartyAggregator
       )
 
       await assertRevert(
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded2],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
@@ -1561,6 +1565,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
+        [false, false],
         fromThirdPartyAggregator
       )
 
@@ -1570,8 +1575,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v2/',
         [anotherManager],
         [true],
-        0,
-        false
+        0
       ]
 
       updatedThirdParty2 = [
@@ -1580,8 +1584,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty2.com/v2/',
         [],
         [],
-        0,
-        false
+        0
       ]
     })
 
@@ -1808,11 +1811,6 @@ describe.only('ThirdPartyRegistryV3', function () {
                   internalType: 'uint256',
                   name: 'slots',
                   type: 'uint256',
-                },
-                {
-                  internalType: 'bool',
-                  name: 'isProgrammatic',
-                  type: 'bool',
                 }
               ],
               internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
@@ -1932,8 +1930,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         '',
         [],
         [],
-        0,
-        false
+        0
       ]
 
       let thirdPartiesCount =
@@ -1998,8 +1995,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v2/',
         [],
         [],
-        0,
-        false
+        0
       ]
 
       let thirdPartiesCount =
@@ -2064,8 +2060,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         '', 
         [anotherManager], 
         [true], 
-        0, 
-        false
+        0
       ]
 
       let thirdPartiesCount =
@@ -2130,8 +2125,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         '', 
         [manager], 
         [false], 
-        0, 
-        false
+        0
       ]
 
       let thirdPartiesCount =
@@ -2254,8 +2248,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [true],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
@@ -2274,8 +2267,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
@@ -2294,8 +2286,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         'https://api.thirdparty1.com/v1/',
         [manager],
         [false],
-        0,
-        false
+        0
       ]
 
       await assertRevert(
@@ -2350,12 +2341,7 @@ describe.only('ThirdPartyRegistryV3', function () {
                   internalType: 'uint256',
                   name: 'slots',
                   type: 'uint256',
-                },
-                {
-                  internalType: 'bool',
-                  name: 'isProgrammatic',
-                  type: 'bool',
-                },
+                }
               ],
               internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
               name: '_thirdParties',
@@ -2401,6 +2387,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
+        [false, false],
         fromThirdPartyAggregator
       )
     })
@@ -2855,6 +2842,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
 
@@ -2874,6 +2862,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     beforeEach(async () => {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
+        [false, false],
         fromThirdPartyAggregator
       )
 
@@ -3203,6 +3192,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     beforeEach(async function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
     })
@@ -3236,7 +3226,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const qty = 10
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], qty, false]],
+        [[thirdParty1[0], '', '', [], [], qty]],
         fromThirdPartyAggregator
       )
 
@@ -3303,7 +3293,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total, false]],
+        [[thirdParty1[0], '', '', [], [], total]],
         fromThirdPartyAggregator
       )
 
@@ -3385,7 +3375,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total, false]],
+        [[thirdParty1[0], '', '', [], [], total]],
         fromThirdPartyAggregator
       )
 
@@ -3565,6 +3555,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     beforeEach(async function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
     })
@@ -3594,7 +3585,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total, false]],
+        [[thirdParty1[0], '', '', [], [], total]],
         fromThirdPartyAggregator
       )
 
@@ -3670,7 +3661,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total, false]],
+        [[thirdParty1[0], '', '', [], [], total]],
         fromThirdPartyAggregator
       )
 
@@ -3841,7 +3832,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts when the message was already processed', async function () {
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy * 2, false]],
+        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy * 2]],
         fromThirdPartyAggregator
       )
 
@@ -3873,7 +3864,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts when the signer is not a manager', async function () {
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy, false]],
+        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy]],
         fromThirdPartyAggregator
       )
 
@@ -3906,6 +3897,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
 
@@ -3980,6 +3972,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
+        [false],
         fromThirdPartyAggregator
       )
 
@@ -4191,7 +4184,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       let thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(0)
 
-      await tprContract.addThirdParties(THIRD_PARTIES, fromThirdPartyAggregator)
+      await tprContract.addThirdParties(THIRD_PARTIES, [false, false], fromThirdPartyAggregator)
 
       thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -4226,6 +4219,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await assertRevert(
         tprContract.addThirdParties(
           [THIRD_PARTIES[1]],
+          [false],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
@@ -4288,8 +4282,7 @@ describe.only('ThirdPartyRegistryV3', function () {
             THIRD_PARTIES[0][2],
             [anotherManager],
             [true],
-            0,
-            false
+            0
           ],
         ],
         fromManager
@@ -4314,7 +4307,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       const newResolver = 'https://new.api.thirdparty/v1'
       await tprContract.updateThirdParties(
-        [[THIRD_PARTIES[0][0], THIRD_PARTIES[0][1], newResolver, [], [], 0, false]],
+        [[THIRD_PARTIES[0][0], THIRD_PARTIES[0][1], newResolver, [], [], 0]],
         fromAnotherManager
       )
 

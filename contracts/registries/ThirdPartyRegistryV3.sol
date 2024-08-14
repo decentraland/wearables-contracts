@@ -41,7 +41,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         address[] managers;
         bool[] managerValues;
         uint256 slots;
-        bool isProgrammatic;
     }
 
     struct ItemParam {
@@ -254,7 +253,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
 

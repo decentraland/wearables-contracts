@@ -41,7 +41,6 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
         address[] managers;
         bool[] managerValues;
         uint256 slots;
-        bool isProgrammatic;
     }
 
     struct ItemParam {
@@ -254,7 +253,7 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
         revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
     }
 
