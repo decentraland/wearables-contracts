@@ -1007,7 +1007,7 @@ describe.only('ThirdPartyRegistryV3', function () {
   })
 
   describe('addThirdParties', function () {
-    it('should add third parties', async function () {
+    it('should add third parties (third party aggregator as caller)', async function () {
       let thirdPartiesCount =
         await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(0)
@@ -1042,6 +1042,96 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
       expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
       expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
+
+      thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(2)
+
+      // Third Party 1
+      let thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(0)
+      expect(thirdPartyId).to.be.eql(thirdParty1[0])
+
+      let thirdParty = await thirdPartyRegistryContract.thirdParties(
+        thirdParty1[0]
+      )
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty1[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty1[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(thirdParty1Slots)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+
+      for (let i = 0; i < thirdParty1[3].length; i++) {
+        const isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+          thirdPartyId,
+          thirdParty1[3][i]
+        )
+        expect(isManager).to.be.equal(true)
+      }
+
+      let itemsCount = await thirdPartyRegistryContract.itemsCount(
+        thirdParty1[0]
+      )
+      expect(itemsCount).to.be.eq.BN(0)
+
+      // Third Party 2
+      thirdPartyId = await thirdPartyRegistryContract.thirdPartyIds(1)
+      expect(thirdPartyId).to.be.eql(thirdParty2[0])
+
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
+
+      expect(thirdParty.metadata).to.be.eql(thirdParty2[1])
+      expect(thirdParty.resolver).to.be.eql(thirdParty2[2])
+      expect(thirdParty.isApproved).to.be.eql(initialValueForThirdParties)
+      expect(thirdParty.maxItems).to.be.eq.BN(thirdParty2Slots)
+      expect(thirdParty.registered).to.be.eq.BN(1)
+
+      for (let i = 0; i < thirdParty2[3].length; i++) {
+        const isManager = await thirdPartyRegistryContract.isThirdPartyManager(
+          thirdPartyId,
+          thirdParty2[3][i]
+        )
+        expect(isManager).to.be.equal(true)
+      }
+
+      itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
+      expect(itemsCount).to.be.eq.BN(0)
+    })
+
+    it('should add third parties (user as caller)', async function () {
+      let thirdPartiesCount =
+        await thirdPartyRegistryContract.thirdPartiesCount()
+      expect(thirdPartiesCount).to.be.eq.BN(0)
+
+      const thirdParty1Slots = 10
+      const thirdParty2Slots = 20
+
+      thirdParty1[5] = thirdParty1Slots
+      thirdParty2[5] = thirdParty2Slots
+
+      const { logs } = await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1, thirdParty2],
+        fromUser
+      )
+
+      expect(logs.length).to.be.equal(2)
+
+      expect(logs[0].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[0].args._metadata).to.be.eql(thirdParty1[1])
+      expect(logs[0].args._resolver).to.be.eql(thirdParty1[2])
+      expect(logs[0].args._isApproved).to.be.eql(initialValueForThirdParties)
+      expect(logs[0].args._managers).to.be.eql(thirdParty1[3])
+      expect(logs[0].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
+      expect(logs[0].args._sender).to.be.eql(user)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
+      expect(logs[1].args._metadata).to.be.eql(thirdParty2[1])
+      expect(logs[1].args._resolver).to.be.eql(thirdParty2[2])
+      expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
+      expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
+      expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
+      expect(logs[1].args._sender).to.be.eql(user)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1352,75 +1442,6 @@ describe.only('ThirdPartyRegistryV3', function () {
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
-      )
-    })
-
-    it('reverts when trying to add a third party by hacker', async function () {
-      await assertRevert(
-        thirdPartyRegistryContract.addThirdParties([thirdParty1], fromHacker),
-        'TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR'
-      )
-
-      const functionSignature = web3.eth.abi.encodeFunctionCall(
-        {
-          inputs: [
-            {
-              components: [
-                {
-                  internalType: 'string',
-                  name: 'id',
-                  type: 'string',
-                },
-                {
-                  internalType: 'string',
-                  name: 'metadata',
-                  type: 'string',
-                },
-                {
-                  internalType: 'string',
-                  name: 'resolver',
-                  type: 'string',
-                },
-                {
-                  internalType: 'address[]',
-                  name: 'managers',
-                  type: 'address[]',
-                },
-                {
-                  internalType: 'bool[]',
-                  name: 'managerValues',
-                  type: 'bool[]',
-                },
-                {
-                  internalType: 'uint256',
-                  name: 'slots',
-                  type: 'uint256',
-                },
-              ],
-              internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
-              name: '_thirdParties',
-              type: 'tuple[]',
-            },
-          ],
-          name: 'addThirdParties',
-          outputs: [],
-          stateMutability: 'nonpayable',
-          type: 'function',
-        },
-        [[thirdParty1]]
-      )
-
-      await assertRevert(
-        sendMetaTx(
-          thirdPartyRegistryContract,
-          functionSignature,
-          hacker,
-          relayer,
-          null,
-          domain,
-          version
-        ),
-        'NMT#executeMetaTransaction: CALL_FAILED'
       )
     })
   })
