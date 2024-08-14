@@ -15,8 +15,8 @@ import {
 
 const Committee = artifacts.require('Committee')
 const ThirdPartyRegistryV3 = artifacts.require('ThirdPartyRegistryV3')
-const DummyThirdPartyRegistryV2Upgrade = artifacts.require(
-  'DummyThirdPartyRegistryV2Upgrade'
+const DummyThirdPartyRegistryV3Upgrade = artifacts.require(
+  'DummyThirdPartyRegistryV3Upgrade'
 )
 const ChainlinkOracle = artifacts.require('ChainlinkOracle')
 const InvalidOracle = artifacts.require('DummyInvalidOracle')
@@ -208,6 +208,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       [manager],
       [],
       0,
+      false
     ]
 
     thirdParty2 = [
@@ -217,6 +218,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       [manager, anotherManager],
       [],
       0,
+      false
     ]
 
     THIRD_PARTIES = [thirdParty1, thirdParty2]
@@ -249,7 +251,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       // Deploy upgraded implementation
       const upgradedImplementation =
-        await DummyThirdPartyRegistryV2Upgrade.new()
+        await DummyThirdPartyRegistryV3Upgrade.new()
 
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdmin.abi,
@@ -334,13 +336,13 @@ describe.only('ThirdPartyRegistryV3', function () {
       ).to.be.eq.BN(1)
 
       // Upgrade the contract with hardhat plugin
-      const DummyThirdPartyRegistryV2Upgrade = await ethers.getContractFactory(
-        'DummyThirdPartyRegistryV2Upgrade'
+      const DummyThirdPartyRegistryV3Upgrade = await ethers.getContractFactory(
+        'DummyThirdPartyRegistryV3Upgrade'
       )
 
       await upgrades.upgradeProxy(
         thirdPartyRegistryContract.address,
-        DummyThirdPartyRegistryV2Upgrade
+        DummyThirdPartyRegistryV3Upgrade
       )
 
       // Check that the third party is still in the upgraded contract
@@ -379,7 +381,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       // Deploy upgraded implementation
       const upgradedImplementation =
-        await DummyThirdPartyRegistryV2Upgrade.new()
+        await DummyThirdPartyRegistryV3Upgrade.new()
 
       // Can call upgrade as user which is the new admin
       await proxyAdmin.methods
@@ -461,7 +463,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       // Deploy upgraded implementation
       const upgradedImplementation =
-        await DummyThirdPartyRegistryV2Upgrade.new()
+        await DummyThirdPartyRegistryV3Upgrade.new()
 
       // Can call upgradeTo
       await transparentProxy.methods
@@ -475,7 +477,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts if the upgrader is not the proxy admin (deployer)', async () => {
       // Deploy upgraded implementation
-      let upgradedImplementation = await DummyThirdPartyRegistryV2Upgrade.new()
+      let upgradedImplementation = await DummyThirdPartyRegistryV3Upgrade.new()
 
       const proxyAdmin = new web3.eth.Contract(
         ProxyAdmin.abi,
@@ -539,12 +541,12 @@ describe.only('ThirdPartyRegistryV3', function () {
       await upgrades.admin.transferProxyAdminOwnership(user)
 
       // Try to upgrade the contract as deployer
-      const DummyThirdPartyRegistryV2Upgrade = await ethers.getContractFactory(
-        'DummyThirdPartyRegistryV2Upgrade'
+      const DummyThirdPartyRegistryV3Upgrade = await ethers.getContractFactory(
+        'DummyThirdPartyRegistryV3Upgrade'
       )
       const upgradePromise = upgrades.upgradeProxy(
         thirdPartyRegistryContract.address,
-        DummyThirdPartyRegistryV2Upgrade
+        DummyThirdPartyRegistryV3Upgrade
       )
 
       // Should fail because deployer is no longer owner
@@ -1233,6 +1235,11 @@ describe.only('ThirdPartyRegistryV3', function () {
                   name: 'slots',
                   type: 'uint256',
                 },
+                {
+                  internalType: 'bool',
+                  name: 'isProgrammatic',
+                  type: 'bool',
+                }
               ],
               internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
               name: '_thirdParties',
@@ -1344,6 +1351,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       await assertRevert(
@@ -1363,6 +1371,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       await assertRevert(
@@ -1382,6 +1391,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       await assertRevert(
@@ -1401,6 +1411,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [],
         [],
         0,
+        false
       ]
 
       await assertRevert(
@@ -1420,6 +1431,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       const thirdPartyToBeAdded2 = [
@@ -1429,6 +1441,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       await thirdPartyRegistryContract.addThirdParties(
@@ -1558,6 +1571,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [anotherManager],
         [true],
         0,
+        false
       ]
 
       updatedThirdParty2 = [
@@ -1567,6 +1581,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [],
         [],
         0,
+        false
       ]
     })
 
@@ -1794,6 +1809,11 @@ describe.only('ThirdPartyRegistryV3', function () {
                   name: 'slots',
                   type: 'uint256',
                 },
+                {
+                  internalType: 'bool',
+                  name: 'isProgrammatic',
+                  type: 'bool',
+                }
               ],
               internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
               name: '_thirdParties',
@@ -1913,6 +1933,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [],
         [],
         0,
+        false
       ]
 
       let thirdPartiesCount =
@@ -1978,6 +1999,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [],
         [],
         0,
+        false
       ]
 
       let thirdPartiesCount =
@@ -2036,7 +2058,15 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
 
     it('should update third parties :: managers', async function () {
-      updatedThirdParty1 = [thirdParty1[0], '', '', [anotherManager], [true], 0]
+      updatedThirdParty1 = [
+        thirdParty1[0], 
+        '', 
+        '', 
+        [anotherManager], 
+        [true], 
+        0, 
+        false
+      ]
 
       let thirdPartiesCount =
         await thirdPartyRegistryContract.thirdPartiesCount()
@@ -2094,7 +2124,15 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
 
     it('should empty third parties managers by committee member', async function () {
-      updatedThirdParty1 = [thirdParty1[0], '', '', [manager], [false], 0]
+      updatedThirdParty1 = [
+        thirdParty1[0], 
+        '', 
+        '', 
+        [manager], 
+        [false], 
+        0, 
+        false
+      ]
 
       let thirdPartiesCount =
         await thirdPartyRegistryContract.thirdPartiesCount()
@@ -2217,6 +2255,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [true],
         0,
+        false
       ]
 
       await assertRevert(
@@ -2236,6 +2275,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [],
         0,
+        false
       ]
 
       await assertRevert(
@@ -2255,6 +2295,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         [manager],
         [false],
         0,
+        false
       ]
 
       await assertRevert(
@@ -2309,6 +2350,11 @@ describe.only('ThirdPartyRegistryV3', function () {
                   internalType: 'uint256',
                   name: 'slots',
                   type: 'uint256',
+                },
+                {
+                  internalType: 'bool',
+                  name: 'isProgrammatic',
+                  type: 'bool',
                 },
               ],
               internalType: 'struct ThirdPartyRegistryV3.ThirdPartyParam[]',
@@ -3190,7 +3236,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const qty = 10
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], qty]],
+        [[thirdParty1[0], '', '', [], [], qty, false]],
         fromThirdPartyAggregator
       )
 
@@ -3257,7 +3303,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total]],
+        [[thirdParty1[0], '', '', [], [], total, false]],
         fromThirdPartyAggregator
       )
 
@@ -3339,7 +3385,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total]],
+        [[thirdParty1[0], '', '', [], [], total, false]],
         fromThirdPartyAggregator
       )
 
@@ -3548,7 +3594,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total]],
+        [[thirdParty1[0], '', '', [], [], total, false]],
         fromThirdPartyAggregator
       )
 
@@ -3624,7 +3670,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const total = qty1 + qty2 + qty3
 
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], total]],
+        [[thirdParty1[0], '', '', [], [], total, false]],
         fromThirdPartyAggregator
       )
 
@@ -3795,7 +3841,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts when the message was already processed', async function () {
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy * 2]],
+        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy * 2, false]],
         fromThirdPartyAggregator
       )
 
@@ -3827,7 +3873,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts when the signer is not a manager', async function () {
       await thirdPartyRegistryContract.updateThirdParties(
-        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy]],
+        [[thirdParty1[0], '', '', [], [], slotsToAddOrBuy, false]],
         fromThirdPartyAggregator
       )
 
@@ -4243,6 +4289,7 @@ describe.only('ThirdPartyRegistryV3', function () {
             [anotherManager],
             [true],
             0,
+            false
           ],
         ],
         fromManager
@@ -4267,7 +4314,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       const newResolver = 'https://new.api.thirdparty/v1'
       await tprContract.updateThirdParties(
-        [[THIRD_PARTIES[0][0], THIRD_PARTIES[0][1], newResolver, [], [], 0]],
+        [[THIRD_PARTIES[0][0], THIRD_PARTIES[0][1], newResolver, [], [], 0, false]],
         fromAnotherManager
       )
 

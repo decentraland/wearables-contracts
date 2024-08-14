@@ -13,7 +13,7 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
-contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, Initializable {
+contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTransaction, Initializable {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
@@ -255,39 +255,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @param _thirdParties - third parties to be added
     */
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties) external {
-        for (uint256 i = 0; i < _thirdParties.length; i++) {
-            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
-
-            require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
-            require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
-            require(bytes(thirdPartyParam.resolver).length > 0, "TPR#addThirdParties: EMPTY_RESOLVER");
-            require(thirdPartyParam.managers.length > 0, "TPR#addThirdParties: EMPTY_MANAGERS");
-
-            ThirdParty storage thirdParty = thirdParties[thirdPartyParam.id];
-            require(thirdParty.registered == 0, "TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED");
-
-            thirdParty.registered = 1;
-            thirdParty.metadata = thirdPartyParam.metadata;
-            thirdParty.resolver = thirdPartyParam.resolver;
-            thirdParty.isApproved = initialThirdPartyValue;
-            thirdParty.maxItems = thirdPartyParam.slots;
-
-            for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
-                thirdParty.managers[thirdPartyParam.managers[m]] = true;
-            }
-
-            thirdPartyIds.push(thirdPartyParam.id);
-
-            emit ThirdPartyAdded(
-                thirdPartyParam.id,
-                thirdParty.metadata,
-                thirdParty.resolver,
-                thirdParty.isApproved,
-                thirdPartyParam.managers,
-                thirdParty.maxItems,
-                _msgSender()
-            );
-        }
+        revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
     }
 
     /**
