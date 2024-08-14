@@ -2822,7 +2822,7 @@ describe.only('ThirdPartyRegistryV3', function () {
           toBN(0),
           fromUser
         ),
-        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+        'TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE'
       )
     })
 
@@ -2834,7 +2834,7 @@ describe.only('ThirdPartyRegistryV3', function () {
           priceOfSlotsToBuy.sub(toBN('1')),
           fromUser
         ),
-        'TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE'
+        'TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE'
       )
     })
 

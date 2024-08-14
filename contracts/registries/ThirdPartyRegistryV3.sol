@@ -367,6 +367,10 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @param _maxPrice - max price to paid
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
+        _buyItemSlots(_thirdPartyId, _qty, _maxPrice);
+    }
+
+    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) private {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
@@ -377,14 +381,14 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 
-        require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
+        require(finalPrice <= _maxPrice, "TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE");
 
         thirdParty.maxItems = thirdParty.maxItems.add(_qty);
 
         if (finalPrice > 0) {
             require(
                 acceptedToken.transferFrom(sender, feesCollector, finalPrice),
-                "TPR#buyItemSlots: TRANSFER_FROM_FAILED"
+                "TPR#_buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
