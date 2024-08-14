@@ -1193,11 +1193,21 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
-    it.only('should track if the added third parties as programmatic', async function () {
-      await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+    it('should track if the added third parties as programmatic', async function () {
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+
+      expect(logs[0].args._isProgrammatic).to.be.equal(false);
+      expect(logs[1].args._isProgrammatic).to.be.equal(true);
 
       expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty1[0])).to.be.equal(false)
       expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty2[0])).to.be.equal(true)
+    })
+
+    it('should emit an event including if the added third party is programmatic', async function () {
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+
+      expect(logs[0].args._isProgrammatic).to.be.equal(false);
+      expect(logs[1].args._isProgrammatic).to.be.equal(true);
     })
 
     it('should add third parties :: Relayed EIP721', async function () {

@@ -99,6 +99,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     mapping(string => bool) public isThirdPartyProgrammatic;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender, bool _isProgrammatic);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _sender);
@@ -258,6 +259,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+            bool isProgrammatic = _areProgrammatic[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
@@ -279,7 +281,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             thirdPartyIds.push(thirdPartyParam.id);
 
-            isThirdPartyProgrammatic[thirdPartyParam.id] = _areProgrammatic[i];
+            isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
 
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
@@ -288,7 +290,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdParty.isApproved,
                 thirdPartyParam.managers,
                 thirdParty.maxItems,
-                _msgSender()
+                _msgSender(),
+                isProgrammatic
             );
         }
     }
