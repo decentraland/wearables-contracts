@@ -1115,7 +1115,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        [false],
+        [false, false],
         fromUser
       )
 
@@ -1191,6 +1191,13 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       itemsCount = await thirdPartyRegistryContract.itemsCount(thirdParty2[0])
       expect(itemsCount).to.be.eq.BN(0)
+    })
+
+    it.only('should track if the added third parties as programmatic', async function () {
+      await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+
+      expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty1[0])).to.be.equal(false)
+      expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty2[0])).to.be.equal(true)
     })
 
     it('should add third parties :: Relayed EIP721', async function () {

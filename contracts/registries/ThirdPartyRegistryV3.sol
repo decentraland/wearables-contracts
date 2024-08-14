@@ -96,6 +96,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
+    mapping(string => bool) public isThirdPartyProgrammatic;
+
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
@@ -276,6 +278,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             }
 
             thirdPartyIds.push(thirdPartyParam.id);
+
+            isThirdPartyProgrammatic[thirdPartyParam.id] = _areProgrammatic[i];
 
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
