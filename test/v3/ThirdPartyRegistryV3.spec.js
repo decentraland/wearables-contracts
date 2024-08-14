@@ -1011,6 +1011,22 @@ describe.only('ThirdPartyRegistryV3', function () {
   })
 
   describe('addThirdParties', function () {
+    this.beforeEach(async () => {
+      const maxUint256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        maxUint256,
+        fromThirdPartyAggregator
+      )
+
+      await manaContract.approve(
+        thirdPartyRegistryContract.address,
+        maxUint256,
+        fromUser
+      )
+    })
+
     it('should add third parties (third party aggregator as caller)', async function () {
       let thirdPartiesCount =
         await thirdPartyRegistryContract.thirdPartiesCount()
@@ -1023,12 +1039,12 @@ describe.only('ThirdPartyRegistryV3', function () {
       thirdParty2[5] = thirdParty2Slots
 
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1, thirdParty2], 
+        [thirdParty1, thirdParty2],
         [false, false],
         fromThirdPartyAggregator
       )
 
-      expect(logs.length).to.be.equal(2)
+      expect(logs.length).to.be.equal(4)
 
       expect(logs[0].event).to.be.equal('ThirdPartyAdded')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -1039,14 +1055,14 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(logs[0].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
       expect(logs[0].args._sender).to.be.eql(thirdPartyAggregator)
 
-      expect(logs[1].event).to.be.equal('ThirdPartyAdded')
-      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
-      expect(logs[1].args._metadata).to.be.eql(thirdParty2[1])
-      expect(logs[1].args._resolver).to.be.eql(thirdParty2[2])
-      expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
-      expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
-      expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
-      expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
+      expect(logs[2].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
+      expect(logs[2].args._metadata).to.be.eql(thirdParty2[1])
+      expect(logs[2].args._resolver).to.be.eql(thirdParty2[2])
+      expect(logs[2].args._isApproved).to.be.eql(initialValueForThirdParties)
+      expect(logs[2].args._managers).to.be.eql(thirdParty2[3])
+      expect(logs[2].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
+      expect(logs[2].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1119,7 +1135,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         fromUser
       )
 
-      expect(logs.length).to.be.equal(2)
+      expect(logs.length).to.be.equal(4)
 
       expect(logs[0].event).to.be.equal('ThirdPartyAdded')
       expect(logs[0].args._thirdPartyId).to.be.eql(thirdParty1[0])
@@ -1130,14 +1146,14 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(logs[0].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
       expect(logs[0].args._sender).to.be.eql(user)
 
-      expect(logs[1].event).to.be.equal('ThirdPartyAdded')
-      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty2[0])
-      expect(logs[1].args._metadata).to.be.eql(thirdParty2[1])
-      expect(logs[1].args._resolver).to.be.eql(thirdParty2[2])
-      expect(logs[1].args._isApproved).to.be.eql(initialValueForThirdParties)
-      expect(logs[1].args._managers).to.be.eql(thirdParty2[3])
-      expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
-      expect(logs[1].args._sender).to.be.eql(user)
+      expect(logs[2].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
+      expect(logs[2].args._metadata).to.be.eql(thirdParty2[1])
+      expect(logs[2].args._resolver).to.be.eql(thirdParty2[2])
+      expect(logs[2].args._isApproved).to.be.eql(initialValueForThirdParties)
+      expect(logs[2].args._managers).to.be.eql(thirdParty2[3])
+      expect(logs[2].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
+      expect(logs[2].args._sender).to.be.eql(user)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -1193,21 +1209,55 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
-    it('should track if the added third parties as programmatic', async function () {
-      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+    it('should buy the slots defined in params', async function () {
+      const thirdParty1Slots = 10
+      const thirdParty2Slots = 20
+
+      thirdParty1[5] = thirdParty1Slots
+      thirdParty2[5] = thirdParty2Slots
+
+      const { logs } = await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1, thirdParty2],
+        [false, false],
+        fromUser
+      )
+
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsBought')
+      expect(logs[1].args._thirdPartyId).to.be.eql(thirdParty1[0])
+      expect(logs[1].args._price).to.be.eq.BN("5000000000000000000")
+      expect(logs[1].args._value).to.be.eq.BN(thirdParty1Slots)
+      expect(logs[1].args._sender).to.be.eql(user)
+
+      expect(logs[3].event).to.be.equal('ThirdPartyItemSlotsBought')
+      expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty2[0])
+      expect(logs[3].args._price).to.be.eq.BN("10000000000000000000")
+      expect(logs[3].args._value).to.be.eq.BN(thirdParty2Slots)
+      expect(logs[3].args._sender).to.be.eql(user)
+
+      // Third Party 1
+      let thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+      expect(thirdParty.maxItems).to.be.eq.BN(thirdParty1Slots)
+
+      // Third Party 2
+      thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
+      expect(thirdParty.maxItems).to.be.eq.BN(thirdParty2Slots)
+    })
+
+    it('should track if the added third parties are programmatic', async function () {
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
-      expect(logs[1].args._isProgrammatic).to.be.equal(true);
+      expect(logs[2].args._isProgrammatic).to.be.equal(true);
 
       expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty1[0])).to.be.equal(false)
       expect(await thirdPartyRegistryContract.isThirdPartyProgrammatic(thirdParty2[0])).to.be.equal(true)
     })
 
     it('should emit an event including if the added third party is programmatic', async function () {
-      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2],[false, true],fromUser)
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
-      expect(logs[1].args._isProgrammatic).to.be.equal(true);
+      expect(logs[2].args._isProgrammatic).to.be.equal(true);
     })
 
     it('should add third parties :: Relayed EIP721', async function () {
@@ -1285,7 +1335,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         version
       )
 
-      expect(logs.length).to.be.equal(3)
+      expect(logs.length).to.be.equal(5)
 
       expect(logs[0].event).to.be.equal('MetaTransactionExecuted')
       expect(logs[0].args.userAddress).to.be.equal(thirdPartyAggregator)
@@ -1301,14 +1351,14 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(logs[1].args._itemSlots).to.be.eq.BN(thirdParty1Slots)
       expect(logs[1].args._sender).to.be.eql(thirdPartyAggregator)
 
-      expect(logs[2].event).to.be.equal('ThirdPartyAdded')
-      expect(logs[2].args._thirdPartyId).to.be.eql(thirdParty2[0])
-      expect(logs[2].args._metadata).to.be.eql(thirdParty2[1])
-      expect(logs[2].args._resolver).to.be.eql(thirdParty2[2])
-      expect(logs[2].args._isApproved).to.be.eql(initialValueForThirdParties)
-      expect(logs[2].args._managers).to.be.eql(thirdParty2[3])
-      expect(logs[2].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
-      expect(logs[2].args._sender).to.be.eql(thirdPartyAggregator)
+      expect(logs[3].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[3].args._thirdPartyId).to.be.eql(thirdParty2[0])
+      expect(logs[3].args._metadata).to.be.eql(thirdParty2[1])
+      expect(logs[3].args._resolver).to.be.eql(thirdParty2[2])
+      expect(logs[3].args._isApproved).to.be.eql(initialValueForThirdParties)
+      expect(logs[3].args._managers).to.be.eql(thirdParty2[3])
+      expect(logs[3].args._itemSlots).to.be.eq.BN(thirdParty2Slots)
+      expect(logs[3].args._sender).to.be.eql(thirdPartyAggregator)
 
       thirdPartiesCount = await thirdPartyRegistryContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -2072,11 +2122,11 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('should update third parties :: managers', async function () {
       updatedThirdParty1 = [
-        thirdParty1[0], 
-        '', 
-        '', 
-        [anotherManager], 
-        [true], 
+        thirdParty1[0],
+        '',
+        '',
+        [anotherManager],
+        [true],
         0
       ]
 
@@ -2137,11 +2187,11 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('should empty third parties managers by committee member', async function () {
       updatedThirdParty1 = [
-        thirdParty1[0], 
-        '', 
-        '', 
-        [manager], 
-        [false], 
+        thirdParty1[0],
+        '',
+        '',
+        [manager],
+        [false],
         0
       ]
 
@@ -2857,18 +2907,11 @@ describe.only('ThirdPartyRegistryV3', function () {
 
       thirdPartyRegistryContract = await ThirdPartyRegistryV3.at(proxy.address)
 
-      await thirdPartyRegistryContract.addThirdParties(
-        [thirdParty1],
-        [false],
-        fromThirdPartyAggregator
-      )
-
       await assertRevert(
-        thirdPartyRegistryContract.buyItemSlots(
-          thirdParty1[0],
-          slotsToAddOrBuy,
-          priceOfSlotsToBuy,
-          fromUser
+        thirdPartyRegistryContract.addThirdParties(
+          [thirdParty1],
+          [false],
+          fromThirdPartyAggregator
         ),
         'TPR#_getRateFromOracle: INVALID_RATE_FROM_ORACLE'
       )

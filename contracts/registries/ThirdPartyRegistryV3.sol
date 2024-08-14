@@ -257,7 +257,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     */
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
-            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+            ThirdPartyParam calldata thirdPartyParam = _thirdParties[i];
             bool isProgrammatic = _areProgrammatic[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
@@ -272,7 +272,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
             thirdParty.isApproved = initialThirdPartyValue;
-            thirdParty.maxItems = thirdPartyParam.slots;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
                 thirdParty.managers[thirdPartyParam.managers[m]] = true;
@@ -282,16 +281,20 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
 
+            uint256 slots = thirdPartyParam.slots;
+
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
                 thirdParty.metadata,
                 thirdParty.resolver,
                 thirdParty.isApproved,
                 thirdPartyParam.managers,
-                thirdParty.maxItems,
+                slots,
                 _msgSender(),
                 isProgrammatic
             );
+
+            _buyItemSlots(thirdPartyParam.id, slots, type(uint256).max);
         }
     }
 
