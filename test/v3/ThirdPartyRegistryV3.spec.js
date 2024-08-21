@@ -1243,7 +1243,40 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(thirdParty.maxItems).to.be.eq.BN(thirdParty2Slots)
     })
 
+    it.only('should buy 20 slots when buying a programmatic tp', async function () {
+      const thirdParty1Slots = 200
+
+      thirdParty1[5] = thirdParty1Slots
+
+      const { logs } = await thirdPartyRegistryContract.addThirdParties(
+        [thirdParty1],
+        [true],
+        fromUser
+      )
+
+      expect(logs[0].event).to.be.equal('ThirdPartyAdded')
+      expect(logs[0].args._thirdPartyId).to.be.eql("urn:decentraland:matic:ext-thirdparty1")
+      expect(logs[0].args._metadata).to.be.eql("tp:1:third party 1: the third party 1 desc")
+      expect(logs[0].args._resolver).to.be.eql("https://api.thirdparty1.com/v1/")
+      expect(logs[0].args._isApproved).to.be.eql(true)
+      expect(logs[0].args._managers).to.be.eql(["0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"])
+      expect(logs[0].args._itemSlots).to.be.eq.BN(200)
+      expect(logs[0].args._sender).to.be.eql("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
+      expect(logs[0].args._isProgrammatic).to.be.eql(true)
+
+      expect(logs[1].event).to.be.equal('ThirdPartyItemSlotsBought')
+      expect(logs[1].args._thirdPartyId).to.be.eql("urn:decentraland:matic:ext-thirdparty1")
+      expect(logs[1].args._price).to.be.eq.BN("10000000000000000000")
+      expect(logs[1].args._value).to.be.eq.BN(20)
+      expect(logs[1].args._sender).to.be.eql(user)
+
+      // Third Party 1
+      let thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+      expect(thirdParty.maxItems).to.be.eq.BN(thirdParty1Slots)
+    })
+
     it('should track if the added third parties are programmatic', async function () {
+      thirdParty2[5] = 20
       const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
@@ -1254,6 +1287,7 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
 
     it('should emit an event including if the added third party is programmatic', async function () {
+      thirdParty2[5] = 20
       const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
@@ -1527,6 +1561,11 @@ describe.only('ThirdPartyRegistryV3', function () {
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
       )
+    })
+
+    it('reverts when adding a programmatic tp with less than 20 slots', async function () {
+      thirdParty1[5] = 19;
+      await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], fromUser), "SafeMath: subtraction overflow")
     })
   })
 
