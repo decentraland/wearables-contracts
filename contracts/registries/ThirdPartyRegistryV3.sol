@@ -97,6 +97,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     bool public initialItemValue;
 
     mapping(string => bool) public isThirdPartyProgrammatic;
+    uint256 public programmaticBasePurchasedSlots;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender, bool _isProgrammatic);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
@@ -116,6 +117,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     event ItemSlotPriceSet(uint256 _oldItemSlotPrice, uint256 _newItemSlotPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
+    event ProgrammaticBasePurchasedSlotsSet(uint256 _oldProgrammaticBasePurchasedSlots, uint256 _newProgrammaticBasePurchasedSlots);
 
    /**
     * @notice Initialize the contract
@@ -165,6 +167,13 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             "TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
+    }
+
+    function setProgrammaticBasePurchasedSlots(uint256 _value) onlyOwner public {
+        require(_value > 0, "TPR#setProgrammaticBasePurchasedSlots: INVALID_PROGRAMMATIC_BASE_PURCHASED_SLOTS");
+
+        emit ProgrammaticBasePurchasedSlotsSet(programmaticBasePurchasedSlots, _value);
+        programmaticBasePurchasedSlots = _value;
     }
 
     /**

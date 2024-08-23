@@ -694,6 +694,32 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
   })
 
+  describe('setProgrammaticBasePurchasedSlots', function () {
+    it('should set the programmatic base purchased slots', async function () {
+      let programmaticBasePurchasedSlots;
+
+      programmaticBasePurchasedSlots = await thirdPartyRegistryContract.programmaticBasePurchasedSlots()
+
+      expect(programmaticBasePurchasedSlots.toString()).to.be.eql('0')
+
+      const { logs } = await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(10, fromOwner)
+
+      expect(logs.length).to.be.eql(1)
+
+      expect(logs[0].event).to.be.eql('ProgrammaticBasePurchasedSlotsSet')
+      expect(logs[0].args._oldProgrammaticBasePurchasedSlots.toString()).to.be.eql('0')
+      expect(logs[0].args._newProgrammaticBasePurchasedSlots.toString()).to.be.eql('10')
+
+      programmaticBasePurchasedSlots = await thirdPartyRegistryContract.programmaticBasePurchasedSlots()
+
+      expect(programmaticBasePurchasedSlots.toString()).to.be.eql('10')
+    })
+
+    it('reverts if the caller is not the owner', async function () {
+      await assertRevert(thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(10, fromUser), 'Ownable: caller is not the owner')
+    })
+  })
+
   describe('setThirdPartyAggregator', async function () {
     it('should set thirdPartyAggregator', async function () {
       let thirdPartyAggregatorContract =
@@ -1243,7 +1269,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(thirdParty.maxItems).to.be.eq.BN(thirdParty2Slots)
     })
 
-    it.only('should buy 20 slots when buying a programmatic tp', async function () {
+    it('should buy 20 slots when buying a programmatic tp', async function () {
       const thirdParty1Slots = 200
 
       thirdParty1[5] = thirdParty1Slots

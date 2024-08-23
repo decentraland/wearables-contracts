@@ -97,6 +97,7 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     bool public initialItemValue;
 
     mapping(string => bool) public isThirdPartyProgrammatic;
+    uint256 public programmaticBasePurchasedSlots;
 
     event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender, bool _isProgrammatic);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
@@ -116,6 +117,7 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     event ItemSlotPriceSet(uint256 _oldItemSlotPrice, uint256 _newItemSlotPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
+    event ProgrammaticBasePurchasedSlotsSet(uint256 _oldProgrammaticBasePurchasedSlots, uint256 _newProgrammaticBasePurchasedSlots);
 
    /**
     * @notice Initialize the contract
@@ -165,6 +167,13 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
             "TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
+    }
+
+    function setProgrammaticBasePurchasedSlots(uint256 _value) onlyOwner public {
+        require(_value > 0, "TPR#setProgrammaticBasePurchasedSlots: INVALID_PROGRAMMATIC_BASE_PURCHASED_SLOTS");
+
+        emit ProgrammaticBasePurchasedSlotsSet(programmaticBasePurchasedSlots, _value);
+        programmaticBasePurchasedSlots = _value;
     }
 
     /**
@@ -331,6 +340,10 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     * @param _maxPrice - max price to paid
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
+        _buyItemSlots(_thirdPartyId, _qty, _maxPrice);
+    }
+
+    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) private {
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
@@ -341,14 +354,14 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 
-        require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
+        require(finalPrice <= _maxPrice, "TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE");
 
         thirdParty.maxItems = thirdParty.maxItems.add(_qty);
 
         if (finalPrice > 0) {
             require(
                 acceptedToken.transferFrom(sender, feesCollector, finalPrice),
-                "TPR#buyItemSlots: TRANSFER_FROM_FAILED"
+                "TPR#_buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
