@@ -263,11 +263,14 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     /**
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
+    * @param _areProgrammatic - whether the third party is programmatic or not
+    * @param _maxPrices - max prices to be paid
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
             ThirdPartyParam calldata thirdPartyParam = _thirdParties[i];
             bool isProgrammatic = _areProgrammatic[i];
+            uint256 maxPrice = _maxPrices[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
@@ -305,11 +308,11 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             if (isProgrammatic) {
                 uint256 slotsToBuy = programmaticBasePurchasedSlots;
-                _buyItemSlots(thirdPartyParam.id, slotsToBuy, type(uint256).max);
+                _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice);
                 uint256 rest = slots.sub(slotsToBuy);
                 thirdParty.maxItems = thirdParty.maxItems.add(rest);
             } else {
-                _buyItemSlots(thirdPartyParam.id, slots, type(uint256).max);
+                _buyItemSlots(thirdPartyParam.id, slots, maxPrice);
             }
         }
     }

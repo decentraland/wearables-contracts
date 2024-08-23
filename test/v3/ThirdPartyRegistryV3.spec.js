@@ -40,6 +40,7 @@ const contentHashes = [
 const dummyBytes32 = web3.utils.randomHex(32)
 const zeroBytes32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000'
+const maxUint256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 
 let THIRD_PARTIES
 let thirdParty1
@@ -233,6 +234,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -289,6 +291,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdParty1],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
@@ -321,6 +324,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -363,6 +367,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdParty1],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION'
@@ -1067,6 +1072,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -1158,6 +1164,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromUser
       )
 
@@ -1245,6 +1252,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromUser
       )
 
@@ -1279,6 +1287,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       const { logs } = await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [true],
+        [maxUint256],
         fromUser
       )
 
@@ -1305,7 +1314,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('should track if the added third parties are programmatic', async function () {
       thirdParty2[5] = 20
-      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], [maxUint256, maxUint256], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
       expect(logs[2].args._isProgrammatic).to.be.equal(true);
@@ -1316,7 +1325,7 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('should emit an event including if the added third party is programmatic', async function () {
       thirdParty2[5] = 20
-      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], fromUser)
+      const { logs } = await thirdPartyRegistryContract.addThirdParties([thirdParty1, thirdParty2], [false, true], [maxUint256, maxUint256], fromUser)
 
       expect(logs[0].args._isProgrammatic).to.be.equal(false);
       expect(logs[2].args._isProgrammatic).to.be.equal(true);
@@ -1377,6 +1386,11 @@ describe.only('ThirdPartyRegistryV3', function () {
               "internalType": "bool[]",
               "name": "_areProgrammatic",
               "type": "bool[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "_maxPrices",
+              "type": "uint256[]"
             }
           ],
           "name": "addThirdParties",
@@ -1384,7 +1398,7 @@ describe.only('ThirdPartyRegistryV3', function () {
           "stateMutability": "nonpayable",
           "type": "function"
         },
-        [[thirdParty1, thirdParty2], [false, false]]
+        [[thirdParty1, thirdParty2], [false, false], [maxUint256, maxUint256]]
       )
 
       const { logs } = await sendMetaTx(
@@ -1490,6 +1504,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_ID'
@@ -1510,6 +1525,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_METADATA'
@@ -1530,6 +1546,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_RESOLVER'
@@ -1550,6 +1567,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: EMPTY_MANAGERS'
@@ -1578,6 +1596,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdPartyToBeAdded1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -1585,6 +1604,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdPartyToBeAdded2],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
@@ -1593,9 +1613,9 @@ describe.only('ThirdPartyRegistryV3', function () {
 
     it('reverts when adding a programmatic tp with less than 20 slots', async function () {
       await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(20, fromOwner)
-      
+
       thirdParty1[5] = 19;
-      await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], fromUser), "SafeMath: subtraction overflow")
+      await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], [maxUint256], fromUser), "SafeMath: subtraction overflow")
     })
   })
 
@@ -1702,6 +1722,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -2524,6 +2545,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromThirdPartyAggregator
       )
     })
@@ -2980,6 +3002,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdPartyRegistryContract.addThirdParties(
           [thirdParty1],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#_getRateFromOracle: INVALID_RATE_FROM_ORACLE'
@@ -2992,6 +3015,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
         [false, false],
+        [maxUint256, maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -3322,6 +3346,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
     })
@@ -3685,6 +3710,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
     })
@@ -4027,6 +4053,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -4102,6 +4129,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1],
         [false],
+        [maxUint256],
         fromThirdPartyAggregator
       )
 
@@ -4313,7 +4341,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       let thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(0)
 
-      await tprContract.addThirdParties(THIRD_PARTIES, [false, false], fromThirdPartyAggregator)
+      await tprContract.addThirdParties(THIRD_PARTIES, [false, false], [maxUint256, maxUint256], fromThirdPartyAggregator)
 
       thirdPartiesCount = await tprContract.thirdPartiesCount()
       expect(thirdPartiesCount).to.be.eq.BN(2)
@@ -4349,6 +4377,7 @@ describe.only('ThirdPartyRegistryV3', function () {
         tprContract.addThirdParties(
           [THIRD_PARTIES[1]],
           [false],
+          [maxUint256],
           fromThirdPartyAggregator
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'

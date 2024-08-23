@@ -263,8 +263,10 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     /**
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
+    * @param _areProgrammatic - whether the third party is programmatic or not
+    * @param _maxPrices - max prices to be paid
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic) external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
     }
 
