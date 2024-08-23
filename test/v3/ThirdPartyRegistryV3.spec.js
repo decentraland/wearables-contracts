@@ -1270,6 +1270,8 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
 
     it('should buy 20 slots when buying a programmatic tp', async function () {
+      await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(20, fromOwner)
+
       const thirdParty1Slots = 200
 
       thirdParty1[5] = thirdParty1Slots
@@ -1590,6 +1592,8 @@ describe.only('ThirdPartyRegistryV3', function () {
     })
 
     it('reverts when adding a programmatic tp with less than 20 slots', async function () {
+      await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(20, fromOwner)
+      
       thirdParty1[5] = 19;
       await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], fromUser), "SafeMath: subtraction overflow")
     })

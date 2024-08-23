@@ -304,7 +304,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
             );
 
             if (isProgrammatic) {
-                uint256 slotsToBuy = 20;
+                uint256 slotsToBuy = programmaticBasePurchasedSlots;
                 _buyItemSlots(thirdPartyParam.id, slotsToBuy, type(uint256).max);
                 uint256 rest = slots.sub(slotsToBuy);
                 thirdParty.maxItems = thirdParty.maxItems.add(rest);
