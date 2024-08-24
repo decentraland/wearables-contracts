@@ -393,6 +393,8 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     }
 
     function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) private {
+        require(_qty > 0, "TPR#_buyItemSlots: INVALID_QTY");
+        
         address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
