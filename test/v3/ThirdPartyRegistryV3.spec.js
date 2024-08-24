@@ -1617,6 +1617,20 @@ describe.only('ThirdPartyRegistryV3', function () {
       thirdParty1[5] = 19;
       await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], [maxUint256], fromUser), "SafeMath: subtraction overflow")
     })
+
+    it('reverts when max price is lower that the price of the slots', async function () {
+      thirdParty1[5] = 1
+
+      await assertRevert(
+        thirdPartyRegistryContract.addThirdParties(
+          [thirdParty1],
+          [false],
+          ["0"],
+          fromUser
+        ),
+        'TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE'
+      )
+    })
   })
 
   describe('setOracle', function () {
