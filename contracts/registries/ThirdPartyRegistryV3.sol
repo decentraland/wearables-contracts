@@ -314,7 +314,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice, sender);
 
                 uint256 rest = slots.sub(slotsToBuy);
-                
+
                 thirdParty.maxItems = thirdParty.maxItems.add(rest);
             } else {
                 _buyItemSlots(thirdPartyParam.id, slots, maxPrice, sender);
@@ -399,7 +399,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
         if (isThirdPartyProgrammatic[_thirdPartyId]) {
             ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
-            _checkThirdParty(thirdParty);
+            require(thirdParty.managers[sender], "TPR#buyItemSlots: NOT_MANAGER");
 
             thirdParty.maxItems = thirdParty.maxItems.add(_qty);
 

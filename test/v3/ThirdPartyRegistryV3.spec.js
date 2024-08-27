@@ -2970,7 +2970,7 @@ describe.only('ThirdPartyRegistryV3', function () {
       await feeCollector.requireIncrease(priceOfSlotsToBuy)
     })
 
-    it('should allow buying any amount of slots for free on programmatic tps', async function() {
+    it('should allow buying any amount of slots for free on programmatic tps', async function () {
       await manaContract.approve(thirdPartyRegistryContract.address, 0)
 
       const slots = 1000000000000000
@@ -2980,16 +2980,30 @@ describe.only('ThirdPartyRegistryV3', function () {
         thirdParty2[0],
         slots,
         maxPrice,
-        fromUser
+        fromManager
       )
 
       expect(logs[0].event).to.be.eql("ThirdPartyItemSlotsBought")
       expect(logs[0].args._price.toString()).to.be.eql(maxPrice.toString())
       expect(logs[0].args._value.toString()).to.be.eql(slots.toString())
-      expect(logs[0].args._sender).to.be.eql(user)
+      expect(logs[0].args._sender).to.be.eql(manager)
 
       const tp = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
       expect(tp.maxItems.toString()).to.be.eql("1000000000000001")
+    })
+
+    it('reverts when buying slots for a programmatic tp and caller is not manager', async function () {
+      await manaContract.approve(thirdPartyRegistryContract.address, 0)
+
+      const slots = 1000000000000000
+      const maxPrice = 0
+
+      await assertRevert(thirdPartyRegistryContract.buyItemSlots(
+        thirdParty2[0],
+        slots,
+        maxPrice,
+        fromUser
+      ), "TPR#buyItemSlots: NOT_MANAGER")
     })
 
     it('reverts when the third party is invalid', async function () {
