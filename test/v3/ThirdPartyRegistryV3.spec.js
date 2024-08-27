@@ -2598,9 +2598,11 @@ describe.only('ThirdPartyRegistryV3', function () {
         fromThirdPartyAggregator
       )
 
+      await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(1, fromOwner)
+
       await thirdPartyRegistryContract.addThirdParties(
         [thirdParty1, thirdParty2],
-        [false, false],
+        [false, true],
         [maxUint256, maxUint256],
         fromThirdPartyAggregator
       )
@@ -2966,6 +2968,28 @@ describe.only('ThirdPartyRegistryV3', function () {
       // Only the required amount is transfered, meaning half the max price provided
       await buyer.requireDecrease(priceOfSlotsToBuy)
       await feeCollector.requireIncrease(priceOfSlotsToBuy)
+    })
+
+    it('should allow buying any amount of slots for free on programmatic tps', async function() {
+      await manaContract.approve(thirdPartyRegistryContract.address, 0)
+
+      const slots = 1000000000000000
+      const maxPrice = 0
+
+      const { logs } = await thirdPartyRegistryContract.buyItemSlots(
+        thirdParty2[0],
+        slots,
+        maxPrice,
+        fromUser
+      )
+
+      expect(logs[0].event).to.be.eql("ThirdPartyItemSlotsBought")
+      expect(logs[0].args._price.toString()).to.be.eql(maxPrice.toString())
+      expect(logs[0].args._value.toString()).to.be.eql(slots.toString())
+      expect(logs[0].args._sender).to.be.eql(user)
+
+      const tp = await thirdPartyRegistryContract.thirdParties(thirdParty2[0])
+      expect(tp.maxItems.toString()).to.be.eql("1000000000000001")
     })
 
     it('reverts when the third party is invalid', async function () {

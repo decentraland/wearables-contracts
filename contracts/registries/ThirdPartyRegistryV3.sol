@@ -306,13 +306,18 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 isProgrammatic
             );
 
+            address sender = _msgSender();
+
             if (isProgrammatic) {
                 uint256 slotsToBuy = programmaticBasePurchasedSlots;
-                _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice);
+
+                _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice, sender);
+
                 uint256 rest = slots.sub(slotsToBuy);
+                
                 thirdParty.maxItems = thirdParty.maxItems.add(rest);
             } else {
-                _buyItemSlots(thirdPartyParam.id, slots, maxPrice);
+                _buyItemSlots(thirdPartyParam.id, slots, maxPrice, sender);
             }
         }
     }
@@ -389,13 +394,23 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
     * @param _maxPrice - max price to paid
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
-        _buyItemSlots(_thirdPartyId, _qty, _maxPrice);
+        address sender = _msgSender();
+
+        if (isThirdPartyProgrammatic[_thirdPartyId]) {
+            ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+            _checkThirdParty(thirdParty);
+
+            thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+            emit ThirdPartyItemSlotsBought(_thirdPartyId, 0, _qty, sender);
+        } else {
+            _buyItemSlots(_thirdPartyId, _qty, _maxPrice, sender);
+        }
     }
 
-    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) private {
+    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice, address _sender) private {
         require(_qty > 0, "TPR#_buyItemSlots: INVALID_QTY");
-        
-        address sender = _msgSender();
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
@@ -411,12 +426,12 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
         if (finalPrice > 0) {
             require(
-                acceptedToken.transferFrom(sender, feesCollector, finalPrice),
+                acceptedToken.transferFrom(_sender, feesCollector, finalPrice),
                 "TPR#_buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
-        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
+        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, _sender);
     }
 
      /**
