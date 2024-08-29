@@ -51,7 +51,7 @@ const getPrice = (slots) => oneEther.mul(toBN((slots / 2).toString()))
 const slotsToAddOrBuy = 10
 const priceOfSlotsToBuy = getPrice(slotsToAddOrBuy)
 
-describe.only('ThirdPartyRegistryV3', function () {
+describe('ThirdPartyRegistryV3', function () {
   this.timeout(100000)
   // mana
   let mana
@@ -1506,6 +1506,18 @@ describe.only('ThirdPartyRegistryV3', function () {
       expect(itemsCount).to.be.eq.BN(0)
     })
 
+    it('should add a programmatic third party with less slots than `programmaticBasePurchasedSlots`', async function () {
+      await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(20, fromOwner)
+
+      thirdParty1[5] = 19;
+      
+      await thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], [maxUint256], fromUser)
+
+      const thirdParty = await thirdPartyRegistryContract.thirdParties(thirdParty1[0])
+
+      expect(thirdParty.maxItems).to.be.eq.BN(19)
+    })
+
     it('reverts when trying to add third parties without id', async function () {
       const thirdPartyToBeAdded = [
         '',
@@ -1625,13 +1637,6 @@ describe.only('ThirdPartyRegistryV3', function () {
         ),
         'TPR#addThirdParties: THIRD_PARTY_ALREADY_ADDED'
       )
-    })
-
-    it('reverts when adding a programmatic tp with less than 20 slots', async function () {
-      await thirdPartyRegistryContract.setProgrammaticBasePurchasedSlots(20, fromOwner)
-
-      thirdParty1[5] = 19;
-      await assertRevert(thirdPartyRegistryContract.addThirdParties([thirdParty1], [true], [maxUint256], fromUser), "SafeMath: subtraction overflow")
     })
 
     it('reverts when max price is lower that the price of the slots', async function () {
