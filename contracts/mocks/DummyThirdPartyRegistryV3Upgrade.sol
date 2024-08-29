@@ -96,10 +96,18 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
+    /**
+     * @notice Tracks if a third party is programmatic.
+     * If the provided third party id does not belong to an existing third party, it will return false.
+     */
     mapping(string => bool) public isThirdPartyProgrammatic;
+    /**
+     * @notice When a user creates a programmatic third party, instead of paying for the amount of slots the third party will have, it will pay for the amount of slots defined in this variable.
+     * For example, if the user creates a programmatic third party with 100 slots and the value if this variable is 10, the user will pay for 10 slots and the third party will have 100 slots.
+     */
     uint256 public programmaticBasePurchasedSlots;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender, bool _isProgrammatic);
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, bool _isProgrammatic, address _sender);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _sender);
@@ -169,6 +177,10 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
         _;
     }
 
+    /**
+     * @notice Set the amount of slots used as reference for the fee when adding programmatic third parties.
+     * @param _value - the new amount of slots
+     */
     function setProgrammaticBasePurchasedSlots(uint256 _value) onlyOwner public {
         require(_value > 0, "TPR#setProgrammaticBasePurchasedSlots: INVALID_PROGRAMMATIC_BASE_PURCHASED_SLOTS");
 
@@ -264,7 +276,7 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
     * @param _areProgrammatic - whether the third party is programmatic or not
-    * @param _maxPrices - max prices to be paid
+    * @param _maxPrices - the maximum amount the user is willing to pay for adding the third party
     */
     function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         revert("TPR#addThirdParties: REVERTED_UPGRADED_FUNCTION");
@@ -337,16 +349,32 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
     * @notice Buy item slots
     * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to
     * prevent minimum rate slippage
+    * Adding slots to programmatic third parties can be done for free by that third party's managers
     * @param _thirdPartyId - third party id
     * @param _qty - qty of item slots to be bought
-    * @param _maxPrice - max price to paid
+    * @param _maxPrice - max price the user is willing to pay for the item slots
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
-        _buyItemSlots(_thirdPartyId, _qty, _maxPrice);
+        address sender = _msgSender();
+
+        if (isThirdPartyProgrammatic[_thirdPartyId]) {
+            ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+            // Only managers of this programmatic third party can add slots to it.
+            require(thirdParty.managers[sender], "TPR#buyItemSlots: NOT_MANAGER");
+
+            // The amount of slots is updated for free on programmatic third parties.
+            thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+            emit ThirdPartyItemSlotsBought(_thirdPartyId, 0, _qty, sender);
+        } else {
+            // For normal third parties, the user will pay for the amount of slots defined.
+            _buyItemSlots(_thirdPartyId, _qty, _maxPrice, sender);
+        }
     }
 
-    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) private {
-        address sender = _msgSender();
+    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice, address _sender) private {
+        require(_qty > 0, "TPR#_buyItemSlots: INVALID_QTY");
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
@@ -362,12 +390,12 @@ contract DummyThirdPartyRegistryV3Upgrade is OwnableInitializable, NativeMetaTra
 
         if (finalPrice > 0) {
             require(
-                acceptedToken.transferFrom(sender, feesCollector, finalPrice),
+                acceptedToken.transferFrom(_sender, feesCollector, finalPrice),
                 "TPR#_buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
-        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
+        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, _sender);
     }
 
      /**
