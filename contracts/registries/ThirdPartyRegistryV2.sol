@@ -13,7 +13,7 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../libs/String.sol";
 
-contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, Initializable {
+contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, Initializable {
     using SafeMath for uint256;
 
     bytes32 private constant CONSUME_SLOTS_TYPEHASH = keccak256(
@@ -96,7 +96,18 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
     bool public initialThirdPartyValue;
     bool public initialItemValue;
 
-    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, address _sender);
+    /**
+     * @notice Tracks if a third party is programmatic.
+     * If the provided third party id does not belong to an existing third party, it will return false.
+     */
+    mapping(string => bool) public isThirdPartyProgrammatic;
+    /**
+     * @notice When a user creates a programmatic third party, instead of paying for the amount of slots the third party will have, it will pay for the amount of slots defined in this variable.
+     * For example, if the user creates a programmatic third party with 100 slots and the value if this variable is 10, the user will pay for 10 slots and the third party will have 100 slots.
+     */
+    uint256 public programmaticBasePurchasedSlots;
+
+    event ThirdPartyAdded(string _thirdPartyId, string _metadata, string _resolver, bool _isApproved, address[] _managers, uint256 _itemSlots, bool _isProgrammatic, address _sender);
     event ThirdPartyUpdated(string _thirdPartyId, string _metadata, string _resolver, address[] _managers, bool[] _managerValues, uint256 _itemSlots, address _sender);
     event ThirdPartyItemSlotsBought(string _thirdPartyId, uint256 _price, uint256 _value, address _sender);
     event ThirdPartyReviewed(string _thirdPartyId, bool _value, address _sender);
@@ -114,6 +125,7 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
     event ItemSlotPriceSet(uint256 _oldItemSlotPrice, uint256 _newItemSlotPrice);
     event InitialThirdPartyValueSet(bool _oldInitialThirdPartyValue, bool _newInitialThirdPartyValue);
     event InitialItemValueSet(bool _oldInitialItemValue, bool _newInitialItemValue);
+    event ProgrammaticBasePurchasedSlotsSet(uint256 _oldProgrammaticBasePurchasedSlots, uint256 _newProgrammaticBasePurchasedSlots);
 
    /**
     * @notice Initialize the contract
@@ -163,6 +175,17 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
             "TPR#onlyThirdPartyAggregator: SENDER_IS_NOT_THE_PARTY_AGGREGATOR"
         );
         _;
+    }
+
+    /**
+     * @notice Set the amount of slots used as reference for the fee when adding programmatic third parties.
+     * @param _value - the new amount of slots
+     */
+    function setProgrammaticBasePurchasedSlots(uint256 _value) onlyOwner public {
+        require(_value > 0, "TPR#setProgrammaticBasePurchasedSlots: INVALID_PROGRAMMATIC_BASE_PURCHASED_SLOTS");
+
+        emit ProgrammaticBasePurchasedSlotsSet(programmaticBasePurchasedSlots, _value);
+        programmaticBasePurchasedSlots = _value;
     }
 
     /**
@@ -252,10 +275,14 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
     /**
     * @notice Add third parties
     * @param _thirdParties - third parties to be added
+    * @param _areProgrammatic - whether the third party is programmatic or not
+    * @param _maxPrices - the maximum amount the user is willing to pay for adding the third party
     */
-    function addThirdParties(ThirdPartyParam[] calldata _thirdParties) onlyThirdPartyAggregator external {
+    function addThirdParties(ThirdPartyParam[] calldata _thirdParties, bool[] calldata _areProgrammatic, uint256[] calldata _maxPrices) external {
         for (uint256 i = 0; i < _thirdParties.length; i++) {
-            ThirdPartyParam memory thirdPartyParam = _thirdParties[i];
+            ThirdPartyParam calldata thirdPartyParam = _thirdParties[i];
+            bool isProgrammatic = _areProgrammatic[i];
+            uint256 maxPrice = _maxPrices[i];
 
             require(bytes(thirdPartyParam.id).length > 0, "TPR#addThirdParties: EMPTY_ID");
             require(bytes(thirdPartyParam.metadata).length > 0, "TPR#addThirdParties: EMPTY_METADATA");
@@ -269,7 +296,6 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
             thirdParty.metadata = thirdPartyParam.metadata;
             thirdParty.resolver = thirdPartyParam.resolver;
             thirdParty.isApproved = initialThirdPartyValue;
-            thirdParty.maxItems = thirdPartyParam.slots;
 
             for (uint256 m = 0; m < thirdPartyParam.managers.length; m++) {
                 thirdParty.managers[thirdPartyParam.managers[m]] = true;
@@ -277,15 +303,35 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
 
             thirdPartyIds.push(thirdPartyParam.id);
 
+            isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
+
+            uint256 slots = thirdPartyParam.slots;
+
+            address sender = _msgSender();
+
             emit ThirdPartyAdded(
                 thirdPartyParam.id,
                 thirdParty.metadata,
                 thirdParty.resolver,
                 thirdParty.isApproved,
                 thirdPartyParam.managers,
-                thirdParty.maxItems,
-                _msgSender()
+                slots,
+                isProgrammatic,
+                sender
             );
+
+            if (isProgrammatic) {
+                uint256 slotsToBuy = programmaticBasePurchasedSlots;
+
+                // Buys `programmaticBasePurchasedSlots` slots as fee for programmatic third parties.
+                _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice, sender);
+
+                // The third party will end up with the amount of slots defined.
+                thirdParty.maxItems = slots;
+            } else {
+                // For normal third parties, the user will pay for the amount of slots defined.
+                _buyItemSlots(thirdPartyParam.id, slots, maxPrice, sender);
+            }
         }
     }
 
@@ -356,12 +402,32 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
     * @notice Buy item slots
     * @dev It is recomended to send the _maxPrice a little bit higher than expected in order to
     * prevent minimum rate slippage
+    * Adding slots to programmatic third parties can be done for free by that third party's managers
     * @param _thirdPartyId - third party id
     * @param _qty - qty of item slots to be bought
-    * @param _maxPrice - max price to paid
+    * @param _maxPrice - max price the user is willing to pay for the item slots
     */
     function buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice) external {
         address sender = _msgSender();
+
+        if (isThirdPartyProgrammatic[_thirdPartyId]) {
+            ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
+
+            // Only managers of this programmatic third party can add slots to it.
+            require(thirdParty.managers[sender], "TPR#buyItemSlots: NOT_MANAGER");
+
+            // The amount of slots is updated for free on programmatic third parties.
+            thirdParty.maxItems = thirdParty.maxItems.add(_qty);
+
+            emit ThirdPartyItemSlotsBought(_thirdPartyId, 0, _qty, sender);
+        } else {
+            // For normal third parties, the user will pay for the amount of slots defined.
+            _buyItemSlots(_thirdPartyId, _qty, _maxPrice, sender);
+        }
+    }
+
+    function _buyItemSlots(string calldata _thirdPartyId, uint256 _qty, uint256 _maxPrice, address _sender) private {
+        require(_qty > 0, "TPR#_buyItemSlots: INVALID_QTY");
 
         ThirdParty storage thirdParty = thirdParties[_thirdPartyId];
 
@@ -371,18 +437,18 @@ contract ThirdPartyRegistryV2 is OwnableInitializable, NativeMetaTransaction, In
 
         uint256 finalPrice = itemSlotPrice.mul(1 ether).mul(_qty).div(rate);
 
-        require(finalPrice <= _maxPrice, "TPR#buyItems: PRICE_HIGHER_THAN_MAX_PRICE");
+        require(finalPrice <= _maxPrice, "TPR#_buyItemSlots: PRICE_HIGHER_THAN_MAX_PRICE");
 
         thirdParty.maxItems = thirdParty.maxItems.add(_qty);
 
         if (finalPrice > 0) {
             require(
-                acceptedToken.transferFrom(sender, feesCollector, finalPrice),
-                "TPR#buyItemSlots: TRANSFER_FROM_FAILED"
+                acceptedToken.transferFrom(_sender, feesCollector, finalPrice),
+                "TPR#_buyItemSlots: TRANSFER_FROM_FAILED"
             );
         }
 
-        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, sender);
+        emit ThirdPartyItemSlotsBought(_thirdPartyId, finalPrice, _qty, _sender);
     }
 
      /**
