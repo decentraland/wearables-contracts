@@ -305,8 +305,6 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
 
             isThirdPartyProgrammatic[thirdPartyParam.id] = isProgrammatic;
 
-            uint256 slots = thirdPartyParam.slots;
-
             address sender = _msgSender();
 
             emit ThirdPartyAdded(
@@ -315,7 +313,7 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 thirdParty.resolver,
                 thirdParty.isApproved,
                 thirdPartyParam.managers,
-                slots,
+                0, // The slots being added to the third party will be emitted as the ThirdPartyItemSlotsBought event.
                 isProgrammatic,
                 sender
             );
@@ -326,11 +324,21 @@ contract ThirdPartyRegistryV3 is OwnableInitializable, NativeMetaTransaction, In
                 // Buys `programmaticBasePurchasedSlots` slots as fee for programmatic third parties.
                 _buyItemSlots(thirdPartyParam.id, slotsToBuy, maxPrice, sender);
 
-                // The third party will end up with the amount of slots defined.
-                thirdParty.maxItems = slots;
+                // Calculate the difference between the slots bought as fee and the final slots provided for the third party.
+                uint256 rest = thirdPartyParam.slots.sub(slotsToBuy);
+
+                if (rest > 0) {
+                    // Update the third party with the rest of the slots.
+                    // Using the provided amount is cheaper than adding the rest to the bought amount.
+                    thirdParty.maxItems = thirdPartyParam.slots;
+
+                    // Emit an event to notify that more slots were added.
+                    // This is useful for offchain services to use the ThirdPartyItemSlotsBought as source of truth for the amount of slots a tp has.
+                    emit ThirdPartyItemSlotsBought(thirdPartyParam.id, 0, rest, sender);
+                }
             } else {
                 // For normal third parties, the user will pay for the amount of slots defined.
-                _buyItemSlots(thirdPartyParam.id, slots, maxPrice, sender);
+                _buyItemSlots(thirdPartyParam.id, thirdPartyParam.slots, maxPrice, sender);
             }
         }
     }
