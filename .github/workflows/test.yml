@@ -9,20 +9,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the code
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Step 2: Set up Node.js environment
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '14'  # Specify the Node.js version you want (adjust if needed)
+        node-version: '14'
 
-    # Step 3: Install dependencies
+    - name: Clear npm cache
+      run: npm cache clean --force
+
     - name: Install dependencies
-      run: npm install
+      run: npm ci --verbose
 
-    # Step 4: Run Hardhat tests
     - name: Run tests
-      run: npm run test   # Assumes 'test' script is defined in package.json for Hardhat
+      run: npm run test
